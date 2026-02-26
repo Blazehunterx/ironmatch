@@ -161,17 +161,17 @@ export default function ProfileDetail({ user, isOpen, onClose, onRequest }: Prof
                                     </div>
                                 </div>
                             )}
+                        </div>
 
-                            {/* Action Buttons */}
-                            <div className="flex gap-2">
-                                <FriendButton userId={user.id} />
-                                <button
-                                    onClick={() => { onClose(); onRequest(user); }}
-                                    className="flex-1 py-4 rounded-xl bg-lime text-oled font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-lime/90 active:scale-[0.98] transition-all shadow-[0_0_30px_-5px_rgba(50,255,50,0.3)]"
-                                >
-                                    <Dumbbell size={18} /> Workout
-                                </button>
-                            </div>
+                        {/* Action Buttons - Sticky at bottom */}
+                        <div className="sticky bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-oled via-oled to-transparent pt-10 mt-auto flex gap-2">
+                            <FriendButton userId={user.id} />
+                            <button
+                                onClick={() => { onClose(); onRequest(user); }}
+                                className="flex-1 py-4 rounded-xl bg-lime text-oled font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-lime/90 active:scale-[0.98] transition-all shadow-[0_0_30px_-5px_rgba(50,255,50,0.3)]"
+                            >
+                                <Dumbbell size={18} /> Workout
+                            </button>
                         </div>
                     </motion.div>
                 </>
