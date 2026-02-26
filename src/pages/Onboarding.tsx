@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
     ArrowRight, ArrowLeft, Camera, Ruler,
-    Zap, User as UserIcon, Check
+    Zap, User as UserIcon, Check, MapPin, Search
 } from 'lucide-react';
+import { useGyms } from '../context/GymContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Goal, BodyPart, ALL_GOALS, ALL_BODY_PARTS, FitnessLevel, FitnessDiscipline } from '../types/database';
 import { getRankFromLifts, Big4Lifts } from '../lib/gamification';
@@ -14,7 +15,7 @@ const goalEmoji: Record<string, string> = {
     'Train for Competition': '🏋️', 'Lose Weight': '💪', 'Recovery Partner': '🧘', 'Cardio Partner': '🏃',
 };
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
 
 const DISCIPLINES: { value: FitnessDiscipline; icon: string; desc: string }[] = [
     { value: 'Powerlifting', icon: '🏋️', desc: 'Big 4 lifts, maximal strength' },
@@ -33,7 +34,12 @@ export default function Onboarding() {
     const [profileImage, setProfileImage] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Step 1: Discipline
+    // Step 1: Home Gym
+    const { gyms: allGyms, isLoadingGyms } = useGyms();
+    const [homeGym, setHomeGym] = useState('');
+    const [searchGymQuery, setSearchGymQuery] = useState('');
+
+    // Step 2: Discipline
     const [discipline, setDiscipline] = useState<FitnessDiscipline>('General Fitness');
 
     // Step 2: Body stats
@@ -72,8 +78,11 @@ export default function Onboarding() {
     const back = () => setStep(s => Math.max(s - 1, 0));
 
     const finish = async () => {
+        const hg = allGyms.find(g => g.id === homeGym);
         const data = {
             profile_image_url: profileImage || 'https://i.pravatar.cc/300',
+            home_gym: homeGym || undefined,
+            home_gym_name: hg?.name || undefined,
             weight_kg: weightKg || undefined,
             height_cm: heightCm || undefined,
             unit_preference: unitPref,
@@ -176,8 +185,63 @@ export default function Onboarding() {
                             </div>
                         )}
 
-                        {/* ═══ STEP 1: DISCIPLINE ═══ */}
+                        {/* ═══ STEP 1: HOME GYM ═══ */}
                         {step === 1 && (
+                            <div className="flex-1 flex flex-col">
+                                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+                                    <h2 className="text-2xl font-black text-white mb-1">Your Home Gym</h2>
+                                    <p className="text-sm text-gray-500 mb-6">Where do you train the most? We'll match you with locals.</p>
+                                </motion.div>
+
+                                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}
+                                    className="bg-gray-900 border border-gray-800 rounded-2xl p-3 mb-4 flex items-center gap-3 shrink-0">
+                                    <Search size={18} className="text-gray-500" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search for a gym..."
+                                        value={searchGymQuery}
+                                        onChange={(e) => setSearchGymQuery(e.target.value)}
+                                        className="bg-transparent text-white text-sm w-full focus:outline-none placeholder:text-gray-600 font-bold"
+                                    />
+                                </motion.div>
+
+                                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
+                                    className="flex-1 overflow-y-auto space-y-2 pb-24">
+                                    {isLoadingGyms ? (
+                                        <div className="text-center text-gray-500 text-sm py-8 font-bold animate-pulse">Scanning local area...</div>
+                                    ) : (
+                                        allGyms
+                                            .filter(g => g.name.toLowerCase().includes(searchGymQuery.toLowerCase()))
+                                            .slice(0, 15)
+                                            .map((gym) => (
+                                                <button
+                                                    key={gym.id}
+                                                    onClick={() => setHomeGym(gym.id)}
+                                                    className={`w-full p-3 rounded-xl border text-left transition-all ${homeGym === gym.id ? 'bg-lime/10 border-lime/40' : 'bg-gray-900 border-gray-800 hover:border-gray-700'
+                                                        }`}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center shrink-0">
+                                                            <MapPin size={18} className={homeGym === gym.id ? 'text-lime' : 'text-gray-500'} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`font-bold truncate text-sm ${homeGym === gym.id ? 'text-lime' : 'text-white'}`}>{gym.name}</p>
+                                                            <p className="text-[10px] text-gray-500 truncate mt-0.5">{gym.location}</p>
+                                                        </div>
+                                                        {homeGym === gym.id && <Check size={16} className="text-lime shrink-0" />}
+                                                    </div>
+                                                </button>
+                                            ))
+                                    )}
+                                    {!isLoadingGyms && allGyms.length === 0 && (
+                                        <div className="text-center text-gray-500 text-sm py-8 font-bold">No gyms found nearby. Try zooming out on the map later.</div>
+                                    )}
+                                </motion.div>
+                            </div>
+                        )}
+
+                        {/* ═══ STEP 2: DISCIPLINE ═══ */}
+                        {step === 2 && (
                             <div className="flex-1 flex flex-col">
                                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
                                     <h2 className="text-2xl font-black text-white mb-1">Your Discipline</h2>
@@ -203,8 +267,8 @@ export default function Onboarding() {
                             </div>
                         )}
 
-                        {/* ═══ STEP 2: BODY STATS ═══ */}
-                        {step === 2 && (
+                        {/* ═══ STEP 3: BODY STATS ═══ */}
+                        {step === 3 && (
                             <div className="flex-1 flex flex-col">
                                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
                                     <h2 className="text-2xl font-black text-white mb-1">Body Stats</h2>
@@ -265,8 +329,8 @@ export default function Onboarding() {
                             </div>
                         )}
 
-                        {/* ═══ STEP 3: BIG 4 PRs ═══ */}
-                        {step === 3 && (
+                        {/* ═══ STEP 4: BIG 4 PRs ═══ */}
+                        {step === 4 && (
                             <div className="flex-1 flex flex-col">
                                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
                                     <h2 className="text-2xl font-black text-white mb-1">Your Big 4</h2>
@@ -316,8 +380,8 @@ export default function Onboarding() {
                             </div>
                         )}
 
-                        {/* ═══ STEP 4: GOALS ═══ */}
-                        {step === 4 && (
+                        {/* ═══ STEP 5: GOALS ═══ */}
+                        {step === 5 && (
                             <div className="flex-1 flex flex-col">
                                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
                                     <h2 className="text-2xl font-black text-white mb-1">Your Goals</h2>
@@ -354,8 +418,8 @@ export default function Onboarding() {
                             </div>
                         )}
 
-                        {/* ═══ STEP 5: FITNESS LEVEL ═══ */}
-                        {step === 5 && (
+                        {/* ═══ STEP 6: FITNESS LEVEL ═══ */}
+                        {step === 6 && (
                             <div className="flex-1 flex flex-col">
                                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
                                     <h2 className="text-2xl font-black text-white mb-1">Experience Level</h2>
@@ -388,8 +452,8 @@ export default function Onboarding() {
                             </div>
                         )}
 
-                        {/* ═══ STEP 6: BIO + FINISH ═══ */}
-                        {step === 6 && (
+                        {/* ═══ STEP 7: BIO + FINISH ═══ */}
+                        {step === 7 && (
                             <div className="flex-1 flex flex-col">
                                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
                                     <h2 className="text-2xl font-black text-white mb-1">Almost Done!</h2>
