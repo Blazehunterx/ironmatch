@@ -16,7 +16,7 @@ export default function Login() {
         try {
             setError('');
             setLoading(true);
-            await login(email); // Mock login only checks email right now
+            await login(email, password);
             navigate('/');
         } catch (err: any) {
             setError(err.message || 'Failed to sign in');

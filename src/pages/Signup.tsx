@@ -32,7 +32,7 @@ export default function Signup() {
         try {
             setError('');
             setLoading(true);
-            await signup({ email, name });
+            await signup({ email, name, password });
             navigate('/onboarding');
         } catch (err: any) {
             setError(err.message || 'Failed to create account');
