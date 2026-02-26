@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { mockUsers, mockGyms } from '../lib/mock';
 import {
@@ -92,6 +92,18 @@ export default function Search() {
             p.id === postId ? { ...p, comments: [...p.comments, { user, text }] } : p
         ));
         setNewComment(prev => ({ ...prev, [postId]: '' }));
+    };
+
+    const postImageRef = useRef<HTMLInputElement>(null);
+
+    const handlePostImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            setNewPostImage(ev.target?.result as string);
+        };
+        reader.readAsDataURL(file);
     };
 
     const handleNewPost = () => {
@@ -243,13 +255,27 @@ export default function Search() {
                         />
                         <div className="flex items-center gap-2">
                             <input
-                                type="text"
-                                value={newPostImage}
-                                onChange={(e) => setNewPostImage(e.target.value)}
-                                placeholder="Image URL (optional)"
-                                className="flex-1 bg-oled border border-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-lime"
+                                ref={postImageRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handlePostImageSelect}
+                                className="hidden"
                             />
-                            <ImageIcon size={16} className="text-gray-500" />
+                            <button
+                                onClick={() => postImageRef.current?.click()}
+                                className="flex items-center gap-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded-lg px-3 py-2 text-xs font-medium hover:text-white hover:border-gray-600 active:scale-95 transition-all"
+                            >
+                                <ImageIcon size={14} /> Add Photo
+                            </button>
+                            {newPostImage && (
+                                <div className="relative">
+                                    <img src={newPostImage} className="h-10 w-10 rounded-lg object-cover border border-gray-700" />
+                                    <button
+                                        onClick={() => setNewPostImage('')}
+                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px] font-bold"
+                                    >✕</button>
+                                </div>
+                            )}
                         </div>
                         <div className="flex gap-2 justify-end">
                             <button onClick={() => setShowNewPost(false)} className="px-4 py-2 rounded-lg bg-gray-800 text-gray-400 text-xs font-medium hover:bg-gray-700 transition">Cancel</button>

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { mockGyms } from '../lib/mock';
 import {
-    LogOut, Settings, Award, Flame, Activity, Edit2, Check, X, Camera, HelpCircle,
+    LogOut, Settings, Award, Flame, Activity, Edit2, Check, X, Camera,
     Target, CalendarDays
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -56,6 +56,19 @@ export default function Profile() {
     const handleSaveFitnessLevel = (newVal: any) => {
         setFitnessLevel(newVal);
         updateUser({ fitness_level: newVal });
+    };
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const result = ev.target?.result as string;
+            setEditImageUrl(result);
+        };
+        reader.readAsDataURL(file);
     };
 
     const handleSaveImage = () => {
@@ -404,19 +417,23 @@ export default function Profile() {
                             <div className="flex justify-center mb-6">
                                 <img src={editImageUrl || 'https://i.pravatar.cc/150'} className="w-24 h-24 rounded-full border-2 border-gray-700 object-cover" />
                             </div>
-                            <div className="mb-6">
-                                <label className="block text-xs font-medium text-gray-400 mb-1 flex items-center gap-1">Image URL <HelpCircle size={12} /></label>
-                                <input
-                                    type="text"
-                                    value={editImageUrl}
-                                    onChange={(e) => setEditImageUrl(e.target.value)}
-                                    placeholder="https://..."
-                                    className="w-full bg-oled border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-lime"
-                                />
-                            </div>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={handleFileSelect}
+                                className="hidden"
+                            />
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="w-full py-3 rounded-xl bg-gray-800 border border-gray-700 text-white text-sm font-medium flex items-center justify-center gap-2 hover:bg-gray-700 active:scale-[0.98] transition-all mb-3"
+                            >
+                                <Camera size={18} /> Choose from Device
+                            </button>
                             <div className="flex gap-3">
                                 <button onClick={() => setIsEditingImage(false)} className="flex-1 py-2 rounded-lg bg-gray-800 text-white font-medium hover:bg-gray-700 transition">Cancel</button>
-                                <button onClick={handleSaveImage} className="flex-1 py-2 rounded-lg bg-lime text-oled font-bold hover:bg-lime/90 transition">Save</button>
+                                <button onClick={handleSaveImage} disabled={!editImageUrl} className="flex-1 py-2 rounded-lg bg-lime text-oled font-bold hover:bg-lime/90 transition disabled:opacity-30">Save</button>
                             </div>
                         </motion.div>
                     </div>
