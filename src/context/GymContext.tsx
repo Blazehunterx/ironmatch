@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, useCallback } from 'react';
 import { Gym } from '../types/database';
 import { GeoCoords, getCurrentPosition, haversineDistance } from '../lib/location';
+import { mockGyms as fallbackGyms } from '../lib/mock';
 
 interface GymContextType {
     gyms: Gym[];
@@ -10,6 +11,7 @@ interface GymContextType {
     addCustomGym: (name: string, location: string) => void;
     refreshGyms: () => void;
     getDistance: (gym: Gym) => number | null;
+    findGym: (id: string) => Gym | undefined;
 }
 
 const GymContext = createContext<GymContextType | null>(null);
@@ -134,6 +136,10 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         return haversineDistance(userLocation, { lat: gym.lat, lng: gym.lng });
     }, [userLocation]);
 
+    const findGym = useCallback((id: string): Gym | undefined => {
+        return allGyms.find(g => g.id === id) || fallbackGyms.find(g => g.id === id);
+    }, [allGyms]);
+
     return (
         <GymContext.Provider value={{
             gyms: allGyms,
@@ -143,6 +149,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
             addCustomGym,
             refreshGyms,
             getDistance,
+            findGym,
         }}>
             {children}
         </GymContext.Provider>

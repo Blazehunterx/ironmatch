@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { mockGyms } from '../lib/mock';
+import { useGyms } from '../context/GymContext';
 import {
     LogOut, Settings, Award, Flame, Activity, Edit2, Check, X, Camera,
     Target, CalendarDays, Dumbbell, Ruler, Zap, Users
@@ -52,7 +52,8 @@ export default function Profile() {
     const [tempHeight, setTempHeight] = useState(user?.height_cm || 0);
 
     if (!user) return null;
-    const homeGym = mockGyms.find(g => g.id === user.home_gym);
+    const { findGym } = useGyms();
+    const homeGym = findGym(user.home_gym);
 
     const handleSaveBio = () => {
         setIsEditingBio(false);

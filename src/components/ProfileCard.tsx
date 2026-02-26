@@ -1,5 +1,5 @@
 import { User } from '../types/database';
-import { mockGyms } from '../lib/mock';
+import { useGyms } from '../context/GymContext';
 import { Dumbbell, MapPin, Zap, GraduationCap, Flame, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -22,7 +22,8 @@ const goalEmoji: Record<string, string> = {
 };
 
 export default function GridCard({ user, index, onRequest, onViewProfile }: GridCardProps) {
-    const gym = mockGyms.find(g => g.id === user.home_gym);
+    const { findGym } = useGyms();
+    const gym = findGym(user.home_gym);
 
     return (
         <motion.div

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
-import { mockUsers, mockGyms } from '../lib/mock';
+import { mockUsers } from '../lib/mock';
+import { useGyms } from '../context/GymContext';
 import { useAuth } from '../context/AuthContext';
 import {
     getRankFromLifts, getNextRank, getRankProgress, getBig4Total,
@@ -45,7 +46,8 @@ export default function Arena() {
     const [unlockedHidden] = useState<Set<string>>(new Set(['hq1', 'hq4', 'hq7'])); // mock unlocked
 
     // ═══ GYM WARS ═══
-    const gymWars: GymWarEntry[] = mockGyms.slice(0, 6).map((g) => ({
+    const { gyms: allGyms } = useGyms();
+    const gymWars: GymWarEntry[] = (allGyms.length > 0 ? allGyms : []).slice(0, 6).map((g) => ({
         gymId: g.id, gymName: g.name, location: g.location,
         totalWorkouts: Math.floor(Math.random() * 200) + 50,
         totalXP: Math.floor(Math.random() * 50000) + 10000,

@@ -1,5 +1,5 @@
 import { User, ALL_TIME_BLOCKS } from '../types/database';
-import { mockGyms } from '../lib/mock';
+import { useGyms } from '../context/GymContext';
 import {
     X, Dumbbell, MapPin, Zap, GraduationCap, Flame,
     Award, CalendarDays, Target, MessageSquare, UserPlus, UserCheck, Clock
@@ -21,8 +21,9 @@ const goalEmoji: Record<string, string> = {
 };
 
 export default function ProfileDetail({ user, isOpen, onClose, onRequest }: ProfileDetailProps) {
+    const { findGym } = useGyms();
     if (!user) return null;
-    const gym = mockGyms.find(g => g.id === user.home_gym);
+    const gym = findGym(user.home_gym);
 
     return (
         <AnimatePresence>

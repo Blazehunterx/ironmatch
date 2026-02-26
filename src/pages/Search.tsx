@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { mockUsers, mockGyms } from '../lib/mock';
+import { mockUsers } from '../lib/mock';
+import { useGyms } from '../context/GymContext';
 import {
     Search as SearchIcon, Heart, MessageCircle, Send, Image as ImageIcon,
     ChevronDown, MapPin, Users
@@ -17,6 +18,7 @@ interface EnhancedPost extends Post {
 
 export default function Search() {
     const { user } = useAuth();
+    const { gyms: allGyms, findGym } = useGyms();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedGym, setSelectedGym] = useState(user?.home_gym || 'g1');
     const [showGymPicker, setShowGymPicker] = useState(false);
@@ -70,7 +72,7 @@ export default function Search() {
 
     const [newComment, setNewComment] = useState<Record<string, string>>({});
 
-    const gym = mockGyms.find(g => g.id === selectedGym);
+    const gym = findGym(selectedGym);
     const gymPosts = posts.filter(p => p.gym_id === selectedGym);
 
     const toggleLike = (postId: string) => {
@@ -158,7 +160,7 @@ export default function Search() {
                                         <img src={u.profile_image_url} alt={u.name} className="w-10 h-10 rounded-full border border-gray-700 object-cover" />
                                         <div className="flex-1">
                                             <h4 className="text-sm font-semibold text-white">{u.name}</h4>
-                                            <p className="text-[10px] text-gray-500">{u.fitness_level} · {mockGyms.find(g => g.id === u.home_gym)?.name}</p>
+                                            <p className="text-[10px] text-gray-500">{u.fitness_level} · {findGym(u.home_gym)?.name}</p>
                                         </div>
                                         {u.is_trainer && <span className="text-[8px] bg-lime/20 text-lime px-1.5 py-0.5 rounded font-bold">TRAINER</span>}
                                     </div>
@@ -210,7 +212,7 @@ export default function Search() {
                             className="overflow-hidden"
                         >
                             <div className="mt-2 bg-gray-900 border border-gray-800 rounded-xl divide-y divide-gray-800">
-                                {mockGyms.map(g => (
+                                {allGyms.map(g => (
                                     <button
                                         key={g.id}
                                         onClick={() => { setSelectedGym(g.id); setShowGymPicker(false); }}
