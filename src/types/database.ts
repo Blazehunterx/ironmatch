@@ -44,6 +44,7 @@ export interface User {
     availability?: AvailabilitySlot[];
     weight_kg?: number;
     height_cm?: number;
+    unit_preference?: 'lbs' | 'kg';
     big4?: {
         bench: number;
         squat: number;

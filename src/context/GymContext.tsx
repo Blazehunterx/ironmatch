@@ -18,14 +18,19 @@ const GymContext = createContext<GymContextType | null>(null);
  * Query OpenStreetMap Overpass API for nearby gyms/fitness centers
  * Completely free, no API key, works worldwide
  */
-async function fetchNearbyGyms(coords: GeoCoords, radiusMeters = 5000): Promise<Gym[]> {
+async function fetchNearbyGyms(coords: GeoCoords, radiusMeters = 20000): Promise<Gym[]> {
     const query = `
-        [out:json][timeout:10];
+        [out:json][timeout:15];
         (
             node["leisure"="fitness_centre"](around:${radiusMeters},${coords.lat},${coords.lng});
             node["sport"="fitness"](around:${radiusMeters},${coords.lat},${coords.lng});
             way["leisure"="fitness_centre"](around:${radiusMeters},${coords.lat},${coords.lng});
             node["leisure"="sports_centre"]["sport"="fitness"](around:${radiusMeters},${coords.lat},${coords.lng});
+            node["leisure"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
+            way["leisure"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
+            node["amenity"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
+            way["amenity"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
+            node["sport"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
         );
         out center body;
     `;

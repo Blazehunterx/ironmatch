@@ -18,7 +18,7 @@ interface Conversation {
 export default function Messages() {
     const { user } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeChat, setActiveChat] = useState<Conversation | null>(null);
+    const [activeChatUserId, setActiveChatUserId] = useState<string | null>(null);
 
     // Mock conversation data
     const [conversations, setConversations] = useState<Conversation[]>(() => {
@@ -85,14 +85,20 @@ export default function Messages() {
     return (
         <div className="flex flex-col min-h-screen pb-24 relative">
             <AnimatePresence>
-                {activeChat ? (
+                {activeChatUserId ? (
                     <ChatThread
                         key="chat"
-                        conversation={activeChat}
+                        conversation={conversations.find(c => c.user.id === activeChatUserId)!}
                         currentUserId={user?.id || ''}
-                        onBack={() => setActiveChat(null)}
-                        onSend={(text: string, isVoice?: boolean) => handleSendMessage(activeChat.user, text, isVoice)}
-                        canSendMore={activeChat.accepted || activeChat.messages.filter(m => m.from === user?.id).length < 1}
+                        onBack={() => setActiveChatUserId(null)}
+                        onSend={(text: string, isVoice?: boolean) => {
+                            const conv = conversations.find(c => c.user.id === activeChatUserId);
+                            if (conv) handleSendMessage(conv.user, text, isVoice);
+                        }}
+                        canSendMore={(() => {
+                            const conv = conversations.find(c => c.user.id === activeChatUserId);
+                            return conv ? (conv.accepted || conv.messages.filter(m => m.from === user?.id).length < 1) : false;
+                        })()}
                     />
                 ) : (
                     <motion.div
@@ -130,7 +136,7 @@ export default function Messages() {
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: idx * 0.06 }}
                                         key={chat.user.id}
-                                        onClick={() => setActiveChat(chat)}
+                                        onClick={() => setActiveChatUserId(chat.user.id)}
                                         className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-900 transition-colors cursor-pointer active:scale-[0.99]"
                                     >
                                         <div className="relative shrink-0">

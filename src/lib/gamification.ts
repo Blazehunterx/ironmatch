@@ -264,13 +264,14 @@ export interface Duel {
 export const DUEL_TEMPLATES: { type: DuelType; exercise: string; target: string; description: string }[] = [
     { type: 'reps', exercise: 'Push-ups', target: '200 total reps', description: 'First to 200 push-ups' },
     { type: 'reps', exercise: 'Pull-ups', target: '100 total reps', description: 'First to 100 pull-ups' },
-    { type: 'workouts', exercise: 'Gym Sessions', target: '5 sessions', description: 'First to 5 gym sessions this week' },
     { type: 'weight', exercise: 'Bench Press', target: 'Best relative lift', description: 'Heaviest bench (BW-adjusted) — post proof!' },
     { type: 'weight', exercise: 'Squat', target: 'Best relative lift', description: 'Heaviest squat (BW-adjusted) — post proof!' },
     { type: 'weight', exercise: 'Deadlift', target: 'Best relative lift', description: 'Heaviest deadlift (BW-adjusted) — post proof!' },
     { type: 'weight', exercise: 'Overhead Press', target: 'Best relative lift', description: 'Heaviest OHP (BW-adjusted) — post proof!' },
     { type: 'reps', exercise: 'Burpees', target: '150 total reps', description: 'First to 150 burpees' },
     { type: 'reps', exercise: 'Dips', target: '200 total reps', description: 'First to 200 dips' },
+    { type: 'reps', exercise: 'Barbell Curls', target: '100 total reps', description: 'First to 100 barbell curls' },
+    { type: 'weight', exercise: 'Leg Press', target: 'Best relative lift', description: 'Heaviest leg press (BW-adjusted) — post proof!' },
 ];
 
 // ═══ GYM WARS ═══

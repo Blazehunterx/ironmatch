@@ -28,6 +28,9 @@ export default function Profile() {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isTrainer, setIsTrainer] = useState(user?.is_trainer || false);
     const [fitnessLevel, setFitnessLevel] = useState(user?.fitness_level || 'Beginner');
+    const [unitPref, setUnitPref] = useState<'lbs' | 'kg'>(user?.unit_preference || 'lbs');
+    const toDisplay = (lbs: number) => unitPref === 'kg' ? Math.round(lbs * 0.453592) : lbs;
+    const unitLabel = unitPref;
 
     // Image
     const [isEditingImage, setIsEditingImage] = useState(false);
@@ -176,7 +179,7 @@ export default function Profile() {
                         <span className="text-sm font-bold" style={{ color: getRankFromLifts(user.big4).color }}>
                             {getRankFromLifts(user.big4).name}
                         </span>
-                        <span className="text-[10px] text-gray-500">{getBig4Total(user.big4)}lbs total</span>
+                        <span className="text-[10px] text-gray-500">{toDisplay(getBig4Total(user.big4))}{unitLabel} total</span>
                     </div>
                 )}
             </div>
@@ -244,7 +247,7 @@ export default function Profile() {
                                     onChange={e => setTempLifts(prev => ({ ...prev, [lift]: Number(e.target.value) || 0 }))}
                                     className="flex-1 bg-oled border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-lime text-center"
                                 />
-                                <span className="text-[10px] text-gray-500">lbs</span>
+                                <span className="text-[10px] text-gray-500">{unitLabel}</span>
                             </div>
                         ))}
                         <div className="flex items-center justify-between pt-1">
@@ -261,15 +264,15 @@ export default function Profile() {
                 ) : (
                     <div className="grid grid-cols-4 gap-2">
                         {[
-                            { label: 'Bench', value: user.big4?.bench || 0, icon: '🪑' },
-                            { label: 'Squat', value: user.big4?.squat || 0, icon: '🏋️' },
-                            { label: 'Dead', value: user.big4?.deadlift || 0, icon: '⬆️' },
-                            { label: 'OHP', value: user.big4?.ohp || 0, icon: '🙌' },
+                            { label: 'Bench', value: toDisplay(user.big4?.bench || 0), icon: '🪑' },
+                            { label: 'Squat', value: toDisplay(user.big4?.squat || 0), icon: '🏋️' },
+                            { label: 'Dead', value: toDisplay(user.big4?.deadlift || 0), icon: '⬆️' },
+                            { label: 'OHP', value: toDisplay(user.big4?.ohp || 0), icon: '🙌' },
                         ].map(l => (
                             <div key={l.label} className="bg-gray-800/50 rounded-xl p-2.5 text-center">
                                 <span className="text-sm">{l.icon}</span>
                                 <p className="text-lg font-black text-white">{l.value}</p>
-                                <p className="text-[8px] text-gray-500">{l.label}</p>
+                                <p className="text-[8px] text-gray-500">{l.label} ({unitLabel})</p>
                             </div>
                         ))}
                     </div>
@@ -494,6 +497,21 @@ export default function Profile() {
                                         <option value="Intermediate">Intermediate (1-4 years)</option>
                                         <option value="Professional">Professional (4+ years)</option>
                                     </select>
+                                </div>
+                                <div className="flex flex-col gap-2 pt-4 border-t border-gray-800">
+                                    <div>
+                                        <h4 className="font-semibold text-white">Weight Unit</h4>
+                                        <p className="text-xs text-gray-400 mt-1">Choose how your Big 4 lifts are displayed.</p>
+                                    </div>
+                                    <div className="flex gap-2 mt-1">
+                                        {(['lbs', 'kg'] as const).map(u => (
+                                            <button key={u} onClick={() => { setUnitPref(u); updateUser({ unit_preference: u }); }}
+                                                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${unitPref === u
+                                                    ? 'bg-lime text-oled' : 'bg-gray-800 text-gray-400 border border-gray-700'}`}>
+                                                {u.toUpperCase()}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>
