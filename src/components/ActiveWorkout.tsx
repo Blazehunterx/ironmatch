@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { WorkoutPlan, WorkoutExercise, WorkoutLog } from '../types/database';
-import { X, Check, Timer, Trophy, Dumbbell } from 'lucide-react';
+import { X, Check, Timer, Trophy, Dumbbell, Share2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface ActiveWorkoutProps {
@@ -18,6 +18,7 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
     const [elapsed, setElapsed] = useState(0);
     const [startTime] = useState(new Date().toISOString());
     const [finished, setFinished] = useState(false);
+    const [shared, setShared] = useState(false);
 
     // Timer
     useEffect(() => {
@@ -82,6 +83,25 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
                     <p>{completedCount}/{exercises.length} exercises done</p>
                     <p>{Math.round(elapsed / 60)} minutes</p>
                     <p className="text-lime font-bold mt-2">{plan.name}</p>
+                </motion.div>
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8 }}
+                    className="mt-6"
+                >
+                    {shared ? (
+                        <div className="flex items-center gap-2 text-lime text-sm font-semibold">
+                            <Check size={16} /> Posted to Explore feed!
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => setShared(true)}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 text-sm font-bold hover:bg-blue-500/20 active:scale-95 transition-all"
+                        >
+                            <Share2 size={16} /> Share to Feed
+                        </button>
+                    )}
                 </motion.div>
             </div>
         );

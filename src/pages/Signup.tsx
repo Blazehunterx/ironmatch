@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Dumbbell, ArrowRight } from 'lucide-react';
+import { Dumbbell, ArrowRight, Check, AlertCircle } from 'lucide-react';
 
 export default function Signup() {
     const [email, setEmail] = useState('');
@@ -11,13 +11,28 @@ export default function Signup() {
     const [loading, setLoading] = useState(false);
     const { signup } = useAuth();
     const navigate = useNavigate();
+    const [agreedTos, setAgreedTos] = useState(false);
+
+    const passChecks = {
+        length: password.length >= 6,
+        number: /\d/.test(password),
+    };
+    const passValid = passChecks.length && passChecks.number;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!passValid) {
+            setError('Password must be at least 6 characters with a number');
+            return;
+        }
+        if (!agreedTos) {
+            setError('Please agree to the Terms of Service');
+            return;
+        }
         try {
             setError('');
             setLoading(true);
-            await signup({ email, name }); // basic partial profile
+            await signup({ email, name });
             navigate('/onboarding');
         } catch (err: any) {
             setError(err.message || 'Failed to create account');
@@ -86,7 +101,30 @@ export default function Signup() {
                                 placeholder="••••••••"
                             />
                         </div>
+                        {password.length > 0 && (
+                            <div className="flex gap-3 mt-1.5">
+                                <span className={`text-[10px] flex items-center gap-1 ${passChecks.length ? 'text-lime' : 'text-gray-500'}`}>
+                                    {passChecks.length ? <Check size={10} /> : <AlertCircle size={10} />} 6+ chars
+                                </span>
+                                <span className={`text-[10px] flex items-center gap-1 ${passChecks.number ? 'text-lime' : 'text-gray-500'}`}>
+                                    {passChecks.number ? <Check size={10} /> : <AlertCircle size={10} />} Has number
+                                </span>
+                            </div>
+                        )}
                     </div>
+
+                    {/* Terms of Service */}
+                    <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={agreedTos}
+                            onChange={(e) => setAgreedTos(e.target.checked)}
+                            className="mt-0.5 w-4 h-4 rounded border-gray-700 bg-gray-900 text-lime focus:ring-lime accent-lime"
+                        />
+                        <span className="text-xs text-gray-400 leading-relaxed">
+                            I agree to the <span className="text-lime">Terms of Service</span> and <span className="text-lime">Privacy Policy</span>
+                        </span>
+                    </label>
 
                     <button
                         type="submit"

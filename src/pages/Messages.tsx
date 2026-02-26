@@ -1,15 +1,24 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useConversations } from '../context/ConversationContext';
-import { MessageSquare, Search as SearchIcon, ChevronRight } from 'lucide-react';
+import { mockUsers } from '../lib/mock';
+import { MessageSquare, Search as SearchIcon, ChevronRight, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatThread from '../components/ChatThread';
 
 export default function Messages() {
     const { user } = useAuth();
-    const { conversations, sendMessage } = useConversations();
+    const { conversations, sendMessage, addConversation } = useConversations();
     const [searchQuery, setSearchQuery] = useState('');
     const [activeChatUserId, setActiveChatUserId] = useState<string | null>(null);
+    const [showNewChat, setShowNewChat] = useState(false);
+    const [newChatSearch, setNewChatSearch] = useState('');
+
+    const availableUsers = mockUsers.filter(u =>
+        u.id !== user?.id &&
+        !conversations.find(c => c.user.id === u.id) &&
+        u.name.toLowerCase().includes(newChatSearch.toLowerCase())
+    );
 
     const filtered = conversations.filter(c =>
         c.user.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -39,7 +48,15 @@ export default function Messages() {
                         exit={{ opacity: 0 }}
                         className="px-4 py-6"
                     >
-                        <h2 className="text-3xl font-bold text-white mb-4">Messages</h2>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-3xl font-bold text-white">Messages</h2>
+                            <button
+                                onClick={() => setShowNewChat(true)}
+                                className="p-2.5 rounded-xl bg-lime text-oled hover:bg-lime/90 active:scale-95 transition-all"
+                            >
+                                <Plus size={18} />
+                            </button>
+                        </div>
                         <div className="relative mb-5">
                             <input
                                 type="text"
@@ -98,6 +115,68 @@ export default function Messages() {
                             )}
                         </div>
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* New Chat Modal */}
+            <AnimatePresence>
+                {showNewChat && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            onClick={() => setShowNewChat(false)}
+                            className="fixed inset-0 bg-black/85 backdrop-blur-md z-50"
+                        />
+                        <motion.div
+                            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 200 }}
+                            className="fixed bottom-0 left-0 right-0 z-50 bg-oled rounded-t-3xl max-h-[70vh] overflow-y-auto"
+                        >
+                            <div className="px-5 py-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-bold text-white">New Message</h3>
+                                    <button onClick={() => setShowNewChat(false)} className="p-2 text-gray-500 hover:text-white rounded-lg">
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                                <div className="relative mb-4">
+                                    <input
+                                        type="text"
+                                        placeholder="Search people..."
+                                        value={newChatSearch}
+                                        onChange={(e) => setNewChatSearch(e.target.value)}
+                                        className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-lime text-sm"
+                                    />
+                                    <SearchIcon size={18} className="text-gray-500 absolute left-4 top-1/2 -translate-y-1/2" />
+                                </div>
+                                <div className="space-y-1">
+                                    {availableUsers.length === 0 ? (
+                                        <p className="text-sm text-gray-500 text-center py-8">No users found</p>
+                                    ) : (
+                                        availableUsers.map(u => (
+                                            <button
+                                                key={u.id}
+                                                onClick={() => {
+                                                    addConversation(u, false);
+                                                    setShowNewChat(false);
+                                                    setNewChatSearch('');
+                                                    setActiveChatUserId(u.id);
+                                                }}
+                                                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-900 transition-colors text-left"
+                                            >
+                                                <img src={u.profile_image_url} alt={u.name} className="w-11 h-11 rounded-full border border-gray-800 object-cover" />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold text-white truncate">{u.name}</p>
+                                                    <p className="text-[10px] text-gray-500">{u.fitness_level} • {u.bio?.slice(0, 40) || 'No bio'}</p>
+                                                </div>
+                                                <ChevronRight size={16} className="text-gray-700 shrink-0" />
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </>
                 )}
             </AnimatePresence>
         </div>
