@@ -70,9 +70,49 @@ export const XP_REWARDS = {
     LOSE_DUEL: 25,
     COMPLETE_QUEST: 75,
     COMPLETE_HIDDEN_QUEST: 200,
-    COMMUNITY_POST: 5,          // incentive but tiny
+    COMMUNITY_POST: 5,
     COMMUNITY_COMMENT: 2,
 };
+
+// ═══ BODYWEIGHT-RELATIVE STRENGTH SCORING ═══
+// Makes duels fair between people of different sizes.
+// A 50kg person lifting 100kg (2.0x BW) scores higher than
+// a 120kg person lifting 100kg (0.83x BW).
+
+export function getRelativeStrength(liftLbs: number, bodyweightKg: number): number {
+    // Convert lift from lbs to kg, then divide by bodyweight
+    const liftKg = liftLbs * 0.453592;
+    return Math.round((liftKg / bodyweightKg) * 100) / 100; // ratio like 1.25x
+}
+
+/**
+ * Compare two lifters fairly using bodyweight ratio.
+ * Returns the normalized score (higher = relatively stronger).
+ */
+export function getDuelScore(liftLbs: number, bodyweightKg: number): number {
+    const ratio = getRelativeStrength(liftLbs, bodyweightKg);
+    // Score = ratio * 100 (so 1.5x BW = 150 points)
+    return Math.round(ratio * 100);
+}
+
+/**
+ * Check if a duel matchup is fair (within 30% relative strength difference).
+ * Returns a fairness rating: 'fair' | 'slight_advantage' | 'unfair'
+ */
+export function checkDuelFairness(
+    challenger: { liftLbs: number; bodyweightKg: number },
+    opponent: { liftLbs: number; bodyweightKg: number }
+): { fair: boolean; label: string; color: string } {
+    const cScore = getDuelScore(challenger.liftLbs, challenger.bodyweightKg);
+    const oScore = getDuelScore(opponent.liftLbs, opponent.bodyweightKg);
+    const diff = Math.abs(cScore - oScore);
+    const avg = (cScore + oScore) / 2;
+    const pct = avg > 0 ? diff / avg : 0;
+
+    if (pct < 0.15) return { fair: true, label: 'Fair matchup', color: '#10B981' };
+    if (pct < 0.30) return { fair: true, label: 'Slight advantage', color: '#F59E0B' };
+    return { fair: false, label: 'Unfair matchup', color: '#EF4444' };
+}
 
 // ═══ QUESTS (50 total: 40 public + 10 hidden) ═══
 
@@ -191,7 +231,7 @@ export function getActiveWeeklyQuests(): Quest[] {
 // ═══ DUELS ═══
 
 export type DuelStatus = 'pending' | 'active' | 'completed' | 'expired';
-export type DuelType = 'reps' | 'weight' | 'workouts' | 'duration';
+export type DuelType = 'reps' | 'weight' | 'workouts' | 'custom';
 
 export interface DuelProof {
     videoUrl?: string;
@@ -225,11 +265,10 @@ export const DUEL_TEMPLATES: { type: DuelType; exercise: string; target: string;
     { type: 'reps', exercise: 'Push-ups', target: '200 total reps', description: 'First to 200 push-ups' },
     { type: 'reps', exercise: 'Pull-ups', target: '100 total reps', description: 'First to 100 pull-ups' },
     { type: 'workouts', exercise: 'Gym Sessions', target: '5 sessions', description: 'First to 5 gym sessions this week' },
-    { type: 'weight', exercise: 'Bench Press', target: 'Heaviest 1RM', description: 'Heaviest bench press — post the lift!' },
-    { type: 'weight', exercise: 'Squat', target: 'Heaviest 1RM', description: 'Heaviest squat — post the lift!' },
-    { type: 'weight', exercise: 'Deadlift', target: 'Heaviest 1RM', description: 'Heaviest deadlift — post the lift!' },
-    { type: 'weight', exercise: 'Overhead Press', target: 'Heaviest 1RM', description: 'Heaviest OHP — post the lift!' },
-    { type: 'duration', exercise: 'Total Gym Time', target: '5 hours', description: 'First to 5 hours total gym time' },
+    { type: 'weight', exercise: 'Bench Press', target: 'Best relative lift', description: 'Heaviest bench (BW-adjusted) — post proof!' },
+    { type: 'weight', exercise: 'Squat', target: 'Best relative lift', description: 'Heaviest squat (BW-adjusted) — post proof!' },
+    { type: 'weight', exercise: 'Deadlift', target: 'Best relative lift', description: 'Heaviest deadlift (BW-adjusted) — post proof!' },
+    { type: 'weight', exercise: 'Overhead Press', target: 'Best relative lift', description: 'Heaviest OHP (BW-adjusted) — post proof!' },
     { type: 'reps', exercise: 'Burpees', target: '150 total reps', description: 'First to 150 burpees' },
     { type: 'reps', exercise: 'Dips', target: '200 total reps', description: 'First to 200 dips' },
 ];

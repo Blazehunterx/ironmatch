@@ -4,12 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import {
     getRankFromLifts, getNextRank, getRankProgress, getBig4Total,
     getActiveWeeklyQuests, DUEL_TEMPLATES, HIDDEN_QUESTS, HIDDEN_QUEST_REVEALS,
+    checkDuelFairness,
     Duel, GymWarEntry, Big4Lifts
 } from '../lib/gamification';
 import {
     Swords, Target, Shield, Flame,
     Plus, Check, X, Zap, Timer, Users, Lock, Image, Upload,
-    ChevronUp, ChevronDown
+    ChevronUp, ChevronDown, Scale
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -23,21 +24,16 @@ export default function Arena() {
     const [selectedDuelTemplate, setSelectedDuelTemplate] = useState<number | null>(null);
     const [questTab, setQuestTab] = useState<'weekly' | 'hidden'>('weekly');
     const proofInputRef = useRef<HTMLInputElement>(null);
+    const [customExercise, setCustomExercise] = useState('');
+    const [customTarget, setCustomTarget] = useState('');
+    const [useCustomDuel, setUseCustomDuel] = useState(false);
 
-    // ═══ STRENGTH-BASED RANK ═══
-    const [lifts, setLifts] = useState<Big4Lifts>({ bench: 185, squat: 275, deadlift: 315, ohp: 135 });
-    const [editingLifts, setEditingLifts] = useState(false);
-    const [tempLifts, setTempLifts] = useState<Big4Lifts>(lifts);
-
+    // Read Big 4 from user profile
+    const lifts: Big4Lifts = user?.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 };
     const rank = getRankFromLifts(lifts);
     const nextRank = getNextRank(lifts);
     const progress = getRankProgress(lifts);
     const total = getBig4Total(lifts);
-
-    const saveLifts = () => {
-        setLifts(tempLifts);
-        setEditingLifts(false);
-    };
 
     // ═══ QUESTS ═══
     const weeklyQuests = getActiveWeeklyQuests();
@@ -149,56 +145,32 @@ export default function Arena() {
                             <div className="flex justify-between">
                                 <span className="text-[9px] text-gray-600">{rank.name} ({rank.minTotal}lbs)</span>
                                 <span className="text-[9px] font-bold" style={{ color: nextRank.color }}>
-                                    {nextRank.icon} {nextRank.name} ({nextRank.minTotal}lbs) — need {nextRank.minTotal - total}lbs more
+                                    {nextRank.icon} {nextRank.name} — need {nextRank.minTotal - total}lbs more
                                 </span>
                             </div>
                         </>
                     )}
 
-                    {/* Big 4 Lifts */}
+                    {/* Big 4 Summary (read-only, edit on Profile) */}
                     <div className="mt-3 pt-3 border-t border-gray-800">
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[10px] font-bold text-gray-400">YOUR BIG 4 (1RM)</span>
-                            <button onClick={() => { setTempLifts(lifts); setEditingLifts(!editingLifts); }}
-                                className="text-[10px] font-bold text-lime hover:underline">
-                                {editingLifts ? 'Cancel' : 'Update PRs'}
-                            </button>
+                            <span className="text-[9px] text-gray-600">Edit in Profile</span>
                         </div>
-                        {editingLifts ? (
-                            <div className="space-y-2">
-                                {(['bench', 'squat', 'deadlift', 'ohp'] as const).map(lift => (
-                                    <div key={lift} className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-400 w-20 capitalize">{lift === 'ohp' ? 'OHP' : lift}</span>
-                                        <input type="number" value={tempLifts[lift]}
-                                            onChange={e => setTempLifts(prev => ({ ...prev, [lift]: Number(e.target.value) || 0 }))}
-                                            className="flex-1 bg-oled border border-gray-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-lime text-center"
-                                        />
-                                        <span className="text-[10px] text-gray-500">lbs</span>
-                                    </div>
-                                ))}
-                                <div className="flex items-center justify-between pt-1">
-                                    <span className="text-xs text-gray-500">New total: <span className="font-bold text-white">{getBig4Total(tempLifts)}lbs</span></span>
-                                    <button onClick={saveLifts} className="px-4 py-1.5 bg-lime text-oled text-xs font-bold rounded-lg hover:bg-lime/90 active:scale-95 transition-all">
-                                        Save PRs
-                                    </button>
+                        <div className="grid grid-cols-4 gap-2">
+                            {[
+                                { label: 'Bench', value: lifts.bench, icon: '🪑' },
+                                { label: 'Squat', value: lifts.squat, icon: '🏋️' },
+                                { label: 'Dead', value: lifts.deadlift, icon: '⬆️' },
+                                { label: 'OHP', value: lifts.ohp, icon: '🙌' },
+                            ].map(l => (
+                                <div key={l.label} className="bg-gray-800/50 rounded-xl p-2 text-center">
+                                    <span className="text-sm">{l.icon}</span>
+                                    <p className="text-sm font-black text-white">{l.value}</p>
+                                    <p className="text-[8px] text-gray-500">{l.label}</p>
                                 </div>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-4 gap-2">
-                                {[
-                                    { label: 'Bench', value: lifts.bench, icon: '🪑' },
-                                    { label: 'Squat', value: lifts.squat, icon: '🏋️' },
-                                    { label: 'Dead', value: lifts.deadlift, icon: '⬆️' },
-                                    { label: 'OHP', value: lifts.ohp, icon: '🙌' },
-                                ].map(l => (
-                                    <div key={l.label} className="bg-gray-800/50 rounded-xl p-2 text-center">
-                                        <span className="text-sm">{l.icon}</span>
-                                        <p className="text-sm font-black text-white">{l.value}</p>
-                                        <p className="text-[8px] text-gray-500">{l.label}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                            ))}
+                        </div>
                     </div>
                 </motion.div>
             </div>
@@ -472,37 +444,98 @@ export default function Arena() {
                             <div className="mb-5">
                                 <p className="text-xs font-bold text-gray-400 mb-2 flex items-center gap-1"><Users size={12} /> Choose Opponent</p>
                                 <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                                    {mockUsers.filter(u => u.id !== user?.id).map(u => (
-                                        <button key={u.id} onClick={() => setSelectedOpponent(u.id)}
-                                            className={`w-full flex items-center gap-3 p-2.5 rounded-xl border text-left transition-all ${selectedOpponent === u.id
-                                                ? 'bg-lime/10 border-lime/30' : 'bg-gray-800/50 border-gray-800 hover:border-gray-700'}`}>
-                                            <img src={u.profile_image_url} className="w-8 h-8 rounded-full border border-gray-700 object-cover" />
-                                            <div className="flex-1 min-w-0">
-                                                <p className={`text-xs font-bold truncate ${selectedOpponent === u.id ? 'text-lime' : 'text-white'}`}>{u.name}</p>
-                                                <p className="text-[9px] text-gray-500">{u.fitness_level}</p>
-                                            </div>
-                                            {selectedOpponent === u.id && <Check size={14} className="text-lime shrink-0" />}
-                                        </button>
-                                    ))}
+                                    {mockUsers.filter(u => u.id !== user?.id).map(u => {
+                                        const opRank = u.big4 ? getRankFromLifts(u.big4) : null;
+                                        return (
+                                            <button key={u.id} onClick={() => setSelectedOpponent(u.id)}
+                                                className={`w-full flex items-center gap-3 p-2.5 rounded-xl border text-left transition-all ${selectedOpponent === u.id
+                                                    ? 'bg-lime/10 border-lime/30' : 'bg-gray-800/50 border-gray-800 hover:border-gray-700'}`}>
+                                                <img src={u.profile_image_url} className="w-8 h-8 rounded-full border border-gray-700 object-cover" />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className={`text-xs font-bold truncate ${selectedOpponent === u.id ? 'text-lime' : 'text-white'}`}>{u.name}</p>
+                                                    <p className="text-[9px] text-gray-500">
+                                                        {u.weight_kg || '?'}kg · {opRank ? `${opRank.icon} ${opRank.name}` : u.fitness_level}
+                                                    </p>
+                                                </div>
+                                                {selectedOpponent === u.id && <Check size={14} className="text-lime shrink-0" />}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
-                            <div className="mb-5">
-                                <p className="text-xs font-bold text-gray-400 mb-2 flex items-center gap-1"><Swords size={12} /> Choose Challenge</p>
-                                <div className="grid grid-cols-2 gap-1.5">
-                                    {DUEL_TEMPLATES.map((t, i) => (
-                                        <button key={i} onClick={() => setSelectedDuelTemplate(i)}
-                                            className={`p-3 rounded-xl border text-left transition-all ${selectedDuelTemplate === i
-                                                ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-800/50 border-gray-800 hover:border-gray-700'}`}>
-                                            <p className={`text-xs font-bold ${selectedDuelTemplate === i ? 'text-red-400' : 'text-white'}`}>{t.exercise}</p>
-                                            <p className="text-[9px] text-gray-500 mt-0.5">{t.target}</p>
-                                        </button>
-                                    ))}
+                            {/* Fairness indicator */}
+                            {selectedOpponent && selectedDuelTemplate !== null && DUEL_TEMPLATES[selectedDuelTemplate]?.type === 'weight' && (() => {
+                                const opp = mockUsers.find(u => u.id === selectedOpponent);
+                                if (!opp?.weight_kg || !user?.weight_kg) return null;
+                                const myBig4 = user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 };
+                                const oppBig4 = opp.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 };
+                                const fairness = checkDuelFairness(
+                                    { liftLbs: getBig4Total(myBig4), bodyweightKg: user.weight_kg },
+                                    { liftLbs: getBig4Total(oppBig4), bodyweightKg: opp.weight_kg }
+                                );
+                                return (
+                                    <div className="mb-4 flex items-center gap-2 px-3 py-2 rounded-xl border" style={{ borderColor: fairness.color + '40', backgroundColor: fairness.color + '08' }}>
+                                        <Scale size={14} style={{ color: fairness.color }} />
+                                        <span className="text-[10px] font-bold" style={{ color: fairness.color }}>{fairness.label}</span>
+                                        <span className="text-[9px] text-gray-500 ml-auto">
+                                            You: {user.weight_kg}kg · {opp.name.split(' ')[0]}: {opp.weight_kg}kg — BW-adjusted scoring
+                                        </span>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Challenge picker */}
+                            <div className="mb-3">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs font-bold text-gray-400 flex items-center gap-1"><Swords size={12} /> {useCustomDuel ? 'Custom Challenge' : 'Choose Challenge'}</p>
+                                    <button onClick={() => { setUseCustomDuel(!useCustomDuel); setSelectedDuelTemplate(null); }}
+                                        className="text-[10px] text-lime font-bold hover:underline">
+                                        {useCustomDuel ? 'Use Templates' : 'Create Custom'}
+                                    </button>
                                 </div>
+
+                                {useCustomDuel ? (
+                                    <div className="space-y-2">
+                                        <input type="text" value={customExercise} onChange={e => setCustomExercise(e.target.value)}
+                                            placeholder="Exercise (e.g. Bench Press 3x8)"
+                                            className="w-full bg-oled border border-gray-700 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-lime" />
+                                        <input type="text" value={customTarget} onChange={e => setCustomTarget(e.target.value)}
+                                            placeholder="Target (e.g. 225lbs for 8 reps)"
+                                            className="w-full bg-oled border border-gray-700 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-lime" />
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                        {DUEL_TEMPLATES.map((t, i) => (
+                                            <button key={i} onClick={() => setSelectedDuelTemplate(i)}
+                                                className={`p-3 rounded-xl border text-left transition-all ${selectedDuelTemplate === i
+                                                    ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-800/50 border-gray-800 hover:border-gray-700'}`}>
+                                                <p className={`text-xs font-bold ${selectedDuelTemplate === i ? 'text-red-400' : 'text-white'}`}>{t.exercise}</p>
+                                                <p className="text-[9px] text-gray-500 mt-0.5">{t.target}</p>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
-                            <button onClick={handleCreateDuel}
-                                disabled={selectedOpponent === null || selectedDuelTemplate === null}
+                            <button onClick={() => {
+                                if (useCustomDuel && customExercise.trim() && customTarget.trim() && selectedOpponent && user) {
+                                    const opp = mockUsers.find(u => u.id === selectedOpponent);
+                                    if (!opp) return;
+                                    setDuels(prev => [{
+                                        id: `d${Date.now()}`, challengerId: user.id, challengerName: user.name,
+                                        challengerAvatar: user.profile_image_url, opponentId: opp.id,
+                                        opponentName: opp.name, opponentAvatar: opp.profile_image_url,
+                                        type: 'custom', exercise: customExercise.trim(), target: customTarget.trim(),
+                                        status: 'pending', challengerProgress: 0, opponentProgress: 0,
+                                        createdAt: new Date().toISOString(), endsAt: '48h to accept', xpReward: 150,
+                                    }, ...prev]);
+                                    setShowDuelCreator(false); setSelectedOpponent(null); setCustomExercise(''); setCustomTarget('');
+                                } else {
+                                    handleCreateDuel();
+                                }
+                            }}
+                                disabled={selectedOpponent === null || (useCustomDuel ? !customExercise.trim() || !customTarget.trim() : selectedDuelTemplate === null)}
                                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-2">
                                 <Swords size={18} /> Send Challenge
                             </button>

@@ -3,13 +3,14 @@ import { useAuth } from '../context/AuthContext';
 import { mockGyms } from '../lib/mock';
 import {
     LogOut, Settings, Award, Flame, Activity, Edit2, Check, X, Camera,
-    Target, CalendarDays
+    Target, CalendarDays, Dumbbell, Ruler
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Goal, BodyPart, DayOfWeek, TimeBlock,
     ALL_GOALS, ALL_BODY_PARTS, ALL_DAYS, ALL_TIME_BLOCKS
 } from '../types/database';
+import { getRankFromLifts, getBig4Total, Big4Lifts } from '../lib/gamification';
 
 const goalEmoji: Record<string, string> = {
     'Workout Buddy': '🤝', 'Socialize': '💬', 'Get Pushed': '🔥', 'Learn': '📚',
@@ -39,6 +40,12 @@ export default function Profile() {
 
     // Availability editing
     const [isEditingAvailability, setIsEditingAvailability] = useState(false);
+
+    // Big 4 / Body stats editing
+    const [isEditingPRs, setIsEditingPRs] = useState(false);
+    const [tempLifts, setTempLifts] = useState<Big4Lifts>(user?.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 });
+    const [tempWeight, setTempWeight] = useState(user?.weight_kg || 0);
+    const [tempHeight, setTempHeight] = useState(user?.height_cm || 0);
 
     if (!user) return null;
     const homeGym = mockGyms.find(g => g.id === user.home_gym);
@@ -162,20 +169,111 @@ export default function Profile() {
                 <p className="text-gray-400 mt-1 flex items-center gap-1">
                     {homeGym?.name} • {homeGym?.location}
                 </p>
+                {/* Rank Badge */}
+                {user.big4 && (
+                    <div className="mt-2 flex items-center gap-2">
+                        <span className="text-lg">{getRankFromLifts(user.big4).icon}</span>
+                        <span className="text-sm font-bold" style={{ color: getRankFromLifts(user.big4).color }}>
+                            {getRankFromLifts(user.big4).name}
+                        </span>
+                        <span className="text-[10px] text-gray-500">{getBig4Total(user.big4)}lbs total</span>
+                    </div>
+                )}
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
-                    <Award size={24} className="text-lime mb-2" />
-                    <div className="text-sm text-gray-400 mb-1">Level</div>
-                    <div className="font-semibold text-white">{user.fitness_level}</div>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
+                    <Award size={20} className="text-lime mb-1" />
+                    <div className="text-[10px] text-gray-400">Level</div>
+                    <div className="text-xs font-bold text-white">{user.fitness_level}</div>
                 </div>
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
-                    <Flame size={24} className="text-orange-500 mb-2" />
-                    <div className="text-sm text-gray-400 mb-1">Streak</div>
-                    <div className="font-semibold text-white">{user.reliability_streak || 1} Weeks</div>
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
+                    <Flame size={20} className="text-orange-500 mb-1" />
+                    <div className="text-[10px] text-gray-400">Streak</div>
+                    <div className="text-xs font-bold text-white">{user.reliability_streak || 1}w</div>
                 </div>
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
+                    <Ruler size={20} className="text-blue-400 mb-1" />
+                    <div className="text-[10px] text-gray-400">Body</div>
+                    <div className="text-xs font-bold text-white">{user.weight_kg || '?'}kg • {user.height_cm || '?'}cm</div>
+                </div>
+            </div>
+
+            {/* Big 4 PRs */}
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4">
+                <div className="flex justify-between items-center mb-3">
+                    <h4 className="font-semibold text-white flex items-center gap-2">
+                        <Dumbbell size={16} className="text-lime" /> Big 4 PRs
+                    </h4>
+                    <button
+                        onClick={() => {
+                            setTempLifts(user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 });
+                            setTempWeight(user.weight_kg || 0);
+                            setTempHeight(user.height_cm || 0);
+                            setIsEditingPRs(!isEditingPRs);
+                        }}
+                        className="text-gray-500 hover:text-lime transition-colors"
+                    >
+                        <Edit2 size={16} />
+                    </button>
+                </div>
+
+                {isEditingPRs ? (
+                    <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="text-[10px] text-gray-500 mb-1 block">Weight (kg)</label>
+                                <input type="number" value={tempWeight || ''}
+                                    onChange={e => setTempWeight(Number(e.target.value) || 0)}
+                                    className="w-full bg-oled border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-lime text-center"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] text-gray-500 mb-1 block">Height (cm)</label>
+                                <input type="number" value={tempHeight || ''}
+                                    onChange={e => setTempHeight(Number(e.target.value) || 0)}
+                                    className="w-full bg-oled border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-lime text-center"
+                                />
+                            </div>
+                        </div>
+                        {(['bench', 'squat', 'deadlift', 'ohp'] as const).map(lift => (
+                            <div key={lift} className="flex items-center gap-2">
+                                <span className="text-xs text-gray-400 w-20 capitalize">{lift === 'ohp' ? 'OHP' : lift}</span>
+                                <input type="number" value={tempLifts[lift] || ''}
+                                    onChange={e => setTempLifts(prev => ({ ...prev, [lift]: Number(e.target.value) || 0 }))}
+                                    className="flex-1 bg-oled border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-lime text-center"
+                                />
+                                <span className="text-[10px] text-gray-500">lbs</span>
+                            </div>
+                        ))}
+                        <div className="flex items-center justify-between pt-1">
+                            <span className="text-xs text-gray-500">New rank: <span className="font-bold" style={{ color: getRankFromLifts(tempLifts).color }}>{getRankFromLifts(tempLifts).icon} {getRankFromLifts(tempLifts).name}</span></span>
+                            <div className="flex gap-2">
+                                <button onClick={() => setIsEditingPRs(false)} className="p-2 text-gray-400 hover:text-white rounded-lg"><X size={18} /></button>
+                                <button onClick={() => {
+                                    updateUser({ big4: tempLifts, weight_kg: tempWeight, height_cm: tempHeight });
+                                    setIsEditingPRs(false);
+                                }} className="p-2 text-lime hover:bg-lime/20 rounded-lg"><Check size={18} /></button>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-4 gap-2">
+                        {[
+                            { label: 'Bench', value: user.big4?.bench || 0, icon: '🪑' },
+                            { label: 'Squat', value: user.big4?.squat || 0, icon: '🏋️' },
+                            { label: 'Dead', value: user.big4?.deadlift || 0, icon: '⬆️' },
+                            { label: 'OHP', value: user.big4?.ohp || 0, icon: '🙌' },
+                        ].map(l => (
+                            <div key={l.label} className="bg-gray-800/50 rounded-xl p-2.5 text-center">
+                                <span className="text-sm">{l.icon}</span>
+                                <p className="text-lg font-black text-white">{l.value}</p>
+                                <p className="text-[8px] text-gray-500">{l.label}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Bio */}

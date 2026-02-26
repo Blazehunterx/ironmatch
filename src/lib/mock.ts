@@ -23,7 +23,9 @@ export const mockUsers: User[] = [
             { day: 'Wed', blocks: ['Morning', 'Afternoon'] },
             { day: 'Fri', blocks: ['Morning'] },
             { day: 'Sat', blocks: ['Morning', 'Afternoon', 'Evening'] },
-        ]
+        ],
+        weight_kg: 95, height_cm: 183,
+        big4: { bench: 285, squat: 405, deadlift: 500, ohp: 185 },
     },
     {
         id: 'u2', name: 'Jordan Lee', email: 'jordan@example.com', home_gym: 'g1',
@@ -38,7 +40,9 @@ export const mockUsers: User[] = [
             { day: 'Tue', blocks: ['Evening'] },
             { day: 'Thu', blocks: ['Evening'] },
             { day: 'Sat', blocks: ['Morning'] },
-        ]
+        ],
+        weight_kg: 78, height_cm: 175,
+        big4: { bench: 185, squat: 250, deadlift: 300, ohp: 115 },
     },
     {
         id: 'u3', name: 'Casey Smith', email: 'casey@example.com', home_gym: 'g2',
@@ -53,7 +57,9 @@ export const mockUsers: User[] = [
             { day: 'Wed', blocks: ['Afternoon'] },
             { day: 'Fri', blocks: ['Afternoon', 'Evening'] },
             { day: 'Sun', blocks: ['Morning', 'Afternoon'] },
-        ]
+        ],
+        weight_kg: 62, height_cm: 168,
+        big4: { bench: 95, squat: 135, deadlift: 155, ohp: 65 },
     },
     {
         id: 'u4', name: 'Sam Rivera', email: 'sam@example.com', home_gym: 'g1',
@@ -70,7 +76,9 @@ export const mockUsers: User[] = [
             { day: 'Thu', blocks: ['Morning', 'Afternoon'] },
             { day: 'Fri', blocks: ['Morning', 'Afternoon', 'Evening'] },
             { day: 'Sat', blocks: ['Morning'] },
-        ]
+        ],
+        weight_kg: 88, height_cm: 180,
+        big4: { bench: 315, squat: 375, deadlift: 455, ohp: 175 },
     },
     {
         id: 'u5', name: 'Taylor Kim', email: 'taylor@example.com', home_gym: 'g2',
@@ -85,7 +93,9 @@ export const mockUsers: User[] = [
             { day: 'Wed', blocks: ['Morning'] },
             { day: 'Fri', blocks: ['Morning'] },
             { day: 'Sun', blocks: ['Morning', 'Afternoon'] },
-        ]
+        ],
+        weight_kg: 55, height_cm: 163,
+        big4: { bench: 75, squat: 115, deadlift: 135, ohp: 55 },
     },
     {
         id: 'u6', name: 'Morgan Chen', email: 'morgan@example.com', home_gym: 'g3',
@@ -99,7 +109,9 @@ export const mockUsers: User[] = [
             { day: 'Tue', blocks: ['Morning', 'Afternoon'] },
             { day: 'Thu', blocks: ['Morning', 'Afternoon'] },
             { day: 'Sat', blocks: ['Afternoon', 'Evening'] },
-        ]
+        ],
+        weight_kg: 72, height_cm: 170,
+        big4: { bench: 155, squat: 225, deadlift: 275, ohp: 105 },
     },
     {
         id: 'u7', name: 'Riley Park', email: 'riley@example.com', home_gym: 'g1',
@@ -113,7 +125,9 @@ export const mockUsers: User[] = [
             { day: 'Mon', blocks: ['Evening'] },
             { day: 'Wed', blocks: ['Evening'] },
             { day: 'Fri', blocks: ['Evening'] },
-        ]
+        ],
+        weight_kg: 70, height_cm: 172,
+        big4: { bench: 85, squat: 105, deadlift: 135, ohp: 55 },
     },
     {
         id: 'u8', name: 'Jamie Brooks', email: 'jamie@example.com', home_gym: 'g3',
@@ -129,7 +143,9 @@ export const mockUsers: User[] = [
             { day: 'Wed', blocks: ['Afternoon'] },
             { day: 'Thu', blocks: ['Afternoon'] },
             { day: 'Fri', blocks: ['Afternoon'] },
-        ]
+        ],
+        weight_kg: 82, height_cm: 178,
+        big4: { bench: 205, squat: 285, deadlift: 345, ohp: 135 },
     }
 ];
 

@@ -42,6 +42,14 @@ export interface User {
     goals?: Goal[];
     sub_goals?: BodyPart[];
     availability?: AvailabilitySlot[];
+    weight_kg?: number;
+    height_cm?: number;
+    big4?: {
+        bench: number;
+        squat: number;
+        deadlift: number;
+        ohp: number;
+    };
 }
 
 export interface Match {
