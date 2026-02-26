@@ -61,7 +61,7 @@ export default function ChatThread({ conversation, currentUserId, onBack, onSend
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-            className="flex flex-col h-screen bg-oled"
+            className="fixed inset-0 z-[60] flex flex-col bg-oled"
         >
             {/* Header */}
             <div className="flex items-center gap-3 px-4 py-3 bg-gray-900/80 border-b border-gray-800 backdrop-blur-sm sticky top-0 z-10">
@@ -126,7 +126,7 @@ export default function ChatThread({ conversation, currentUserId, onBack, onSend
             </div>
 
             {/* Input Bar */}
-            <div className="px-4 py-3 bg-gray-900/80 border-t border-gray-800 backdrop-blur-sm safe-area-bottom">
+            <div className="sticky bottom-0 px-4 py-3 bg-gray-900 border-t border-gray-800 pb-safe">
                 {!canSendMore ? (
                     <div className="flex items-center justify-center gap-2 py-3 text-gray-500 text-xs">
                         <Lock size={12} /> Waiting for {user.name.split(' ')[0]} to accept your request

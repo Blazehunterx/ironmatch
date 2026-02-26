@@ -86,7 +86,7 @@ export default function Home() {
     };
 
     return (
-        <div className="flex flex-col w-full min-h-[calc(100vh-120px)] pb-24">
+        <div className="flex flex-col w-full min-h-[calc(100vh-120px)] pb-32">
             {/* Header */}
             <div className="flex items-center justify-between px-4 pt-4 mb-3">
                 <div>
