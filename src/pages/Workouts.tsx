@@ -11,7 +11,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import ActiveWorkout from '../components/ActiveWorkout';
 
-type Tab = 'plans' | 'history';
+type Tab = 'plans' | 'templates' | 'history';
 
 export default function Workouts() {
     const { user } = useAuth();
@@ -57,6 +57,74 @@ export default function Workouts() {
             created_at: new Date(Date.now() - 86400000).toISOString()
         }
     ]);
+
+    // ═══ STARTER TEMPLATES ═══
+    const starterTemplates: WorkoutPlan[] = [
+        {
+            id: 'st1', name: 'Push Day (Chest/Shoulders/Tri)', author_id: 'system', target: 'Chest', exercises: [
+                { id: 'st1e1', name: 'Bench Press', sets: 4, reps: 8 },
+                { id: 'st1e2', name: 'Overhead Press', sets: 3, reps: 10 },
+                { id: 'st1e3', name: 'Incline Dumbbell Press', sets: 3, reps: 10 },
+                { id: 'st1e4', name: 'Lateral Raise', sets: 3, reps: 15 },
+                { id: 'st1e5', name: 'Tricep Pushdown', sets: 3, reps: 12 },
+            ], shared: false, created_at: ''
+        },
+        {
+            id: 'st2', name: 'Pull Day (Back/Biceps)', author_id: 'system', target: 'Back', exercises: [
+                { id: 'st2e1', name: 'Deadlift', sets: 3, reps: 5 },
+                { id: 'st2e2', name: 'Pull-ups', sets: 4, reps: 8 },
+                { id: 'st2e3', name: 'Barbell Row', sets: 3, reps: 10 },
+                { id: 'st2e4', name: 'Face Pull', sets: 3, reps: 15 },
+                { id: 'st2e5', name: 'Barbell Curl', sets: 3, reps: 12 },
+            ], shared: false, created_at: ''
+        },
+        {
+            id: 'st3', name: 'Leg Day', author_id: 'system', target: 'Legs', exercises: [
+                { id: 'st3e1', name: 'Squat', sets: 4, reps: 8 },
+                { id: 'st3e2', name: 'Romanian Deadlift', sets: 3, reps: 10 },
+                { id: 'st3e3', name: 'Leg Press', sets: 3, reps: 12 },
+                { id: 'st3e4', name: 'Leg Curl', sets: 3, reps: 12 },
+                { id: 'st3e5', name: 'Calf Raise', sets: 4, reps: 15 },
+            ], shared: false, created_at: ''
+        },
+        {
+            id: 'st4', name: 'Full Body Beginner', author_id: 'system', target: 'Full Body', exercises: [
+                { id: 'st4e1', name: 'Squat', sets: 3, reps: 8 },
+                { id: 'st4e2', name: 'Bench Press', sets: 3, reps: 8 },
+                { id: 'st4e3', name: 'Barbell Row', sets: 3, reps: 10 },
+                { id: 'st4e4', name: 'Overhead Press', sets: 3, reps: 10 },
+                { id: 'st4e5', name: 'Plank', sets: 3, reps: 60 },
+            ], shared: false, created_at: ''
+        },
+        {
+            id: 'st5', name: 'Upper Body', author_id: 'system', target: 'Chest', exercises: [
+                { id: 'st5e1', name: 'Bench Press', sets: 4, reps: 8 },
+                { id: 'st5e2', name: 'Pull-ups', sets: 3, reps: 8 },
+                { id: 'st5e3', name: 'Overhead Press', sets: 3, reps: 10 },
+                { id: 'st5e4', name: 'Cable Row', sets: 3, reps: 12 },
+                { id: 'st5e5', name: 'Dips', sets: 3, reps: 12 },
+            ], shared: false, created_at: ''
+        },
+        {
+            id: 'st6', name: 'CrossFit Benchmark: Murph', author_id: 'system', target: 'Full Body', exercises: [
+                { id: 'st6e1', name: 'Pull-ups', sets: 1, reps: 100 },
+                { id: 'st6e2', name: 'Push-ups', sets: 1, reps: 200 },
+                { id: 'st6e3', name: 'Squat', sets: 1, reps: 300 },
+            ], shared: false, created_at: ''
+        },
+    ];
+
+    const useTemplate = (template: WorkoutPlan) => {
+        const plan: WorkoutPlan = {
+            ...template,
+            id: `wp-${Date.now()}`,
+            author_id: user?.id || '',
+            created_at: new Date().toISOString(),
+            exercises: template.exercises.map(e => ({ ...e, id: `e-${Date.now()}-${Math.random()}` })),
+        };
+        setPlans(prev => [plan, ...prev]);
+        setTab('plans');
+    };
 
     const [logs, setLogs] = useState<WorkoutLog[]>(() => [
         {
@@ -155,7 +223,7 @@ export default function Workouts() {
 
                 {/* Tabs */}
                 <div className="flex bg-gray-900 rounded-xl p-1 border border-gray-800">
-                    {(['plans', 'history'] as Tab[]).map(t => (
+                    {(['plans', 'templates', 'history'] as Tab[]).map(t => (
                         <button
                             key={t}
                             onClick={() => setTab(t)}
@@ -164,7 +232,7 @@ export default function Workouts() {
                                 : 'text-gray-500 hover:text-gray-300'
                                 }`}
                         >
-                            {t === 'plans' ? '📋 My Plans' : '📊 History'}
+                            {t === 'plans' ? '📋 Plans' : t === 'templates' ? '⭐ Templates' : '📊 History'}
                         </button>
                     ))}
                 </div>
@@ -405,6 +473,46 @@ export default function Workouts() {
                                 </motion.div>
                             ))
                         )}
+                    </div>
+                ) : tab === 'templates' ? (
+                    /* Templates Tab */
+                    <div className="space-y-3">
+                        <p className="text-xs text-gray-500 mb-2">Tap to add a template to your plans instantly</p>
+                        {starterTemplates.map((template, idx) => (
+                            <motion.div
+                                key={template.id}
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: idx * 0.05 }}
+                                className="bg-gray-900 border border-gray-800 rounded-2xl p-4"
+                            >
+                                <div className="flex items-start justify-between mb-2">
+                                    <div>
+                                        <h4 className="font-bold text-white text-sm">{template.name}</h4>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/20 font-semibold">{template.target}</span>
+                                            <span className="text-[10px] text-gray-500">{template.exercises.length} exercises</span>
+                                        </div>
+                                    </div>
+                                    <span className="text-[9px] text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-full font-bold border border-yellow-500/20">⭐ Starter</span>
+                                </div>
+                                <div className="space-y-1 mb-3">
+                                    {template.exercises.map((ex, i) => (
+                                        <div key={ex.id} className="flex items-center gap-2 text-xs text-gray-400">
+                                            <span className="text-[9px] text-purple-400 bg-purple-500/10 w-4 h-4 rounded flex items-center justify-center font-bold">{i + 1}</span>
+                                            <span className="flex-1 truncate">{ex.name}</span>
+                                            <span className="text-gray-600">{ex.sets}×{ex.reps}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button
+                                    onClick={() => useTemplate(template)}
+                                    className="w-full py-2.5 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-purple-500/20 active:scale-[0.98] transition-all"
+                                >
+                                    <Plus size={14} /> Use This Template
+                                </button>
+                            </motion.div>
+                        ))}
                     </div>
                 ) : (
                     /* History Tab */
