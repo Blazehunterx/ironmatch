@@ -1,0 +1,138 @@
+import { User, Gym, Post, Match } from '../types/database';
+
+export const mockGyms: Gym[] = [
+    { id: 'g1', name: 'Iron Forge', location: 'Downtown', member_count: 342 },
+    { id: 'g2', name: 'Metro Fitness', location: 'Westside', member_count: 128 },
+    { id: 'g3', name: 'Peak Performance', location: 'North Hills', member_count: 512 }
+];
+
+export const mockUsers: User[] = [
+    {
+        id: 'u1', name: 'Alex Thompson', email: 'alex@example.com', home_gym: 'g1',
+        fitness_level: 'Professional', reliability_streak: 12,
+        profile_image_url: 'https://i.pravatar.cc/300?u=a042581f4e29026704d',
+        bio: 'Powerlifter focusing on deadlifts. Always looking for serious training partners.',
+        is_trainer: true,
+        goals: ['Get Pushed', 'Train for Competition'],
+        sub_goals: ['Back', 'Legs'],
+        availability: [
+            { day: 'Mon', blocks: ['Morning', 'Afternoon'] },
+            { day: 'Wed', blocks: ['Morning', 'Afternoon'] },
+            { day: 'Fri', blocks: ['Morning'] },
+            { day: 'Sat', blocks: ['Morning', 'Afternoon', 'Evening'] },
+        ]
+    },
+    {
+        id: 'u2', name: 'Jordan Lee', email: 'jordan@example.com', home_gym: 'g1',
+        fitness_level: 'Intermediate', reliability_streak: 5,
+        profile_image_url: 'https://i.pravatar.cc/300?u=a042581f4e29026704a',
+        bio: 'Looking for a spotter for bench press! Let\'s grow together.',
+        is_trainer: false,
+        goals: ['Workout Buddy', 'Socialize'],
+        sub_goals: ['Chest', 'Arms'],
+        availability: [
+            { day: 'Mon', blocks: ['Evening'] },
+            { day: 'Tue', blocks: ['Evening'] },
+            { day: 'Thu', blocks: ['Evening'] },
+            { day: 'Sat', blocks: ['Morning'] },
+        ]
+    },
+    {
+        id: 'u3', name: 'Casey Smith', email: 'casey@example.com', home_gym: 'g2',
+        fitness_level: 'Beginner', reliability_streak: 2,
+        profile_image_url: 'https://i.pravatar.cc/300?u=a042581f4e29026704b',
+        bio: 'Just starting out, need motivation and guidance!',
+        is_trainer: false,
+        goals: ['Learn', 'Workout Buddy'],
+        sub_goals: ['Full Body'],
+        availability: [
+            { day: 'Tue', blocks: ['Afternoon'] },
+            { day: 'Wed', blocks: ['Afternoon'] },
+            { day: 'Fri', blocks: ['Afternoon', 'Evening'] },
+            { day: 'Sun', blocks: ['Morning', 'Afternoon'] },
+        ]
+    },
+    {
+        id: 'u4', name: 'Sam Rivera', email: 'sam@example.com', home_gym: 'g1',
+        fitness_level: 'Professional', reliability_streak: 24,
+        profile_image_url: 'https://i.pravatar.cc/300?u=a042581f4e29026704c',
+        bio: 'Bodybuilding splits 6 days a week. Certified PT.',
+        is_trainer: true,
+        goals: ['Train for Competition', 'Get Pushed'],
+        sub_goals: ['Chest', 'Shoulders', 'Arms'],
+        availability: [
+            { day: 'Mon', blocks: ['Morning', 'Afternoon', 'Evening'] },
+            { day: 'Tue', blocks: ['Morning', 'Afternoon'] },
+            { day: 'Wed', blocks: ['Morning', 'Afternoon', 'Evening'] },
+            { day: 'Thu', blocks: ['Morning', 'Afternoon'] },
+            { day: 'Fri', blocks: ['Morning', 'Afternoon', 'Evening'] },
+            { day: 'Sat', blocks: ['Morning'] },
+        ]
+    },
+    {
+        id: 'u5', name: 'Taylor Kim', email: 'taylor@example.com', home_gym: 'g2',
+        fitness_level: 'Intermediate', reliability_streak: 8,
+        profile_image_url: 'https://i.pravatar.cc/300?u=a042581f4e29026705e',
+        bio: 'Cardio enthusiast looking for running partners.',
+        is_trainer: false,
+        goals: ['Cardio Partner', 'Lose Weight'],
+        sub_goals: ['Legs', 'Core'],
+        availability: [
+            { day: 'Mon', blocks: ['Morning'] },
+            { day: 'Wed', blocks: ['Morning'] },
+            { day: 'Fri', blocks: ['Morning'] },
+            { day: 'Sun', blocks: ['Morning', 'Afternoon'] },
+        ]
+    },
+    {
+        id: 'u6', name: 'Morgan Chen', email: 'morgan@example.com', home_gym: 'g3',
+        fitness_level: 'Professional', reliability_streak: 16,
+        profile_image_url: 'https://i.pravatar.cc/300?u=a042581f4e29026706f',
+        bio: 'Yoga & mobility coach. Recovery is just as important as lifting.',
+        is_trainer: true,
+        goals: ['Recovery Partner', 'Learn'],
+        sub_goals: ['Full Body', 'Core'],
+        availability: [
+            { day: 'Tue', blocks: ['Morning', 'Afternoon'] },
+            { day: 'Thu', blocks: ['Morning', 'Afternoon'] },
+            { day: 'Sat', blocks: ['Afternoon', 'Evening'] },
+        ]
+    },
+    {
+        id: 'u7', name: 'Riley Park', email: 'riley@example.com', home_gym: 'g1',
+        fitness_level: 'Beginner', reliability_streak: 1,
+        profile_image_url: 'https://i.pravatar.cc/300?u=a042581f4e29026707g',
+        bio: 'Just joined the gym. Want someone to show me the ropes!',
+        is_trainer: false,
+        goals: ['Learn', 'Socialize'],
+        sub_goals: ['Full Body'],
+        availability: [
+            { day: 'Mon', blocks: ['Evening'] },
+            { day: 'Wed', blocks: ['Evening'] },
+            { day: 'Fri', blocks: ['Evening'] },
+        ]
+    },
+    {
+        id: 'u8', name: 'Jamie Brooks', email: 'jamie@example.com', home_gym: 'g3',
+        fitness_level: 'Intermediate', reliability_streak: 10,
+        profile_image_url: 'https://i.pravatar.cc/300?u=a042581f4e29026708h',
+        bio: 'Functional fitness and CrossFit lover. Let\'s WOD!',
+        is_trainer: false,
+        goals: ['Get Pushed', 'Workout Buddy'],
+        sub_goals: ['Shoulders', 'Core', 'Legs'],
+        availability: [
+            { day: 'Mon', blocks: ['Afternoon'] },
+            { day: 'Tue', blocks: ['Afternoon'] },
+            { day: 'Wed', blocks: ['Afternoon'] },
+            { day: 'Thu', blocks: ['Afternoon'] },
+            { day: 'Fri', blocks: ['Afternoon'] },
+        ]
+    }
+];
+
+export const mockMatches: Match[] = [];
+
+export const mockPosts: Post[] = [
+    { id: 'p1', author_id: 'u1', gym_id: 'g1', content: 'Hit a new PR on deadlift today! 405lbs!', created_at: new Date().toISOString() },
+    { id: 'p2', author_id: 'u4', gym_id: 'g1', content: 'Anyone hitting legs at 6PM?', created_at: new Date(Date.now() - 3600000).toISOString() }
+];
