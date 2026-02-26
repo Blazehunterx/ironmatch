@@ -35,7 +35,11 @@ export default function Signup() {
             await signup({ email, name, password });
             navigate('/onboarding');
         } catch (err: any) {
-            setError(err.message || 'Failed to create account');
+            if (err.message && err.message.toLowerCase().includes('rate limit')) {
+                setError('Too many signups from this IP. The admin needs to disable Email Confirmations in Supabase, or try again later.');
+            } else {
+                setError(err.message || 'Failed to create account');
+            }
         } finally {
             setLoading(false);
         }
