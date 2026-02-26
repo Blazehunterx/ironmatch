@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, MessageSquare, User, Bell } from 'lucide-react';
+import { Home, Search, MessageSquare, User, Bell, Dumbbell } from 'lucide-react';
 
 export default function BottomNav() {
     const location = useLocation();
@@ -7,6 +7,7 @@ export default function BottomNav() {
     const navItems = [
         { name: 'Home', path: '/', icon: Home },
         { name: 'Explore', path: '/search', icon: Search },
+        { name: 'Workout', path: '/workouts', icon: Dumbbell },
         { name: 'Alerts', path: '/notifications', icon: Bell },
         { name: 'Chat', path: '/messages', icon: MessageSquare },
         { name: 'Profile', path: '/profile', icon: User },
@@ -25,8 +26,8 @@ export default function BottomNav() {
                             className={`flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${isActive ? 'text-lime' : 'text-gray-500 hover:text-gray-300'
                                 }`}
                         >
-                            <Icon size={22} className={isActive ? 'stroke-current' : ''} />
-                            <span className="text-[9px] mt-1 font-medium">{item.name}</span>
+                            <Icon size={20} className={isActive ? 'stroke-current' : ''} />
+                            <span className="text-[8px] mt-0.5 font-medium">{item.name}</span>
                         </Link>
                     );
                 })}

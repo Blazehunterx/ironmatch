@@ -80,3 +80,45 @@ export const ALL_BODY_PARTS: BodyPart[] = [
 
 export const ALL_DAYS: DayOfWeek[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 export const ALL_TIME_BLOCKS: TimeBlock[] = ['Morning', 'Afternoon', 'Evening'];
+
+// Workout Plan Types
+export interface WorkoutExercise {
+    id: string;
+    name: string;
+    sets: number;
+    reps: number;
+    weight?: number;
+    notes?: string;
+    completed?: boolean;
+}
+
+export interface WorkoutPlan {
+    id: string;
+    name: string;
+    author_id: string;
+    target: BodyPart;
+    exercises: WorkoutExercise[];
+    shared: boolean;
+    created_at: string;
+}
+
+export interface WorkoutLog {
+    id: string;
+    plan_id: string;
+    user_id: string;
+    exercises: WorkoutExercise[];
+    started_at: string;
+    completed_at?: string;
+    duration_min?: number;
+}
+
+export const EXERCISE_LIBRARY: Record<BodyPart, string[]> = {
+    'Chest': ['Bench Press', 'Incline Dumbbell Press', 'Cable Fly', 'Push-ups', 'Dips', 'Pec Deck'],
+    'Back': ['Deadlift', 'Pull-ups', 'Barbell Row', 'Lat Pulldown', 'Cable Row', 'T-Bar Row'],
+    'Shoulders': ['Overhead Press', 'Lateral Raise', 'Front Raise', 'Face Pull', 'Arnold Press', 'Shrugs'],
+    'Arms': ['Barbell Curl', 'Tricep Pushdown', 'Hammer Curl', 'Skull Crushers', 'Preacher Curl', 'Dips'],
+    'Legs': ['Squat', 'Leg Press', 'Romanian Deadlift', 'Leg Curl', 'Leg Extension', 'Calf Raise'],
+    'Core': ['Plank', 'Hanging Leg Raise', 'Cable Crunch', 'Russian Twist', 'Ab Rollout', 'Side Plank'],
+    'Glutes': ['Hip Thrust', 'Glute Bridge', 'Bulgarian Split Squat', 'Cable Kickback', 'Sumo Deadlift', 'Step-ups'],
+    'Full Body': ['Clean & Press', 'Thrusters', 'Burpees', 'Kettlebell Swing', 'Turkish Get-up', 'Man Makers'],
+};

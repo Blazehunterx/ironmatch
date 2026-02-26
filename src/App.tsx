@@ -7,6 +7,7 @@ import Search from './pages/Search';
 import Messages from './pages/Messages';
 import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
+import Workouts from './pages/Workouts';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import CreateProfile from './pages/CreateProfile';
@@ -32,6 +33,7 @@ function App() {
                         <Route path="/" element={<Home />} />
                         <Route path="/search" element={<Search />} />
                         <Route path="/notifications" element={<Notifications />} />
+                        <Route path="/workouts" element={<Workouts />} />
                         <Route path="/messages" element={<Messages />} />
                         <Route path="/profile" element={<Profile />} />
                     </Route>
