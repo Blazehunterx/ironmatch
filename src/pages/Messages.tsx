@@ -1,106 +1,37 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { mockUsers } from '../lib/mock';
+import { useConversations } from '../context/ConversationContext';
 import { MessageSquare, Search as SearchIcon, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatThread from '../components/ChatThread';
-import { User } from '../types/database';
-
-interface Conversation {
-    user: User;
-    lastMessage: string;
-    time: string;
-    unread: boolean;
-    accepted: boolean;
-    messages: { from: string; text: string; time: string; isVoice?: boolean }[];
-}
 
 export default function Messages() {
     const { user } = useAuth();
+    const { conversations, sendMessage } = useConversations();
     const [searchQuery, setSearchQuery] = useState('');
     const [activeChatUserId, setActiveChatUserId] = useState<string | null>(null);
-
-    // Mock conversation data
-    const [conversations, setConversations] = useState<Conversation[]>(() => {
-        const others = mockUsers.filter(u => u.id !== user?.id).slice(0, 4);
-        return [
-            {
-                user: others[0],
-                lastMessage: 'Sounds good, see you at 6!',
-                time: '12:30 PM',
-                unread: false,
-                accepted: true,
-                messages: [
-                    { from: user?.id || '', text: `Hey ${others[0]?.name?.split(' ')[0]}, want to hit a session tomorrow?`, time: '11:20 AM' },
-                    { from: others[0]?.id || '', text: 'Yes! What time works for you?', time: '11:45 AM' },
-                    { from: user?.id || '', text: 'How about 6 PM? Leg day 🔥', time: '12:10 PM' },
-                    { from: others[0]?.id || '', text: 'Sounds good, see you at 6!', time: '12:30 PM' },
-                ]
-            },
-            {
-                user: others[1],
-                lastMessage: 'Are you still looking for a spotter?',
-                time: 'Yesterday',
-                unread: true,
-                accepted: true,
-                messages: [
-                    { from: others[1]?.id || '', text: 'Hey! Saw your profile. I need a spotter for bench day.', time: 'Yesterday' },
-                    { from: user?.id || '', text: 'Sure, I\'m at Iron Forge most evenings', time: 'Yesterday' },
-                    { from: others[1]?.id || '', text: 'Are you still looking for a spotter?', time: 'Yesterday' },
-                ]
-            },
-            {
-                user: others[2],
-                lastMessage: 'Sent you a workout request!',
-                time: 'Mon',
-                unread: false,
-                accepted: false,
-                messages: [
-                    { from: others[2]?.id || '', text: 'Sent you a workout request!', time: 'Mon' },
-                ]
-            },
-        ].filter(c => c.user);
-    });
 
     const filtered = conversations.filter(c =>
         c.user.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const handleSendMessage = (convUser: User, text: string, isVoice?: boolean) => {
-        setConversations(prev => prev.map(c => {
-            if (c.user.id === convUser.id) {
-                const newMsg = { from: user?.id || '', text, time: 'Just now', isVoice };
-                return {
-                    ...c,
-                    lastMessage: isVoice ? '🎤 Voice message' : text,
-                    time: 'Just now',
-                    unread: false,
-                    messages: [...c.messages, newMsg]
-                };
-            }
-            return c;
-        }));
-    };
-
     return (
         <div className="flex flex-col min-h-screen pb-24 relative">
             <AnimatePresence>
-                {activeChatUserId ? (
-                    <ChatThread
-                        key="chat"
-                        conversation={conversations.find(c => c.user.id === activeChatUserId)!}
-                        currentUserId={user?.id || ''}
-                        onBack={() => setActiveChatUserId(null)}
-                        onSend={(text: string, isVoice?: boolean) => {
-                            const conv = conversations.find(c => c.user.id === activeChatUserId);
-                            if (conv) handleSendMessage(conv.user, text, isVoice);
-                        }}
-                        canSendMore={(() => {
-                            const conv = conversations.find(c => c.user.id === activeChatUserId);
-                            return conv ? (conv.accepted || conv.messages.filter(m => m.from === user?.id).length < 1) : false;
-                        })()}
-                    />
-                ) : (
+                {activeChatUserId ? (() => {
+                    const conv = conversations.find(c => c.user.id === activeChatUserId);
+                    if (!conv) return null;
+                    return (
+                        <ChatThread
+                            key="chat"
+                            conversation={conv}
+                            currentUserId={user?.id || ''}
+                            onBack={() => setActiveChatUserId(null)}
+                            onSend={(text: string, isVoice?: boolean) => sendMessage(activeChatUserId, text, isVoice)}
+                            canSendMore={conv.accepted || conv.messages.filter(m => m.from === user?.id).length < 1}
+                        />
+                    );
+                })() : (
                     <motion.div
                         key="list"
                         initial={{ opacity: 0 }}

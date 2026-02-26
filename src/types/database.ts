@@ -1,5 +1,6 @@
 export type FitnessLevel = 'Beginner' | 'Intermediate' | 'Professional';
 export type MatchStatus = 'pending' | 'accepted' | 'declined';
+export type FitnessDiscipline = 'Powerlifting' | 'Bodybuilding' | 'CrossFit' | 'Hyrox' | 'General Fitness';
 
 export type Goal =
     | 'Workout Buddy'
@@ -45,6 +46,8 @@ export interface User {
     weight_kg?: number;
     height_cm?: number;
     unit_preference?: 'lbs' | 'kg';
+    discipline?: FitnessDiscipline;
+    xp?: number;
     big4?: {
         bench: number;
         squat: number;

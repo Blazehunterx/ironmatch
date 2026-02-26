@@ -6,7 +6,7 @@ import {
     Zap, User as UserIcon, Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Goal, BodyPart, ALL_GOALS, ALL_BODY_PARTS, FitnessLevel } from '../types/database';
+import { Goal, BodyPart, ALL_GOALS, ALL_BODY_PARTS, FitnessLevel, FitnessDiscipline } from '../types/database';
 import { getRankFromLifts, Big4Lifts } from '../lib/gamification';
 
 const goalEmoji: Record<string, string> = {
@@ -14,16 +14,27 @@ const goalEmoji: Record<string, string> = {
     'Train for Competition': '🏋️', 'Lose Weight': '💪', 'Recovery Partner': '🧘', 'Cardio Partner': '🏃',
 };
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
+
+const DISCIPLINES: { value: FitnessDiscipline; icon: string; desc: string }[] = [
+    { value: 'Powerlifting', icon: '🏋️', desc: 'Big 4 lifts, maximal strength' },
+    { value: 'Bodybuilding', icon: '💪', desc: 'Muscle building, aesthetics' },
+    { value: 'CrossFit', icon: '🔥', desc: 'Varied functional fitness, WODs' },
+    { value: 'Hyrox', icon: '🏃', desc: 'Hybrid running + functional' },
+    { value: 'General Fitness', icon: '⚡', desc: 'Staying active, all-round' },
+];
 
 export default function Onboarding() {
     const { user, updateUser, signup } = useAuth();
     const navigate = useNavigate();
     const [step, setStep] = useState(0);
 
-    // Step 1: Photo
+    // Step 0: Photo
     const [profileImage, setProfileImage] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Step 1: Discipline
+    const [discipline, setDiscipline] = useState<FitnessDiscipline>('General Fitness');
 
     // Step 2: Body stats
     const [weightKg, setWeightKg] = useState(0);
@@ -66,6 +77,7 @@ export default function Onboarding() {
             weight_kg: weightKg || undefined,
             height_cm: heightCm || undefined,
             unit_preference: unitPref,
+            discipline,
             big4: lifts.bench || lifts.squat || lifts.deadlift || lifts.ohp ? lifts : undefined,
             goals,
             sub_goals: subGoals,
@@ -164,8 +176,35 @@ export default function Onboarding() {
                             </div>
                         )}
 
-                        {/* ═══ STEP 1: BODY STATS ═══ */}
+                        {/* ═══ STEP 1: DISCIPLINE ═══ */}
                         {step === 1 && (
+                            <div className="flex-1 flex flex-col">
+                                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+                                    <h2 className="text-2xl font-black text-white mb-1">Your Discipline</h2>
+                                    <p className="text-sm text-gray-500 mb-6">What best describes your training style? This personalizes your experience.</p>
+                                </motion.div>
+
+                                <div className="space-y-3">
+                                    {DISCIPLINES.map((d, idx) => (
+                                        <motion.button key={d.value} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+                                            transition={{ delay: idx * 0.08 }}
+                                            onClick={() => setDiscipline(d.value)}
+                                            className={`w-full p-4 rounded-2xl border text-left transition-all flex items-center gap-4 ${discipline === d.value
+                                                ? 'bg-lime/10 border-lime/40' : 'bg-gray-900 border-gray-800 hover:border-gray-700'}`}>
+                                            <span className="text-3xl">{d.icon}</span>
+                                            <div className="flex-1">
+                                                <p className={`font-bold ${discipline === d.value ? 'text-lime' : 'text-white'}`}>{d.value}</p>
+                                                <p className="text-xs text-gray-500 mt-0.5">{d.desc}</p>
+                                            </div>
+                                            {discipline === d.value && <Check size={18} className="text-lime shrink-0" />}
+                                        </motion.button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ═══ STEP 2: BODY STATS ═══ */}
+                        {step === 2 && (
                             <div className="flex-1 flex flex-col">
                                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
                                     <h2 className="text-2xl font-black text-white mb-1">Body Stats</h2>
@@ -226,8 +265,8 @@ export default function Onboarding() {
                             </div>
                         )}
 
-                        {/* ═══ STEP 2: BIG 4 PRs ═══ */}
-                        {step === 2 && (
+                        {/* ═══ STEP 3: BIG 4 PRs ═══ */}
+                        {step === 3 && (
                             <div className="flex-1 flex flex-col">
                                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
                                     <h2 className="text-2xl font-black text-white mb-1">Your Big 4</h2>
@@ -277,8 +316,8 @@ export default function Onboarding() {
                             </div>
                         )}
 
-                        {/* ═══ STEP 3: GOALS ═══ */}
-                        {step === 3 && (
+                        {/* ═══ STEP 4: GOALS ═══ */}
+                        {step === 4 && (
                             <div className="flex-1 flex flex-col">
                                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
                                     <h2 className="text-2xl font-black text-white mb-1">Your Goals</h2>
@@ -315,8 +354,8 @@ export default function Onboarding() {
                             </div>
                         )}
 
-                        {/* ═══ STEP 4: FITNESS LEVEL ═══ */}
-                        {step === 4 && (
+                        {/* ═══ STEP 5: FITNESS LEVEL ═══ */}
+                        {step === 5 && (
                             <div className="flex-1 flex flex-col">
                                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
                                     <h2 className="text-2xl font-black text-white mb-1">Experience Level</h2>
@@ -349,8 +388,8 @@ export default function Onboarding() {
                             </div>
                         )}
 
-                        {/* ═══ STEP 5: BIO + FINISH ═══ */}
-                        {step === 5 && (
+                        {/* ═══ STEP 6: BIO + FINISH ═══ */}
+                        {step === 6 && (
                             <div className="flex-1 flex flex-col">
                                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
                                     <h2 className="text-2xl font-black text-white mb-1">Almost Done!</h2>

@@ -108,9 +108,16 @@ export default function Arena() {
                         <h2 className="text-3xl font-bold text-white flex items-center gap-2">Arena <Zap size={24} className="text-yellow-400" /></h2>
                         <p className="text-xs text-gray-500 mt-0.5">Strength determines rank. Get stronger.</p>
                     </div>
-                    <div className="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl px-3 py-2">
-                        <Flame size={16} className="text-orange-500" />
-                        <span className="text-xs font-bold text-white">7d streak</span>
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 bg-gray-900 border border-gray-800 rounded-xl px-3 py-2">
+                            <Zap size={14} className="text-yellow-400" />
+                            <span className="text-xs font-black text-yellow-400">{(user?.xp || 0).toLocaleString()}</span>
+                            <span className="text-[9px] text-gray-500">XP</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-gray-900 border border-gray-800 rounded-xl px-3 py-2">
+                            <Flame size={14} className="text-orange-500" />
+                            <span className="text-xs font-bold text-white">7d</span>
+                        </div>
                     </div>
                 </div>
 

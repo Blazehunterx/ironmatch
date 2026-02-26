@@ -1,13 +1,15 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { mockUsers } from '../lib/mock';
 import { useAuth } from '../context/AuthContext';
-import { Check, X, Dumbbell, Bell } from 'lucide-react';
+import { useConversations } from '../context/ConversationContext';
+import { Check, X, Dumbbell, Bell, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { User } from '../types/database';
 
 interface Notification {
     id: string;
-    type: 'workout_request' | 'request_accepted';
+    type: 'workout_request' | 'request_accepted' | 'duel_challenge' | 'quest_complete';
     from: User;
     message?: string;
     time: string;
@@ -16,6 +18,8 @@ interface Notification {
 
 export default function Notifications() {
     const { user } = useAuth();
+    const { addConversation } = useConversations();
+    const navigate = useNavigate();
 
     const [notifications, setNotifications] = useState<Notification[]>(() => {
         const others = mockUsers.filter(u => u.id !== user?.id);
@@ -38,6 +42,14 @@ export default function Notifications() {
             },
             {
                 id: 'n3',
+                type: 'duel_challenge' as const,
+                from: others[1],
+                message: 'Challenged you to a Pull-up Duel! 💪',
+                time: '3 hours ago',
+                handled: false
+            },
+            {
+                id: 'n4',
                 type: 'request_accepted' as const,
                 from: others[1],
                 time: 'Yesterday',
@@ -47,6 +59,10 @@ export default function Notifications() {
     });
 
     const handleAccept = (id: string) => {
+        const notif = notifications.find(n => n.id === id);
+        if (notif) {
+            addConversation(notif.from, true);
+        }
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, handled: true, type: 'request_accepted' as const } : n));
     };
 
@@ -54,7 +70,11 @@ export default function Notifications() {
         setNotifications(prev => prev.filter(n => n.id !== id));
     };
 
-    const pending = notifications.filter(n => n.type === 'workout_request' && !n.handled);
+    const handleGoToChat = () => {
+        navigate('/messages');
+    };
+
+    const pending = notifications.filter(n => !n.handled && (n.type === 'workout_request' || n.type === 'duel_challenge'));
     const past = notifications.filter(n => n.type === 'request_accepted' || n.handled);
 
     return (
@@ -81,8 +101,17 @@ export default function Notifications() {
                                             <span className="text-[10px] text-gray-600 shrink-0">{notif.time}</span>
                                         </div>
                                         <div className="flex items-center gap-1.5 mt-0.5">
-                                            <Dumbbell size={11} className="text-lime" />
-                                            <span className="text-[10px] text-lime font-semibold">Workout Request</span>
+                                            {notif.type === 'duel_challenge' ? (
+                                                <>
+                                                    <span className="text-[10px]">⚔️</span>
+                                                    <span className="text-[10px] text-orange-400 font-semibold">Duel Challenge</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Dumbbell size={11} className="text-lime" />
+                                                    <span className="text-[10px] text-lime font-semibold">Workout Request</span>
+                                                </>
+                                            )}
                                         </div>
                                         {notif.message && (
                                             <p className="text-xs text-gray-400 mt-2 leading-relaxed">"{notif.message}"</p>
@@ -100,7 +129,7 @@ export default function Notifications() {
                                         onClick={() => handleAccept(notif.id)}
                                         className="flex-[2] py-2.5 rounded-xl bg-lime text-oled text-xs font-bold flex items-center justify-center gap-1 hover:bg-lime/90 active:scale-[0.98] transition-all"
                                     >
-                                        <Check size={14} /> Accept Workout
+                                        <Check size={14} /> Accept
                                     </button>
                                 </div>
                             </motion.div>
@@ -119,7 +148,8 @@ export default function Notifications() {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: idx * 0.05 }}
-                                className="flex items-center gap-3 p-3 rounded-xl"
+                                onClick={() => handleGoToChat()}
+                                className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-900/50 cursor-pointer transition-colors"
                             >
                                 <img src={notif.from.profile_image_url} alt={notif.from.name} className="w-10 h-10 rounded-full border border-gray-800 object-cover" />
                                 <div className="flex-1 min-w-0">
@@ -128,7 +158,7 @@ export default function Notifications() {
                                     </p>
                                     <span className="text-[10px] text-gray-600">{notif.time}</span>
                                 </div>
-                                <Check size={16} className="text-lime shrink-0" />
+                                <MessageSquare size={16} className="text-lime shrink-0" />
                             </motion.div>
                         ))}
                     </div>
