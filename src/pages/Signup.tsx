@@ -100,17 +100,17 @@ export default function Signup() {
                                 className="w-full px-4 py-3 mt-1 text-white bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime transition-all"
                                 placeholder="••••••••"
                             />
+                            {password.length > 0 && (
+                                <div className="flex gap-3 mt-1.5">
+                                    <span className={`text-[10px] flex items-center gap-1 ${passChecks.length ? 'text-lime' : 'text-gray-500'}`}>
+                                        {passChecks.length ? <Check size={10} /> : <AlertCircle size={10} />} 6+ chars
+                                    </span>
+                                    <span className={`text-[10px] flex items-center gap-1 ${passChecks.number ? 'text-lime' : 'text-gray-500'}`}>
+                                        {passChecks.number ? <Check size={10} /> : <AlertCircle size={10} />} Has number
+                                    </span>
+                                </div>
+                            )}
                         </div>
-                        {password.length > 0 && (
-                            <div className="flex gap-3 mt-1.5">
-                                <span className={`text-[10px] flex items-center gap-1 ${passChecks.length ? 'text-lime' : 'text-gray-500'}`}>
-                                    {passChecks.length ? <Check size={10} /> : <AlertCircle size={10} />} 6+ chars
-                                </span>
-                                <span className={`text-[10px] flex items-center gap-1 ${passChecks.number ? 'text-lime' : 'text-gray-500'}`}>
-                                    {passChecks.number ? <Check size={10} /> : <AlertCircle size={10} />} Has number
-                                </span>
-                            </div>
-                        )}
                     </div>
 
                     {/* Terms of Service */}
