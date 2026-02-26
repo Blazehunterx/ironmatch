@@ -34,6 +34,7 @@ export default function Login() {
                     </div>
                     <h2 className="text-3xl font-bold tracking-tight text-white">Welcome back</h2>
                     <p className="mt-2 text-sm text-gray-400">Ready to crush your next workout?</p>
+                    <p className="mt-3 text-xs text-gray-600 bg-gray-900 rounded-lg px-3 py-2 border border-gray-800">Demo: <span className="text-lime font-mono">alex@example.com</span></p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="mt-8 space-y-6">

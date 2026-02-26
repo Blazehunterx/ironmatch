@@ -2,6 +2,8 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { GymProvider } from './context/GymContext';
 import { ConversationProvider } from './context/ConversationContext';
+import { FriendsProvider } from './context/FriendsContext';
+import { ToastProvider } from './context/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -19,29 +21,31 @@ function AppRoutes() {
     const { user } = useAuth();
     return (
         <ConversationProvider currentUserId={user?.id || ''}>
-            <Routes>
-                {/* Public Routes */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
+            <FriendsProvider>
+                <Routes>
+                    {/* Public Routes */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/signup" element={<Signup />} />
 
-                {/* Onboarding (after signup) */}
-                <Route path="/onboarding" element={
-                    <ProtectedRoute>
-                        <Onboarding />
-                    </ProtectedRoute>
-                } />
+                    {/* Onboarding (after signup) */}
+                    <Route path="/onboarding" element={
+                        <ProtectedRoute>
+                            <Onboarding />
+                        </ProtectedRoute>
+                    } />
 
-                {/* Protected Tab Routes under App Shell */}
-                <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/search" element={<Search />} />
-                    <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/workouts" element={<Workouts />} />
-                    <Route path="/arena" element={<Arena />} />
-                    <Route path="/messages" element={<Messages />} />
-                    <Route path="/profile" element={<Profile />} />
-                </Route>
-            </Routes>
+                    {/* Protected Tab Routes under App Shell */}
+                    <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                        <Route path="/" element={<Home />} />
+                        <Route path="/search" element={<Search />} />
+                        <Route path="/notifications" element={<Notifications />} />
+                        <Route path="/workouts" element={<Workouts />} />
+                        <Route path="/arena" element={<Arena />} />
+                        <Route path="/messages" element={<Messages />} />
+                        <Route path="/profile" element={<Profile />} />
+                    </Route>
+                </Routes>
+            </FriendsProvider>
         </ConversationProvider>
     );
 }
@@ -51,7 +55,9 @@ function App() {
         <Router>
             <AuthProvider>
                 <GymProvider>
-                    <AppRoutes />
+                    <ToastProvider>
+                        <AppRoutes />
+                    </ToastProvider>
                 </GymProvider>
             </AuthProvider>
         </Router>

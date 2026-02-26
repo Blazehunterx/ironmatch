@@ -48,6 +48,7 @@ export interface User {
     unit_preference?: 'lbs' | 'kg';
     discipline?: FitnessDiscipline;
     xp?: number;
+    friends?: string[];
     big4?: {
         bench: number;
         squat: number;

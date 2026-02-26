@@ -3,9 +3,10 @@ import { useAuth } from '../context/AuthContext';
 import { mockGyms } from '../lib/mock';
 import {
     LogOut, Settings, Award, Flame, Activity, Edit2, Check, X, Camera,
-    Target, CalendarDays, Dumbbell, Ruler, Zap
+    Target, CalendarDays, Dumbbell, Ruler, Zap, Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useFriends } from '../context/FriendsContext';
 import {
     Goal, BodyPart, DayOfWeek, TimeBlock,
     ALL_GOALS, ALL_BODY_PARTS, ALL_DAYS, ALL_TIME_BLOCKS
@@ -430,6 +431,9 @@ export default function Profile() {
                     ))}
                 </div>
             </div>
+
+            {/* Friends Section */}
+            <FriendsSection />
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4">
                 <div className="flex justify-between items-center mb-3">
                     <h4 className="font-semibold text-white flex items-center gap-2"><CalendarDays size={16} className="text-lime" /> Availability</h4>
@@ -593,6 +597,62 @@ export default function Profile() {
                     </div>
                 )}
             </AnimatePresence>
+        </div>
+    );
+}
+
+function FriendsSection() {
+    const { friends, pendingReceived, acceptFriend } = useFriends();
+
+    return (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4">
+            <h4 className="font-semibold text-white flex items-center gap-2 mb-3">
+                <Users size={16} className="text-lime" /> Friends
+                <span className="text-xs text-gray-500 font-normal ml-1">{friends.length}</span>
+                {pendingReceived.length > 0 && (
+                    <span className="text-[9px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded-full font-bold border border-red-500/20 ml-auto">
+                        {pendingReceived.length} pending
+                    </span>
+                )}
+            </h4>
+
+            {/* Pending Requests */}
+            {pendingReceived.length > 0 && (
+                <div className="space-y-2 mb-3">
+                    {pendingReceived.map(u => (
+                        <div key={u.id} className="flex items-center gap-3 p-2 rounded-xl bg-lime/5 border border-lime/20">
+                            <img src={u.profile_image_url} alt={u.name} className="w-9 h-9 rounded-full border border-gray-700 object-cover" />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-white truncate">{u.name}</p>
+                                <p className="text-[10px] text-gray-500">wants to connect</p>
+                            </div>
+                            <button
+                                onClick={() => acceptFriend(u.id)}
+                                className="text-[10px] font-bold bg-lime text-oled px-3 py-1.5 rounded-lg active:scale-95 transition"
+                            >
+                                Accept
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Friends List */}
+            {friends.length === 0 ? (
+                <p className="text-sm text-gray-500">No friends yet. Discover people and add them!</p>
+            ) : (
+                <div className="flex flex-wrap gap-2">
+                    {friends.map(f => (
+                        <div key={f.id} className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-2.5 py-2 border border-gray-800">
+                            <img src={f.profile_image_url} alt={f.name} className="w-7 h-7 rounded-full border border-gray-700 object-cover" />
+                            <div className="min-w-0">
+                                <p className="text-xs font-semibold text-white truncate max-w-[80px]">{f.name.split(' ')[0]}</p>
+                                <p className="text-[9px] text-gray-500">{f.fitness_level}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

@@ -2,9 +2,11 @@ import { User, ALL_TIME_BLOCKS } from '../types/database';
 import { mockGyms } from '../lib/mock';
 import {
     X, Dumbbell, MapPin, Zap, GraduationCap, Flame,
-    Award, CalendarDays, Target, MessageSquare
+    Award, CalendarDays, Target, MessageSquare, UserPlus, UserCheck, Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useFriends } from '../context/FriendsContext';
+import { useToast } from '../context/ToastContext';
 
 interface ProfileDetailProps {
     user: User | null;
@@ -159,17 +161,63 @@ export default function ProfileDetail({ user, isOpen, onClose, onRequest }: Prof
                                 </div>
                             )}
 
-                            {/* Action Button */}
-                            <button
-                                onClick={() => { onClose(); onRequest(user); }}
-                                className="w-full py-4 rounded-xl bg-lime text-oled font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-lime/90 active:scale-[0.98] transition-all shadow-[0_0_30px_-5px_rgba(50,255,50,0.3)]"
-                            >
-                                <Dumbbell size={18} /> Request Workout with {user.name.split(' ')[0]}
-                            </button>
+                            {/* Action Buttons */}
+                            <div className="flex gap-2">
+                                <FriendButton userId={user.id} />
+                                <button
+                                    onClick={() => { onClose(); onRequest(user); }}
+                                    className="flex-1 py-4 rounded-xl bg-lime text-oled font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-lime/90 active:scale-[0.98] transition-all shadow-[0_0_30px_-5px_rgba(50,255,50,0.3)]"
+                                >
+                                    <Dumbbell size={18} /> Workout
+                                </button>
+                            </div>
                         </div>
                     </motion.div>
                 </>
             )}
         </AnimatePresence>
+    );
+}
+
+// Friend button sub-component
+function FriendButton({ userId }: { userId: string }) {
+    const { getFriendStatus, sendFriendRequest, acceptFriend, removeFriend } = useFriends();
+    const { showToast } = useToast();
+    const status = getFriendStatus(userId);
+
+    if (status === 'friends') {
+        return (
+            <button
+                onClick={() => { removeFriend(userId); showToast('Friend removed', 'info'); }}
+                className="py-4 px-5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+            >
+                <UserCheck size={18} /> Friends
+            </button>
+        );
+    }
+    if (status === 'pending_sent') {
+        return (
+            <button disabled className="py-4 px-5 rounded-xl bg-gray-800 border border-gray-700 text-gray-500 font-bold text-sm flex items-center justify-center gap-2 cursor-not-allowed">
+                <Clock size={18} /> Pending
+            </button>
+        );
+    }
+    if (status === 'pending_received') {
+        return (
+            <button
+                onClick={() => { acceptFriend(userId); showToast('Friend added! 🎉'); }}
+                className="py-4 px-5 rounded-xl bg-lime/10 border border-lime/30 text-lime font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all animate-pulse"
+            >
+                <UserPlus size={18} /> Accept
+            </button>
+        );
+    }
+    return (
+        <button
+            onClick={() => { sendFriendRequest(userId); showToast('Friend request sent!'); }}
+            className="py-4 px-5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-500/20 active:scale-[0.98] transition-all"
+        >
+            <UserPlus size={18} /> Add
+        </button>
     );
 }
