@@ -276,7 +276,7 @@ export default function Onboarding() {
                                             className="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 mb-4">
                                             <span className="text-xl">{rank.icon}</span>
                                             <span className="text-sm font-bold" style={{ color: rank.color }}>{rank.name}</span>
-                                            <span className="text-[10px] text-gray-500 ml-auto">{lifts.bench + lifts.squat + lifts.deadlift + lifts.ohp} lbs total</span>
+                                            <span className="text-[10px] text-gray-500 ml-auto">{lifts.bench + lifts.squat + lifts.deadlift + lifts.ohp} {unitPref} total</span>
                                         </motion.div>
                                     )}
                                 </motion.div>
@@ -301,7 +301,7 @@ export default function Onboarding() {
                                                     onChange={e => setLifts(prev => ({ ...prev, [lift.key]: Number(e.target.value) || 0 }))}
                                                     placeholder="0"
                                                     className="w-20 bg-oled border border-gray-700 text-white text-sm font-bold rounded-lg px-3 py-2 focus:outline-none focus:border-lime text-center" />
-                                                <span className="text-[10px] text-gray-500">lbs</span>
+                                                <span className="text-[10px] text-gray-500">{unitPref}</span>
                                             </div>
                                         </motion.div>
                                     ))}
