@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { GymProvider } from './context/GymContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -16,28 +17,30 @@ function App() {
     return (
         <Router>
             <AuthProvider>
-                <Routes>
-                    {/* Public Routes */}
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/signup" element={<Signup />} />
+                <GymProvider>
+                    <Routes>
+                        {/* Public Routes */}
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/signup" element={<Signup />} />
 
-                    {/* Protected Route for Profile Setup */}
-                    <Route path="/create-profile" element={
-                        <ProtectedRoute>
-                            <CreateProfile />
-                        </ProtectedRoute>
-                    } />
+                        {/* Protected Route for Profile Setup */}
+                        <Route path="/create-profile" element={
+                            <ProtectedRoute>
+                                <CreateProfile />
+                            </ProtectedRoute>
+                        } />
 
-                    {/* Protected Tab Routes under App Shell */}
-                    <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-                        <Route path="/" element={<Home />} />
-                        <Route path="/search" element={<Search />} />
-                        <Route path="/notifications" element={<Notifications />} />
-                        <Route path="/workouts" element={<Workouts />} />
-                        <Route path="/messages" element={<Messages />} />
-                        <Route path="/profile" element={<Profile />} />
-                    </Route>
-                </Routes>
+                        {/* Protected Tab Routes under App Shell */}
+                        <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                            <Route path="/" element={<Home />} />
+                            <Route path="/search" element={<Search />} />
+                            <Route path="/notifications" element={<Notifications />} />
+                            <Route path="/workouts" element={<Workouts />} />
+                            <Route path="/messages" element={<Messages />} />
+                            <Route path="/profile" element={<Profile />} />
+                        </Route>
+                    </Routes>
+                </GymProvider>
             </AuthProvider>
         </Router>
     );

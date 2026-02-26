@@ -1,13 +1,14 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import GridCard from '../components/ProfileCard';
 import ProfileDetail from '../components/ProfileDetail';
-import { mockUsers, mockGyms } from '../lib/mock';
-import { User, Goal, DayOfWeek, TimeBlock, ALL_GOALS, ALL_DAYS, ALL_TIME_BLOCKS, Gym } from '../types/database';
+import { mockUsers } from '../lib/mock';
+import { User, Goal, DayOfWeek, TimeBlock, ALL_GOALS, ALL_DAYS, ALL_TIME_BLOCKS } from '../types/database';
 import { useAuth } from '../context/AuthContext';
-import { Ghost, SlidersHorizontal, X, GraduationCap, Calendar, Target, MapPin, Navigation } from 'lucide-react';
+import { useGyms } from '../context/GymContext';
+import { Ghost, SlidersHorizontal, X, GraduationCap, Calendar, Target, MapPin, Navigation, Plus, Loader2 } from 'lucide-react';
 import RequestModal from '../components/RequestModal';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GeoCoords, getCurrentPosition, haversineDistance, formatDistance } from '../lib/location';
+import { formatDistance } from '../lib/location';
 
 export default function Home() {
     const { user } = useAuth();
@@ -21,34 +22,13 @@ export default function Home() {
     const [filterLevel, setFilterLevel] = useState<string | null>(null);
     const [filterGym, setFilterGym] = useState<string | null>(null);
 
-    // Location state
-    const [userLocation, setUserLocation] = useState<GeoCoords | null>(null);
-    const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'granted' | 'denied'>('idle');
+    // Gym discovery from context
+    const { gyms: sortedGyms, locationStatus, isLoadingGyms, getDistance, addCustomGym } = useGyms();
 
-    // Ask for location on mount
-    useEffect(() => {
-        setLocationStatus('loading');
-        getCurrentPosition()
-            .then(coords => {
-                setUserLocation(coords);
-                setLocationStatus('granted');
-            })
-            .catch(() => setLocationStatus('denied'));
-    }, []);
-
-    // Gyms sorted by distance
-    const sortedGyms = useMemo(() => {
-        if (!userLocation) return mockGyms;
-        return [...mockGyms].sort((a, b) =>
-            haversineDistance(userLocation, { lat: a.lat, lng: a.lng }) -
-            haversineDistance(userLocation, { lat: b.lat, lng: b.lng })
-        );
-    }, [userLocation]);
-
-    const getGymDistance = (gym: Gym) => {
-        if (!userLocation) return null;
-        return haversineDistance(userLocation, { lat: gym.lat, lng: gym.lng });
-    };
+    // Add Gym modal
+    const [showAddGym, setShowAddGym] = useState(false);
+    const [newGymName, setNewGymName] = useState('');
+    const [newGymLocation, setNewGymLocation] = useState('');
 
     // Request Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -179,31 +159,57 @@ export default function Home() {
 
                             {/* Nearby Gym Filter */}
                             <div>
-                                <span className="text-xs font-semibold text-gray-400 flex items-center gap-1 mb-2"><MapPin size={12} /> Nearby Gym</span>
-                                <div className="space-y-1.5">
-                                    {sortedGyms.map(g => {
-                                        const dist = getGymDistance(g);
-                                        return (
-                                            <button
-                                                key={g.id}
-                                                onClick={() => setFilterGym(filterGym === g.id ? null : g.id)}
-                                                className={`w-full flex items-center gap-2 text-left px-3 py-2 rounded-xl border text-xs transition-all ${filterGym === g.id
-                                                    ? 'bg-lime/10 border-lime/40 text-lime'
-                                                    : 'bg-gray-900 border-gray-800 text-gray-400 hover:border-gray-600'
-                                                    }`}
-                                            >
-                                                <MapPin size={12} className={filterGym === g.id ? 'text-lime' : 'text-gray-600'} />
-                                                <span className="flex-1 font-semibold">{g.name}</span>
-                                                <span className="text-[10px] text-gray-500">{g.location}</span>
-                                                {dist !== null && (
-                                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${dist < 3 ? 'bg-lime/10 text-lime' : 'bg-gray-800 text-gray-500'}`}>
-                                                        {formatDistance(dist)}
-                                                    </span>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                                <span className="text-xs font-semibold text-gray-400 flex items-center gap-1 mb-2"><MapPin size={12} /> Nearby Gyms</span>
+                                {isLoadingGyms ? (
+                                    <div className="flex items-center justify-center gap-2 py-4 text-gray-500 text-xs">
+                                        <Loader2 size={14} className="animate-spin" /> Discovering gyms near you...
+                                    </div>
+                                ) : sortedGyms.length === 0 ? (
+                                    <div className="text-center py-3">
+                                        <p className="text-xs text-gray-500 mb-2">
+                                            {locationStatus === 'denied' ? 'Location access denied.' : 'No gyms found nearby.'}
+                                        </p>
+                                        <button
+                                            onClick={() => setShowAddGym(true)}
+                                            className="text-xs text-lime hover:underline"
+                                        >
+                                            + Add your gym
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                                            {sortedGyms.map(g => {
+                                                const dist = getDistance(g);
+                                                return (
+                                                    <button
+                                                        key={g.id}
+                                                        onClick={() => setFilterGym(filterGym === g.id ? null : g.id)}
+                                                        className={`w-full flex items-center gap-2 text-left px-3 py-2 rounded-xl border text-xs transition-all ${filterGym === g.id
+                                                            ? 'bg-lime/10 border-lime/40 text-lime'
+                                                            : 'bg-gray-900 border-gray-800 text-gray-400 hover:border-gray-600'
+                                                            }`}
+                                                    >
+                                                        <MapPin size={12} className={filterGym === g.id ? 'text-lime' : 'text-gray-600'} />
+                                                        <span className="flex-1 font-semibold truncate">{g.name}</span>
+                                                        <span className="text-[10px] text-gray-500 truncate max-w-[60px]">{g.location}</span>
+                                                        {dist !== null && (
+                                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${dist < 3 ? 'bg-lime/10 text-lime' : 'bg-gray-800 text-gray-500'}`}>
+                                                                {formatDistance(dist)}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        <button
+                                            onClick={() => setShowAddGym(true)}
+                                            className="w-full mt-1.5 py-2 rounded-xl bg-gray-900 border border-gray-800 border-dashed text-gray-500 text-[10px] font-medium hover:border-lime/30 hover:text-gray-400 transition-colors flex items-center justify-center gap-1"
+                                        >
+                                            <Plus size={10} /> Can't find your gym? Add it
+                                        </button>
+                                    </>
+                                )}
                             </div>
                             <div>
                                 <span className="text-xs font-semibold text-gray-400 flex items-center gap-1 mb-2"><Target size={12} /> Goal</span>
@@ -320,6 +326,58 @@ export default function Home() {
                 onClose={() => setIsDetailOpen(false)}
                 onRequest={handleRequest}
             />
+
+            {/* Add Your Gym Modal */}
+            <AnimatePresence>
+                {showAddGym && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-sm p-6"
+                        >
+                            <h3 className="font-bold text-lg text-white mb-1">Add Your Gym</h3>
+                            <p className="text-xs text-gray-500 mb-4">We'll pin it to your current location.</p>
+                            <div className="space-y-3 mb-5">
+                                <input
+                                    type="text"
+                                    value={newGymName}
+                                    onChange={(e) => setNewGymName(e.target.value)}
+                                    placeholder="Gym name (e.g. Gold's Gym Kuta)"
+                                    className="w-full bg-oled border border-gray-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-lime"
+                                    autoFocus
+                                />
+                                <input
+                                    type="text"
+                                    value={newGymLocation}
+                                    onChange={(e) => setNewGymLocation(e.target.value)}
+                                    placeholder="Area / neighborhood (e.g. Seminyak)"
+                                    className="w-full bg-oled border border-gray-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-lime"
+                                />
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => { setShowAddGym(false); setNewGymName(''); setNewGymLocation(''); }}
+                                    className="flex-1 py-2.5 rounded-xl bg-gray-800 text-white font-medium hover:bg-gray-700 transition"
+                                >Cancel</button>
+                                <button
+                                    onClick={() => {
+                                        if (newGymName.trim()) {
+                                            addCustomGym(newGymName.trim(), newGymLocation.trim() || 'My Area');
+                                            setShowAddGym(false);
+                                            setNewGymName('');
+                                            setNewGymLocation('');
+                                        }
+                                    }}
+                                    disabled={!newGymName.trim()}
+                                    className="flex-1 py-2.5 rounded-xl bg-lime text-oled font-bold hover:bg-lime/90 transition disabled:opacity-30"
+                                >Add Gym</button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
