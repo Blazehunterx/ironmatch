@@ -1,9 +1,12 @@
 import { User, Gym, Post, Match } from '../types/database';
 
 export const mockGyms: Gym[] = [
-    { id: 'g1', name: 'Iron Forge', location: 'Downtown', member_count: 342 },
-    { id: 'g2', name: 'Metro Fitness', location: 'Westside', member_count: 128 },
-    { id: 'g3', name: 'Peak Performance', location: 'North Hills', member_count: 512 }
+    { id: 'g1', name: 'Iron Forge', location: 'Downtown Core', member_count: 342, lat: 1.2837, lng: 103.8512 },
+    { id: 'g2', name: 'Metro Fitness', location: 'Orchard', member_count: 128, lat: 1.3048, lng: 103.8318 },
+    { id: 'g3', name: 'Peak Performance', location: 'Tanjong Pagar', member_count: 512, lat: 1.2764, lng: 103.8461 },
+    { id: 'g4', name: 'PowerHouse Gym', location: 'Bugis', member_count: 245, lat: 1.3003, lng: 103.8554 },
+    { id: 'g5', name: 'FitLab Studio', location: 'Holland Village', member_count: 89, lat: 1.3112, lng: 103.7958 },
+    { id: 'g6', name: 'Titan Strength', location: 'Clementi', member_count: 167, lat: 1.3148, lng: 103.7653 },
 ];
 
 export const mockUsers: User[] = [

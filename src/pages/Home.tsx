@@ -1,12 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import GridCard from '../components/ProfileCard';
 import ProfileDetail from '../components/ProfileDetail';
-import { mockUsers } from '../lib/mock';
-import { User, Goal, DayOfWeek, TimeBlock, ALL_GOALS, ALL_DAYS, ALL_TIME_BLOCKS } from '../types/database';
+import { mockUsers, mockGyms } from '../lib/mock';
+import { User, Goal, DayOfWeek, TimeBlock, ALL_GOALS, ALL_DAYS, ALL_TIME_BLOCKS, Gym } from '../types/database';
 import { useAuth } from '../context/AuthContext';
-import { Ghost, SlidersHorizontal, X, GraduationCap, Calendar, Target } from 'lucide-react';
+import { Ghost, SlidersHorizontal, X, GraduationCap, Calendar, Target, MapPin, Navigation } from 'lucide-react';
 import RequestModal from '../components/RequestModal';
 import { motion, AnimatePresence } from 'framer-motion';
+import { GeoCoords, getCurrentPosition, haversineDistance, formatDistance } from '../lib/location';
 
 export default function Home() {
     const { user } = useAuth();
@@ -18,6 +19,36 @@ export default function Home() {
     const [filterDay, setFilterDay] = useState<DayOfWeek | null>(null);
     const [filterTime, setFilterTime] = useState<TimeBlock | null>(null);
     const [filterLevel, setFilterLevel] = useState<string | null>(null);
+    const [filterGym, setFilterGym] = useState<string | null>(null);
+
+    // Location state
+    const [userLocation, setUserLocation] = useState<GeoCoords | null>(null);
+    const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'granted' | 'denied'>('idle');
+
+    // Ask for location on mount
+    useEffect(() => {
+        setLocationStatus('loading');
+        getCurrentPosition()
+            .then(coords => {
+                setUserLocation(coords);
+                setLocationStatus('granted');
+            })
+            .catch(() => setLocationStatus('denied'));
+    }, []);
+
+    // Gyms sorted by distance
+    const sortedGyms = useMemo(() => {
+        if (!userLocation) return mockGyms;
+        return [...mockGyms].sort((a, b) =>
+            haversineDistance(userLocation, { lat: a.lat, lng: a.lng }) -
+            haversineDistance(userLocation, { lat: b.lat, lng: b.lng })
+        );
+    }, [userLocation]);
+
+    const getGymDistance = (gym: Gym) => {
+        if (!userLocation) return null;
+        return haversineDistance(userLocation, { lat: gym.lat, lng: gym.lng });
+    };
 
     // Request Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -46,6 +77,10 @@ export default function Home() {
             result = result.filter(u => u.fitness_level === filterLevel);
         }
 
+        if (filterGym) {
+            result = result.filter(u => u.home_gym === filterGym);
+        }
+
         if (filterDay) {
             result = result.filter(u => {
                 const daySlot = u.availability?.find(a => a.day === filterDay);
@@ -58,9 +93,9 @@ export default function Home() {
         }
 
         return result;
-    }, [allUsers, filterTrainer, filterGoal, filterDay, filterTime, filterLevel]);
+    }, [allUsers, filterTrainer, filterGoal, filterDay, filterTime, filterLevel, filterGym]);
 
-    const activeFilterCount = [filterTrainer, filterGoal, filterDay, filterTime, filterLevel].filter(Boolean).length;
+    const activeFilterCount = [filterTrainer, filterGoal, filterDay, filterTime, filterLevel, filterGym].filter(Boolean).length;
 
     const handleRequest = (u: User) => {
         setTargetUser(u);
@@ -78,6 +113,7 @@ export default function Home() {
         setFilterDay(null);
         setFilterTime(null);
         setFilterLevel(null);
+        setFilterGym(null);
     };
 
     const handleViewProfile = (u: User) => {
@@ -91,7 +127,10 @@ export default function Home() {
             <div className="flex items-center justify-between px-4 pt-4 mb-3">
                 <div>
                     <h1 className="text-2xl font-extrabold text-white tracking-tight">Discover</h1>
-                    <p className="text-xs text-gray-500 mt-0.5">{filteredUsers.length} partner{filteredUsers.length !== 1 ? 's' : ''} found</p>
+                    <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                        {locationStatus === 'granted' && <Navigation size={9} className="text-lime" />}
+                        {filteredUsers.length} partner{filteredUsers.length !== 1 ? 's' : ''} nearby
+                    </p>
                 </div>
                 <button
                     onClick={() => setShowFilters(!showFilters)}
@@ -138,7 +177,34 @@ export default function Home() {
                                 </label>
                             </div>
 
-                            {/* Goal Filter */}
+                            {/* Nearby Gym Filter */}
+                            <div>
+                                <span className="text-xs font-semibold text-gray-400 flex items-center gap-1 mb-2"><MapPin size={12} /> Nearby Gym</span>
+                                <div className="space-y-1.5">
+                                    {sortedGyms.map(g => {
+                                        const dist = getGymDistance(g);
+                                        return (
+                                            <button
+                                                key={g.id}
+                                                onClick={() => setFilterGym(filterGym === g.id ? null : g.id)}
+                                                className={`w-full flex items-center gap-2 text-left px-3 py-2 rounded-xl border text-xs transition-all ${filterGym === g.id
+                                                    ? 'bg-lime/10 border-lime/40 text-lime'
+                                                    : 'bg-gray-900 border-gray-800 text-gray-400 hover:border-gray-600'
+                                                    }`}
+                                            >
+                                                <MapPin size={12} className={filterGym === g.id ? 'text-lime' : 'text-gray-600'} />
+                                                <span className="flex-1 font-semibold">{g.name}</span>
+                                                <span className="text-[10px] text-gray-500">{g.location}</span>
+                                                {dist !== null && (
+                                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${dist < 3 ? 'bg-lime/10 text-lime' : 'bg-gray-800 text-gray-500'}`}>
+                                                        {formatDistance(dist)}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                             <div>
                                 <span className="text-xs font-semibold text-gray-400 flex items-center gap-1 mb-2"><Target size={12} /> Goal</span>
                                 <div className="flex flex-wrap gap-1.5">

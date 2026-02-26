@@ -58,6 +58,8 @@ export interface Gym {
     name: string;
     location: string;
     member_count: number;
+    lat: number;
+    lng: number;
 }
 
 export interface Post {
