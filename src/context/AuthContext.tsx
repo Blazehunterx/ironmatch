@@ -98,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     if (foundUser) {
                         setUser(foundUser);
                         localStorage.setItem('ironmatch_user', JSON.stringify(foundUser));
+                        localStorage.setItem('ironmatch_remembered_email', foundUser.email);
                         resolve();
                     } else {
                         reject(new Error('User not found. Try alex@example.com'));
@@ -113,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (error) throw new Error(error.message);
         if (data.user) {
+            localStorage.setItem('ironmatch_remembered_email', email);
             const profile = await fetchProfile(data.user.id);
             if (profile) setUser(profile);
         }
@@ -168,6 +170,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // After signup, update the auto-created profile with the name
         if (data.user) {
+            if (userData.email) {
+                localStorage.setItem('ironmatch_remembered_email', userData.email);
+            }
             await supabase.from('profiles').update({
                 name: userData.name || '',
             }).eq('id', data.user.id);

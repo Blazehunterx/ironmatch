@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Dumbbell, ArrowRight } from 'lucide-react';
 
 export default function Login() {
-    const [email, setEmail] = useState('');
+    const [email, setEmail] = useState(() => localStorage.getItem('ironmatch_remembered_email') || '');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
