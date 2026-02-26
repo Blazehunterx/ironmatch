@@ -1,9 +1,8 @@
--- IronMatch Database Schema
+-- IronMatch Database Schema (idempotent - safe to re-run)
 -- Run this in Supabase SQL Editor (Dashboard > SQL Editor > New Query)
 
 -- ═══ PROFILES TABLE ═══
--- Linked to Supabase Auth users via id
-CREATE TABLE IF NOT EXISTS profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     name TEXT NOT NULL DEFAULT '',
     email TEXT,
@@ -21,54 +20,57 @@ CREATE TABLE IF NOT EXISTS profiles (
     reliability_streak INTEGER DEFAULT 0,
     goals TEXT[] DEFAULT '{}',
     sub_goals TEXT[] DEFAULT '{}',
-    availability JSONB DEFAULT '[]',
-    big4 JSONB DEFAULT '{"bench": 0, "squat": 0, "deadlift": 0, "ohp": 0}',
+    availability JSONB DEFAULT '[]'::jsonb,
+    big4 JSONB DEFAULT '{"bench": 0, "squat": 0, "deadlift": 0, "ohp": 0}'::jsonb,
     friends TEXT[] DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable Row Level Security
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+-- Enable RLS
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- Users can read all profiles (for discovery)
+-- Drop existing policies first (safe to re-run)
+DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+
+-- Recreate policies
 CREATE POLICY "Profiles are viewable by everyone"
-    ON profiles FOR SELECT
-    USING (true);
+    ON public.profiles FOR SELECT USING (true);
 
--- Users can only update their own profile
 CREATE POLICY "Users can update own profile"
-    ON profiles FOR UPDATE
-    USING (auth.uid() = id);
+    ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
--- Users can insert their own profile
 CREATE POLICY "Users can insert own profile"
-    ON profiles FOR INSERT
-    WITH CHECK (auth.uid() = id);
+    ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- Auto-create profile on signup
-CREATE OR REPLACE FUNCTION handle_new_user()
+CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO profiles (id, email, name)
+    INSERT INTO public.profiles (id, email, name)
     VALUES (
         NEW.id,
         NEW.email,
         COALESCE(NEW.raw_user_meta_data->>'name', '')
     );
     RETURN NEW;
+EXCEPTION
+    WHEN others THEN
+        -- If insert fails, log but don't prevent user signup
+        RAISE LOG 'Error creating profile: %', SQLERRM;
+        RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- Drop trigger if exists, then create
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
-    FOR EACH ROW
-    EXECUTE FUNCTION handle_new_user();
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- Updated_at auto-update
-CREATE OR REPLACE FUNCTION update_updated_at()
+CREATE OR REPLACE FUNCTION public.update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = now();
@@ -76,8 +78,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS profiles_updated_at ON profiles;
+DROP TRIGGER IF EXISTS profiles_updated_at ON public.profiles;
 CREATE TRIGGER profiles_updated_at
-    BEFORE UPDATE ON profiles
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at();
+    BEFORE UPDATE ON public.profiles
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
