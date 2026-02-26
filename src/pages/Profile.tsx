@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { mockGyms } from '../lib/mock';
 import {
     LogOut, Settings, Award, Flame, Activity, Edit2, Check, X, Camera,
-    Target, CalendarDays, Dumbbell, Ruler
+    Target, CalendarDays, Dumbbell, Ruler, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -168,6 +168,9 @@ export default function Profile() {
                     {user.is_trainer && (
                         <span className="text-xs bg-lime/20 text-lime px-2 py-0.5 rounded-full border border-lime/30 tracking-wide">TRAINER</span>
                     )}
+                    {user.discipline && user.discipline !== 'General Fitness' && (
+                        <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full border border-purple-500/30">{user.discipline}</span>
+                    )}
                 </h3>
                 <p className="text-gray-400 mt-1 flex items-center gap-1">
                     {homeGym?.name} • {homeGym?.location}
@@ -185,7 +188,7 @@ export default function Profile() {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-4 gap-2 mb-4">
                 <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
                     <Award size={20} className="text-lime mb-1" />
                     <div className="text-[10px] text-gray-400">Level</div>
@@ -200,6 +203,11 @@ export default function Profile() {
                     <Ruler size={20} className="text-blue-400 mb-1" />
                     <div className="text-[10px] text-gray-400">Body</div>
                     <div className="text-xs font-bold text-white">{user.weight_kg || '?'}kg • {user.height_cm || '?'}cm</div>
+                </div>
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
+                    <Zap size={20} className="text-yellow-400 mb-1" />
+                    <div className="text-[10px] text-gray-400">XP</div>
+                    <div className="text-xs font-bold text-yellow-400">{(user.xp || 0).toLocaleString()}</div>
                 </div>
             </div>
 
@@ -391,7 +399,37 @@ export default function Profile() {
                 )}
             </div>
 
-            {/* Availability Section */}
+            {/* Recent Workout History */}
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4">
+                <h4 className="font-semibold text-white flex items-center gap-2 mb-3">
+                    <Dumbbell size={16} className="text-lime" /> Recent Workouts
+                </h4>
+                <div className="space-y-2">
+                    {[
+                        { name: 'Push Day Destroyer', target: 'Chest', duration: 62, completed: 3, total: 4, date: '2 days ago' },
+                        { name: 'Leg Day', target: 'Legs', duration: 55, completed: 5, total: 5, date: '4 days ago' },
+                        { name: 'Pull Day', target: 'Back', duration: 48, completed: 4, total: 5, date: '6 days ago' },
+                    ].map((w, idx) => (
+                        <motion.div key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }}
+                            className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-800/50 border border-gray-800">
+                            <div className="w-10 h-10 rounded-xl bg-lime/10 border border-lime/20 flex items-center justify-center shrink-0">
+                                <Dumbbell size={16} className="text-lime" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-white truncate">{w.name}</p>
+                                <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                                    <span>{w.target}</span>
+                                    <span>•</span>
+                                    <span>{w.duration}min</span>
+                                    <span>•</span>
+                                    <span className="text-lime">{w.completed}/{w.total} done</span>
+                                </div>
+                            </div>
+                            <span className="text-[10px] text-gray-600 shrink-0">{w.date}</span>
+                        </motion.div>
+                    ))}
+                </div>
+            </div>
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4">
                 <div className="flex justify-between items-center mb-3">
                     <h4 className="font-semibold text-white flex items-center gap-2"><CalendarDays size={16} className="text-lime" /> Availability</h4>
