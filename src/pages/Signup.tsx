@@ -18,7 +18,7 @@ export default function Signup() {
             setError('');
             setLoading(true);
             await signup({ email, name }); // basic partial profile
-            navigate('/');
+            navigate('/onboarding');
         } catch (err: any) {
             setError(err.message || 'Failed to create account');
         } finally {

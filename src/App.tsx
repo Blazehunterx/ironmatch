@@ -12,7 +12,7 @@ import Workouts from './pages/Workouts';
 import Arena from './pages/Arena';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import CreateProfile from './pages/CreateProfile';
+import Onboarding from './pages/Onboarding';
 
 function App() {
     return (
@@ -24,10 +24,10 @@ function App() {
                         <Route path="/login" element={<Login />} />
                         <Route path="/signup" element={<Signup />} />
 
-                        {/* Protected Route for Profile Setup */}
-                        <Route path="/create-profile" element={
+                        {/* Onboarding (after signup) */}
+                        <Route path="/onboarding" element={
                             <ProtectedRoute>
-                                <CreateProfile />
+                                <Onboarding />
                             </ProtectedRoute>
                         } />
 
