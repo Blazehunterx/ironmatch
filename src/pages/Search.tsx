@@ -2,10 +2,7 @@ import { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { mockUsers } from '../lib/mock';
 import { useGyms } from '../context/GymContext';
-import {
-    Search as SearchIcon, Heart, MessageCircle, Send, Image as ImageIcon,
-    ChevronDown, MapPin, Users
-} from 'lucide-react';
+import { Heart, MessageCircle, MapPin, Users, ChevronDown, Search as SearchIcon, Image as ImageIcon, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Post } from '../types/database';
 
@@ -22,6 +19,7 @@ export default function Search() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedGym, setSelectedGym] = useState(user?.home_gym || 'g1');
     const [showGymPicker, setShowGymPicker] = useState(false);
+    const [searchGymQuery, setSearchGymQuery] = useState('');
     const [newPostText, setNewPostText] = useState('');
     const [newPostImage, setNewPostImage] = useState('');
     const [showNewPost, setShowNewPost] = useState(false);
@@ -111,7 +109,7 @@ export default function Search() {
     const handleNewPost = () => {
         if (!newPostText.trim() || !user) return;
         const post: EnhancedPost = {
-            id: `p${Date.now()}`,
+            id: `p${Date.now()} `,
             author_id: user.id,
             gym_id: selectedGym,
             content: newPostText,
@@ -201,7 +199,7 @@ export default function Search() {
                     <MapPin size={14} className="text-lime" />
                     <span className="text-sm font-semibold text-white flex-1 text-left">{gym?.name}</span>
                     <span className="text-[10px] text-gray-500 flex items-center gap-1"><Users size={10} /> {gym?.member_count}</span>
-                    <ChevronDown size={14} className={`text-gray-500 transition-transform ${showGymPicker ? 'rotate-180' : ''}`} />
+                    <ChevronDown size={14} className={`text - gray - 500 transition - transform ${showGymPicker ? 'rotate-180' : ''} `} />
                 </button>
                 <AnimatePresence>
                     {showGymPicker && (
@@ -212,20 +210,35 @@ export default function Search() {
                             className="overflow-hidden"
                         >
                             <div className="mt-2 bg-gray-900 border border-gray-800 rounded-xl divide-y divide-gray-800">
-                                {allGyms.map(g => (
-                                    <button
-                                        key={g.id}
-                                        onClick={() => { setSelectedGym(g.id); setShowGymPicker(false); }}
-                                        className={`w-full flex items-center gap-3 p-3 text-left transition-colors ${selectedGym === g.id ? 'bg-lime/5' : 'hover:bg-gray-800/50'}`}
-                                    >
-                                        <MapPin size={12} className={selectedGym === g.id ? 'text-lime' : 'text-gray-600'} />
-                                        <div className="flex-1">
-                                            <span className={`text-sm font-semibold ${selectedGym === g.id ? 'text-lime' : 'text-white'}`}>{g.name}</span>
-                                            <span className="text-xs text-gray-500 ml-2">{g.location}</span>
-                                        </div>
-                                        <span className="text-[10px] text-gray-600">{g.member_count} members</span>
-                                    </button>
-                                ))}
+                                <div className="p-2 border-b border-gray-800 flex items-center gap-2">
+                                    <SearchIcon size={14} className="text-gray-500 ml-1" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search gyms..."
+                                        value={searchGymQuery}
+                                        onChange={(e) => setSearchGymQuery(e.target.value)}
+                                        className="bg-transparent text-white text-sm w-full focus:outline-none placeholder:text-gray-600"
+                                    />
+                                </div>
+                                <div className="max-h-60 overflow-y-auto">
+                                    {allGyms
+                                        .filter(g => g.name.toLowerCase().includes(searchGymQuery.toLowerCase()))
+                                        .slice(0, 15)
+                                        .map(g => (
+                                            <button
+                                                key={g.id}
+                                                onClick={() => { setSelectedGym(g.id); setShowGymPicker(false); }}
+                                                className={`w - full flex items - center gap - 3 p - 3 text - left transition - colors ${selectedGym === g.id ? 'bg-lime/5' : 'hover:bg-gray-800/50'} `}
+                                            >
+                                                <MapPin size={12} className={selectedGym === g.id ? 'text-lime' : 'text-gray-600'} />
+                                                <div className="flex-1">
+                                                    <span className={`text - sm font - semibold ${selectedGym === g.id ? 'text-lime' : 'text-white'} `}>{g.name}</span>
+                                                    <span className="text-xs text-gray-500 ml-2">{g.location}</span>
+                                                </div>
+                                                <span className="text-[10px] text-gray-600">{g.member_count} members</span>
+                                            </button>
+                                        ))}
+                                </div>
                             </div>
                         </motion.div>
                     )}
@@ -331,7 +344,7 @@ export default function Search() {
                                 <div className="flex items-center gap-4 px-4 py-3 border-t border-gray-800/50">
                                     <button
                                         onClick={() => toggleLike(post.id)}
-                                        className={`flex items-center gap-1 text-xs font-semibold transition-colors ${post.liked ? 'text-red-500' : 'text-gray-500 hover:text-red-400'}`}
+                                        className={`flex items - center gap - 1 text - xs font - semibold transition - colors ${post.liked ? 'text-red-500' : 'text-gray-500 hover:text-red-400'} `}
                                     >
                                         <Heart size={16} className={post.liked ? 'fill-current' : ''} /> {post.likes}
                                     </button>

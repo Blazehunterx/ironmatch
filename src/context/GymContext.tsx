@@ -20,7 +20,7 @@ const GymContext = createContext<GymContextType | null>(null);
  * Query OpenStreetMap Overpass API for nearby gyms/fitness centers
  * Completely free, no API key, works worldwide
  */
-async function fetchNearbyGyms(coords: GeoCoords, radiusMeters = 20000): Promise<Gym[]> {
+async function fetchNearbyGyms(coords: GeoCoords, radiusMeters = 50000): Promise<Gym[]> {
     const query = `
         [out:json][timeout:15];
         (
@@ -61,7 +61,7 @@ async function fetchNearbyGyms(coords: GeoCoords, radiusMeters = 20000): Promise
                 lng: el.lon || el.center?.lon,
             }))
             .filter((g: Gym) => g.lat && g.lng)
-            .slice(0, 15); // cap at 15 nearby gyms
+            .slice(0, 50); // cap at 50 nearby gyms
     } catch (err) {
         console.warn('Overpass API failed, using fallback:', err);
         return [];
