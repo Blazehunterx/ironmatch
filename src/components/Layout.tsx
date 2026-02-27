@@ -10,10 +10,6 @@ export default function Layout() {
                         IRON<span className="text-white">MATCH</span>
                     </h1>
                 </div>
-                <div className="mt-1 flex items-center gap-2">
-                    <span className="text-[8px] px-1.5 py-0.5 bg-red-500 rounded text-white font-black animate-pulse">SYNC VERIFY: v2.0.4</span>
-                    <span className="text-[8px] text-gray-600 font-mono">DEBUG MODE ACTIVE</span>
-                </div>
             </header>
 
             <main className="flex-1 w-full max-w-md mx-auto">
