@@ -43,6 +43,12 @@ export default function GridCard({ user, index, onRequest, onViewProfile }: Grid
                         alt={user.name}
                         className="w-20 h-20 rounded-xl object-cover border-2 border-gray-800 group-hover:border-lime/30 transition-colors"
                     />
+                    {user.is_training && (
+                        <div className="absolute -bottom-1 -right-1 flex items-center gap-1 bg-lime px-1.5 py-0.5 rounded-full border border-gray-900 shadow-lg">
+                            <div className="w-1.5 h-1.5 rounded-full bg-oled animate-pulse" />
+                            <span className="text-[8px] font-black text-oled uppercase">Live</span>
+                        </div>
+                    )}
                     {user.is_trainer && (
                         <div className="absolute -top-1.5 -right-1.5 bg-lime text-oled text-[7px] font-black px-1 py-0.5 rounded flex items-center gap-0.5 shadow-md">
                             <GraduationCap size={8} /> PT

@@ -29,6 +29,10 @@ export default function Login() {
         <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-oled">
             <div className="w-full max-w-sm space-y-8">
                 <div className="flex flex-col items-center justify-center text-center">
+                    <div className="mt-1 flex items-center gap-2 mb-4">
+                        <span className="text-[8px] px-1.5 py-0.5 bg-red-500 rounded text-white font-black animate-pulse">SYNC VERIFY: v2.0.4</span>
+                        <span className="text-[8px] text-gray-600 font-mono text-[6px]">DEBUG MODE</span>
+                    </div>
                     <div className="p-3 mb-4 rounded-full bg-lime/10">
                         <Dumbbell className="w-12 h-12 text-lime" />
                     </div>
@@ -52,6 +56,7 @@ export default function Login() {
                                 id="email"
                                 name="email"
                                 type="email"
+                                autoComplete="username"
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -67,6 +72,7 @@ export default function Login() {
                                 id="password"
                                 name="password"
                                 type="password"
+                                autoComplete="current-password"
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -74,6 +80,12 @@ export default function Login() {
                                 placeholder="••••••••"
                             />
                         </div>
+                    </div>
+
+                    <div className="flex items-center justify-end">
+                        <Link to="/forgot-password" title="Click to reset your password" className="text-xs font-semibold text-lime hover:text-lime/80 transition-colors">
+                            Forgot your password?
+                        </Link>
                     </div>
 
                     <button

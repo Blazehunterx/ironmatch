@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useGyms } from '../context/GymContext';
 import {
     LogOut, Settings, Award, Flame, Activity, Edit2, Check, X, Camera,
-    Target, CalendarDays, Dumbbell, Ruler, Zap, Users
+    Target, CalendarDays, Dumbbell, Ruler, Zap, Users, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFriends } from '../context/FriendsContext';
@@ -30,8 +30,7 @@ export default function Profile() {
     const [isTrainer, setIsTrainer] = useState(user?.is_trainer || false);
     const [fitnessLevel, setFitnessLevel] = useState(user?.fitness_level || 'Beginner');
     const [unitPref, setUnitPref] = useState<'lbs' | 'kg'>(user?.unit_preference || 'lbs');
-    const toDisplay = (lbs: number) => unitPref === 'kg' ? Math.round(lbs * 0.453592) : lbs;
-    const toLbs = (val: number) => unitPref === 'kg' ? Math.round(val * 2.20462) : val;
+    const toDisplay = (val: number) => val;
     const unitLabel = unitPref;
 
     // Image
@@ -181,11 +180,11 @@ export default function Profile() {
                 {/* Rank Badge */}
                 {user.big4 && (
                     <div className="mt-2 flex items-center gap-2">
-                        <span className="text-lg">{getRankFromLifts(user.big4).icon}</span>
-                        <span className="text-sm font-bold" style={{ color: getRankFromLifts(user.big4).color }}>
-                            {getRankFromLifts(user.big4).name}
+                        <span className="text-lg">{getRankFromLifts(user.big4, user.unit_preference).icon}</span>
+                        <span className="text-sm font-bold" style={{ color: getRankFromLifts(user.big4, user.unit_preference).color }}>
+                            {getRankFromLifts(user.big4, user.unit_preference).name}
                         </span>
-                        <span className="text-[10px] text-gray-500">{toDisplay(getBig4Total(user.big4))}{unitLabel} total</span>
+                        <span className="text-[10px] text-gray-500">{getBig4Total(user.big4)}{unitLabel} total</span>
                     </div>
                 )}
             </div>
@@ -222,14 +221,7 @@ export default function Profile() {
                     </h4>
                     <button
                         onClick={() => {
-                            const currentLifts = user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 };
-                            // Load display values into editor
-                            setTempLifts({
-                                bench: toDisplay(currentLifts.bench),
-                                squat: toDisplay(currentLifts.squat),
-                                deadlift: toDisplay(currentLifts.deadlift),
-                                ohp: toDisplay(currentLifts.ohp),
-                            });
+                            setTempLifts(user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 });
                             setTempWeight(user.weight_kg || 0);
                             setTempHeight(user.height_cm || 0);
                             setIsEditingPRs(!isEditingPRs);
@@ -269,18 +261,11 @@ export default function Profile() {
                             </div>
                         ))}
                         <div className="flex items-center justify-between pt-1">
-                            <span className="text-xs text-gray-500">New rank: <span className="font-bold" style={{ color: getRankFromLifts(tempLifts).color }}>{getRankFromLifts(tempLifts).icon} {getRankFromLifts(tempLifts).name}</span></span>
+                            <span className="text-xs text-gray-500">New rank: <span className="font-bold" style={{ color: getRankFromLifts(tempLifts, unitPref).color }}>{getRankFromLifts(tempLifts, unitPref).icon} {getRankFromLifts(tempLifts, unitPref).name}</span></span>
                             <div className="flex gap-2">
                                 <button onClick={() => setIsEditingPRs(false)} className="p-2 text-gray-400 hover:text-white rounded-lg"><X size={18} /></button>
                                 <button onClick={() => {
-                                    // Convert display values back to lbs for storage
-                                    const savedLifts = {
-                                        bench: toLbs(tempLifts.bench),
-                                        squat: toLbs(tempLifts.squat),
-                                        deadlift: toLbs(tempLifts.deadlift),
-                                        ohp: toLbs(tempLifts.ohp),
-                                    };
-                                    updateUser({ big4: savedLifts, weight_kg: tempWeight, height_cm: tempHeight });
+                                    updateUser({ big4: tempLifts, weight_kg: tempWeight, height_cm: tempHeight });
                                     setIsEditingPRs(false);
                                 }} className="p-2 text-lime hover:bg-lime/20 rounded-lg"><Check size={18} /></button>
                             </div>
@@ -559,17 +544,43 @@ export default function Profile() {
                                 <div className="flex flex-col gap-2 pt-4 border-t border-gray-800">
                                     <div>
                                         <h4 className="font-semibold text-white">Weight Unit</h4>
-                                        <p className="text-xs text-gray-400 mt-1">Choose how your Big 4 lifts are displayed.</p>
+                                        <div className="flex gap-2 mt-2">
+                                            {(['lbs', 'kg'] as const).map(u => (
+                                                <button key={u} onClick={() => { setUnitPref(u); updateUser({ unit_preference: u }); }}
+                                                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${unitPref === u
+                                                        ? 'bg-lime text-oled' : 'bg-gray-800 text-gray-400 border border-gray-700'}`}>
+                                                    {u.toUpperCase()}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="flex gap-2 mt-1">
-                                        {(['lbs', 'kg'] as const).map(u => (
-                                            <button key={u} onClick={() => { setUnitPref(u); updateUser({ unit_preference: u }); }}
-                                                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${unitPref === u
-                                                    ? 'bg-lime text-oled' : 'bg-gray-800 text-gray-400 border border-gray-700'}`}>
-                                                {u.toUpperCase()}
-                                            </button>
-                                        ))}
+                                </div>
+                                <div className="flex flex-col gap-2 pt-4 border-t border-gray-800">
+                                    <div>
+                                        <h4 className="font-semibold text-white">App Cache</h4>
+                                        <p className="text-xs text-gray-400 mt-1">If you are still seeing old data, try clearing the app cache.</p>
                                     </div>
+                                    <button
+                                        onClick={() => {
+                                            if (confirm('This will clear temporary data and reload the app. Continue?')) {
+                                                if ('serviceWorker' in navigator) {
+                                                    navigator.serviceWorker.getRegistrations().then(registrations => {
+                                                        for (let registration of registrations) {
+                                                            registration.unregister();
+                                                        }
+                                                    });
+                                                }
+                                                const authKey = Object.keys(localStorage).find(k => k.includes('auth-token') || k.includes('supabase.auth.token'));
+                                                const authVal = authKey ? localStorage.getItem(authKey) : null;
+                                                localStorage.clear();
+                                                if (authKey && authVal) localStorage.setItem(authKey, authVal);
+                                                window.location.reload();
+                                            }
+                                        }}
+                                        className="w-full py-3 bg-gray-800 border border-gray-700 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-gray-700 active:scale-95 transition-all"
+                                    >
+                                        <RefreshCw size={16} /> Force Refresh App
+                                    </button>
                                 </div>
                             </div>
                         </motion.div>

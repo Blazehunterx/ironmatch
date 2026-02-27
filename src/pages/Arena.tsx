@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { mockUsers } from '../lib/mock';
 import { useGyms } from '../context/GymContext';
 import { useAuth } from '../context/AuthContext';
@@ -11,9 +11,12 @@ import {
 import {
     Swords, Target, Shield, Flame,
     Plus, Check, X, Zap, Timer, Users, Lock, Image, Upload,
-    ChevronUp, ChevronDown, Scale
+    ChevronUp, ChevronDown, Scale, Crown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { User, GymMilestone } from '../types/database';
+import CollectiveMilestones from '../components/CollectiveMilestones';
 
 type Tab = 'wars' | 'duels' | 'quests';
 
@@ -29,11 +32,51 @@ export default function Arena() {
     const [customTarget, setCustomTarget] = useState('');
     const [useCustomDuel, setUseCustomDuel] = useState(false);
 
+    // Real Data States
+    const [allProfiles, setAllProfiles] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchProfiles = useCallback(async () => {
+        if (!isSupabaseConfigured) {
+            setAllProfiles(mockUsers);
+            setLoading(false);
+            return;
+        }
+
+        const { data, error } = await supabase.from('profiles').select('*');
+        if (!error && data) {
+            setAllProfiles(data);
+        }
+        setLoading(false);
+    }, []);
+
+    useEffect(() => {
+        fetchProfiles();
+        fetchMilestones();
+    }, [fetchProfiles]);
+
+    const [milestones, setMilestones] = useState<GymMilestone[]>([]);
+    const fetchMilestones = async () => {
+        if (!isSupabaseConfigured || !user?.home_gym) {
+            // Mock milestone if no supabase
+            setMilestones([{
+                id: 'm1', gym_id: user?.home_gym || 'g1', title: 'The Million Pound Month',
+                description: 'Collectively lift 1,000,000 lbs in Big 4 exercises this month!',
+                target_value: 1000000, current_value: 452000, unit: 'lbs',
+                deadline: new Date(Date.now() + 864000000).toISOString(), type: 'volume',
+                reward_badge: 'Titan'
+            }]);
+            return;
+        }
+        const { data } = await supabase.from('gym_milestones').select('*').eq('gym_id', user.home_gym);
+        if (data) setMilestones(data);
+    };
+
     // Read Big 4 from user profile
     const lifts: Big4Lifts = user?.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 };
-    const rank = getRankFromLifts(lifts);
-    const nextRank = getNextRank(lifts);
-    const progress = getRankProgress(lifts);
+    const rank = getRankFromLifts(lifts, user?.unit_preference);
+    const nextRank = getNextRank(lifts, user?.unit_preference);
+    const progress = getRankProgress(lifts, user?.unit_preference);
     const total = getBig4Total(lifts);
 
     // ═══ QUESTS ═══
@@ -43,43 +86,44 @@ export default function Arena() {
         weeklyQuests.forEach(q => { p[q.id] = Math.floor(Math.random() * (q.target + 1)); });
         return p;
     });
-    const [unlockedHidden] = useState<Set<string>>(new Set(['hq1', 'hq4', 'hq7'])); // mock unlocked
+    const [unlockedHidden] = useState<Set<string>>(new Set(['hq1', 'hq4', 'hq7']));
 
     // ═══ GYM WARS ═══
     const { gyms: allGyms } = useGyms();
-    const gymWars: GymWarEntry[] = (allGyms.length > 0 ? allGyms : []).slice(0, 6).map((g) => ({
-        gymId: g.id, gymName: g.name, location: g.location,
-        totalWorkouts: Math.floor(Math.random() * 200) + 50,
-        totalXP: Math.floor(Math.random() * 50000) + 10000,
-        memberCount: g.member_count, streak: Math.floor(Math.random() * 10) + 1, rank: 0,
-    })).sort((a, b) => b.totalWorkouts - a.totalWorkouts).map((g, i) => ({ ...g, rank: i + 1 }));
+    const gymWars: GymWarEntry[] = (allGyms.length > 0 ? allGyms : []).slice(0, 10).map((g) => {
+        const gymMembers = allProfiles.filter(p => p.home_gym === g.id);
+        const gymXP = gymMembers.reduce((acc, curr) => acc + (curr.xp || 0), 0);
+        // Find Gym King/Queen (top XP contributor)
+        const topMember = [...gymMembers].sort((a, b) => (b.xp || 0) - (a.xp || 0))[0];
+
+        return {
+            gymId: g.id, gymName: g.name, location: g.location,
+            totalWorkouts: Math.floor(gymXP / 100) + gymMembers.length * 5, // Approximation
+            totalXP: gymXP,
+            memberCount: gymMembers.length || g.member_count,
+            streak: Math.max(...gymMembers.map(m => m.reliability_streak || 0), 0) || 1,
+            rank: 0,
+            king: topMember ? { name: topMember.name, id: topMember.id } : undefined
+        };
+    }).sort((a, b) => b.totalXP - a.totalXP).map((g, i) => ({ ...g, rank: i + 1 }));
     const userGym = gymWars.find(g => g.gymId === user?.home_gym);
 
     // ═══ DUELS ═══
     const [duels, setDuels] = useState<Duel[]>([
         {
-            id: 'd1', challengerId: 'u1', challengerName: mockUsers[0]?.name || 'Alex',
-            challengerAvatar: mockUsers[0]?.profile_image_url || '', opponentId: user?.id || '',
+            id: 'd1', challengerId: 'u1', challengerName: 'Alex Thompson',
+            challengerAvatar: 'https://i.pravatar.cc/300?u=a042581f4e29026704d', opponentId: user?.id || '',
             opponentName: user?.name || 'You', opponentAvatar: user?.profile_image_url || '',
             type: 'weight', exercise: 'Bench Press', target: 'Heaviest 1RM',
             status: 'active', challengerProgress: 225, opponentProgress: 205,
             createdAt: new Date(Date.now() - 86400000).toISOString(),
             endsAt: '5d left', xpReward: 150,
-        },
-        {
-            id: 'd2', challengerId: user?.id || '', challengerName: user?.name || 'You',
-            challengerAvatar: user?.profile_image_url || '', opponentId: 'u3',
-            opponentName: mockUsers[2]?.name || 'Taylor', opponentAvatar: mockUsers[2]?.profile_image_url || '',
-            type: 'reps', exercise: 'Pull-ups', target: '100 total reps',
-            status: 'pending', challengerProgress: 0, opponentProgress: 0,
-            createdAt: new Date().toISOString(),
-            endsAt: '48h to accept', xpReward: 150,
-        },
+        }
     ]);
 
     const handleCreateDuel = () => {
         if (selectedOpponent === null || selectedDuelTemplate === null || !user) return;
-        const opponent = mockUsers.find(u => u.id === selectedOpponent);
+        const opponent = allProfiles.find(u => u.id === selectedOpponent);
         const template = DUEL_TEMPLATES[selectedDuelTemplate];
         if (!opponent || !template) return;
         setDuels(prev => [{
@@ -100,6 +144,15 @@ export default function Arena() {
         { key: 'duels', icon: Swords, label: 'Duels' },
         { key: 'quests', icon: Target, label: 'Quests' },
     ];
+
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <div className="w-10 h-10 border-4 border-lime/30 border-t-lime rounded-full animate-spin" />
+                <p className="text-sm text-gray-500 font-bold uppercase tracking-widest">Entering Arena...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col min-h-screen pb-32">
@@ -136,7 +189,7 @@ export default function Arena() {
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-xl font-black text-white">{total}<span className="text-xs text-gray-500 ml-1">lbs</span></p>
+                            <p className="text-xl font-black text-white">{total}<span className="text-xs text-gray-500 ml-1">{user?.unit_preference || 'lbs'}</span></p>
                             <p className="text-[9px] text-gray-500">Big 4 Total</p>
                         </div>
                     </div>
@@ -154,7 +207,7 @@ export default function Arena() {
                             <div className="flex justify-between">
                                 <span className="text-[9px] text-gray-600">{rank.name} ({rank.minTotal}lbs)</span>
                                 <span className="text-[9px] font-bold" style={{ color: nextRank.color }}>
-                                    {nextRank.icon} {nextRank.name} — need {nextRank.minTotal - total}lbs more
+                                    {nextRank.icon} {nextRank.name} — need {nextRank.minTotal - (user?.unit_preference === 'kg' ? total * 2.20462 : total)}lbs more
                                 </span>
                             </div>
                         </>
@@ -231,6 +284,12 @@ export default function Arena() {
                                     <p className="text-sm font-bold text-white">{gym.totalWorkouts}</p>
                                     <p className="text-[9px] text-gray-500">workouts</p>
                                 </div>
+                                {gym.king && (
+                                    <div className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl bg-yellow-500/10 border border-yellow-500/20 shrink-0">
+                                        <Crown size={12} className="text-yellow-500 fill-current" />
+                                        <span className="text-[8px] font-black text-yellow-500 uppercase truncate max-w-[50px]">{gym.king.name.split(' ')[0]}</span>
+                                    </div>
+                                )}
                                 <div className="flex items-center gap-0.5 text-orange-400 shrink-0">
                                     <Flame size={10} /><span className="text-[10px] font-bold">{gym.streak}d</span>
                                 </div>
@@ -244,6 +303,11 @@ export default function Arena() {
                             <p className="text-xs text-gray-500 mt-1">Workouts you log = points for <span className="text-lime font-bold">{userGym.gymName}</span></p>
                         </div>
                     )}
+
+                    {/* Collective Milestones Section */}
+                    <div className="mt-6 pt-6 border-t border-gray-800">
+                        <CollectiveMilestones milestones={milestones} />
+                    </div>
                 </motion.div>
             )}
 
@@ -453,8 +517,8 @@ export default function Arena() {
                             <div className="mb-5">
                                 <p className="text-xs font-bold text-gray-400 mb-2 flex items-center gap-1"><Users size={12} /> Choose Opponent</p>
                                 <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                                    {mockUsers.filter(u => u.id !== user?.id).map(u => {
-                                        const opRank = u.big4 ? getRankFromLifts(u.big4) : null;
+                                    {allProfiles.filter(u => u.id !== user?.id).map(u => {
+                                        const opRank = u.big4 ? getRankFromLifts(u.big4, u.unit_preference) : null;
                                         return (
                                             <button key={u.id} onClick={() => setSelectedOpponent(u.id)}
                                                 className={`w-full flex items-center gap-3 p-2.5 rounded-xl border text-left transition-all ${selectedOpponent === u.id
@@ -475,13 +539,13 @@ export default function Arena() {
 
                             {/* Fairness indicator */}
                             {selectedOpponent && selectedDuelTemplate !== null && DUEL_TEMPLATES[selectedDuelTemplate]?.type === 'weight' && (() => {
-                                const opp = mockUsers.find(u => u.id === selectedOpponent);
+                                const opp = allProfiles.find(u => u.id === selectedOpponent);
                                 if (!opp?.weight_kg || !user?.weight_kg) return null;
                                 const myBig4 = user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 };
                                 const oppBig4 = opp.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 };
                                 const fairness = checkDuelFairness(
-                                    { liftLbs: getBig4Total(myBig4), bodyweightKg: user.weight_kg },
-                                    { liftLbs: getBig4Total(oppBig4), bodyweightKg: opp.weight_kg }
+                                    { liftValue: getBig4Total(myBig4), unit: user.unit_preference || 'lbs', bodyweightKg: user.weight_kg },
+                                    { liftValue: getBig4Total(oppBig4), unit: opp.unit_preference || 'lbs', bodyweightKg: opp.weight_kg }
                                 );
                                 return (
                                     <div className="mb-4 flex items-center gap-2 px-3 py-2 rounded-xl border" style={{ borderColor: fairness.color + '40', backgroundColor: fairness.color + '08' }}>
@@ -529,7 +593,7 @@ export default function Arena() {
 
                             <button onClick={() => {
                                 if (useCustomDuel && customExercise.trim() && customTarget.trim() && selectedOpponent && user) {
-                                    const opp = mockUsers.find(u => u.id === selectedOpponent);
+                                    const opp = allProfiles.find(u => u.id === selectedOpponent);
                                     if (!opp) return;
                                     setDuels(prev => [{
                                         id: `d${Date.now()}`, challengerId: user.id, challengerName: user.name,

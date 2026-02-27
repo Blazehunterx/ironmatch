@@ -1,14 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import GridCard from '../components/ProfileCard';
 import ProfileDetail from '../components/ProfileDetail';
-import { mockUsers } from '../lib/mock';
+// import { mockUsers } from '../lib/mock';
 import { User, Goal, DayOfWeek, TimeBlock, ALL_GOALS, ALL_DAYS, ALL_TIME_BLOCKS } from '../types/database';
 import { useAuth } from '../context/AuthContext';
 import { useGyms } from '../context/GymContext';
-import { Ghost, SlidersHorizontal, X, GraduationCap, Calendar, Target, MapPin, Navigation, Plus, Loader2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { Ghost, SlidersHorizontal, X, GraduationCap, Calendar, Target, MapPin, Navigation, Plus, Loader2, RefreshCw, Search as SearchIcon } from 'lucide-react';
 import RequestModal from '../components/RequestModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistance } from '../lib/location';
+import ActiveToggle from '../components/ActiveToggle';
 
 export default function Home() {
     const { user } = useAuth();
@@ -23,7 +25,7 @@ export default function Home() {
     const [filterGym, setFilterGym] = useState<string | null>(null);
 
     // Gym discovery from context
-    const { gyms: sortedGyms, locationStatus, isLoadingGyms, getDistance, addCustomGym } = useGyms();
+    const { gyms: sortedGyms, locationStatus, isLoadingGyms, getDistance, addCustomGym, refreshGyms } = useGyms();
 
     // Add Gym modal
     const [showAddGym, setShowAddGym] = useState(false);
@@ -38,8 +40,24 @@ export default function Home() {
     const [detailUser, setDetailUser] = useState<User | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+    // Real Data Persistence
+    const [allProfiles, setAllProfiles] = useState<User[]>([]);
+    const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
+
+    const fetchProfiles = async () => {
+        const { data, error } = await supabase.from('profiles').select('*');
+        if (!error && data) {
+            setAllProfiles(data);
+        }
+        setIsLoadingProfiles(false);
+    };
+
+    useEffect(() => {
+        fetchProfiles();
+    }, []);
+
     // Exclude current user
-    const allUsers = mockUsers.filter(u => u.id !== user?.id);
+    const allUsers = allProfiles.filter(u => u.id !== user?.id);
 
     // Apply filters
     const filteredUsers = useMemo(() => {
@@ -103,7 +121,6 @@ export default function Home() {
 
     return (
         <div className="flex flex-col w-full min-h-[calc(100vh-120px)] pb-32">
-            {/* Header */}
             <div className="flex items-center justify-between px-4 pt-4 mb-3">
                 <div>
                     <h1 className="text-2xl font-extrabold text-white tracking-tight">Discover</h1>
@@ -112,20 +129,25 @@ export default function Home() {
                         {filteredUsers.length} partner{filteredUsers.length !== 1 ? 's' : ''} nearby
                     </p>
                 </div>
-                <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className={`relative p-2.5 rounded-xl border transition-all active:scale-95 ${showFilters || activeFilterCount > 0
-                        ? 'bg-lime/10 border-lime/40 text-lime'
-                        : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-white'
-                        }`}
-                >
-                    <SlidersHorizontal size={18} />
-                    {activeFilterCount > 0 && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-lime text-oled text-[9px] font-black flex items-center justify-center">
-                            {activeFilterCount}
-                        </span>
-                    )}
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={refreshGyms}
+                        className="p-2.5 rounded-xl border border-gray-800 bg-gray-900 text-gray-400 hover:text-lime transition-all active:rotate-180"
+                    >
+                        <RefreshCw size={20} className={isLoadingProfiles ? 'animate-spin' : ''} />
+                    </button>
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`p-2.5 rounded-xl border transition-all ${showFilters ? 'bg-lime text-oled border-lime' : 'bg-gray-900 text-gray-400 border-gray-800'}`}
+                    >
+                        <SearchIcon size={20} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Active Training Status Toggle */}
+            <div className="px-4 mb-6">
+                <ActiveToggle />
             </div>
 
             {/* Filter Panel */}
@@ -289,7 +311,12 @@ export default function Home() {
 
             {/* Grid */}
             <div className="px-4">
-                {filteredUsers.length === 0 ? (
+                {isLoadingProfiles ? (
+                    <div className="flex flex-col items-center justify-center py-20 gap-4">
+                        <div className="w-8 h-8 border-4 border-lime/30 border-t-lime rounded-full animate-spin" />
+                        <p className="text-xs text-gray-500 font-bold">Discovering partners...</p>
+                    </div>
+                ) : filteredUsers.length === 0 ? (
                     <div className="flex flex-col items-center justify-center text-gray-500 gap-4 py-20">
                         <div className="w-20 h-20 rounded-full bg-gray-900 flex items-center justify-center border border-gray-800">
                             <Ghost size={32} className="text-gray-600" />
@@ -312,13 +339,15 @@ export default function Home() {
                 )}
             </div>
 
-            {targetUser && (
-                <RequestModal
-                    isOpen={isModalOpen}
-                    onClose={handleCloseModal}
-                    user={targetUser}
-                />
-            )}
+            {
+                targetUser && (
+                    <RequestModal
+                        isOpen={isModalOpen}
+                        onClose={handleCloseModal}
+                        user={targetUser}
+                    />
+                )
+            }
 
             <ProfileDetail
                 user={detailUser}

@@ -37,6 +37,8 @@ export default function Signup() {
         } catch (err: any) {
             if (err.message && err.message.toLowerCase().includes('rate limit')) {
                 setError('Too many signups from this IP. The admin needs to disable Email Confirmations in Supabase, or try again later.');
+            } else if (err.message && err.message.toLowerCase().includes('already registered')) {
+                setError('This email is already registered. Please sign in instead.');
             } else {
                 setError(err.message || 'Failed to create account');
             }
@@ -69,7 +71,9 @@ export default function Signup() {
                             </label>
                             <input
                                 id="name"
+                                name="name"
                                 type="text"
+                                autoComplete="name"
                                 required
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
@@ -83,7 +87,9 @@ export default function Signup() {
                             </label>
                             <input
                                 id="email"
+                                name="email"
                                 type="email"
+                                autoComplete="username"
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -97,7 +103,9 @@ export default function Signup() {
                             </label>
                             <input
                                 id="password"
+                                name="password"
                                 type="password"
+                                autoComplete="new-password"
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}

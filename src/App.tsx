@@ -16,6 +16,8 @@ import Arena from './pages/Arena';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Onboarding from './pages/Onboarding';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function AppRoutes() {
     const { user } = useAuth();
@@ -26,6 +28,8 @@ function AppRoutes() {
                     {/* Public Routes */}
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Signup />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
 
                     {/* Onboarding (after signup) */}
                     <Route path="/onboarding" element={

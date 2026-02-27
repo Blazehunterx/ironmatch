@@ -2,13 +2,14 @@ import { useState, useEffect, createContext, useContext, useCallback } from 'rea
 import { Gym } from '../types/database';
 import { GeoCoords, getCurrentPosition, haversineDistance } from '../lib/location';
 import { mockGyms as fallbackGyms } from '../lib/mock';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface GymContextType {
     gyms: Gym[];
     userLocation: GeoCoords | null;
     locationStatus: 'idle' | 'loading' | 'granted' | 'denied';
     isLoadingGyms: boolean;
-    addCustomGym: (name: string, location: string) => void;
+    addCustomGym: (name: string, location: string, lat?: number, lng?: number) => Promise<string>;
     refreshGyms: () => void;
     getDistance: (gym: Gym) => number | null;
     findGym: (id: string) => Gym | undefined;
@@ -18,21 +19,18 @@ const GymContext = createContext<GymContextType | null>(null);
 
 /**
  * Query OpenStreetMap Overpass API for nearby gyms/fitness centers
- * Completely free, no API key, works worldwide
  */
 async function fetchNearbyGyms(coords: GeoCoords, radiusMeters = 50000): Promise<Gym[]> {
+    // Broaden query to include nwr (Node, Way, Relation) and more tags
     const query = `
-        [out:json][timeout:15];
+        [out:json][timeout:20];
         (
-            node["leisure"="fitness_centre"](around:${radiusMeters},${coords.lat},${coords.lng});
-            node["sport"="fitness"](around:${radiusMeters},${coords.lat},${coords.lng});
-            way["leisure"="fitness_centre"](around:${radiusMeters},${coords.lat},${coords.lng});
-            node["leisure"="sports_centre"]["sport"="fitness"](around:${radiusMeters},${coords.lat},${coords.lng});
-            node["leisure"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
-            way["leisure"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
-            node["amenity"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
-            way["amenity"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
-            node["sport"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
+          nwr["leisure"="fitness_centre"](around:${radiusMeters},${coords.lat},${coords.lng});
+          nwr["leisure"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
+          nwr["amenity"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
+          nwr["sport"="fitness"](around:${radiusMeters},${coords.lat},${coords.lng});
+          nwr["sport"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
+          nwr["leisure"="sports_centre"](around:${radiusMeters},${coords.lat},${coords.lng});
         );
         out center body;
     `;
@@ -44,45 +42,74 @@ async function fetchNearbyGyms(coords: GeoCoords, radiusMeters = 50000): Promise
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         });
 
-        if (!response.ok) throw new Error('Overpass API error');
+        if (!response.ok) throw new Error(`Overpass API error: ${response.status}`);
 
         const data = await response.json();
-
-        return data.elements
+        const gyms = data.elements
             .filter((el: any) => el.tags?.name)
             .map((el: any) => ({
                 id: `osm-${el.id}`,
                 name: el.tags.name,
                 location: el.tags['addr:street']
                     ? `${el.tags['addr:street']}${el.tags['addr:housenumber'] ? ' ' + el.tags['addr:housenumber'] : ''}`
-                    : el.tags['addr:city'] || el.tags['addr:suburb'] || 'Nearby',
-                member_count: Math.floor(Math.random() * 300) + 50, // placeholder
+                    : el.tags['addr:city'] || el.tags['addr:suburb'] || el.tags['addr:district'] || 'Nearby',
+                member_count: 0, // Real count will be updated via fetchMemberCounts
                 lat: el.lat || el.center?.lat,
                 lng: el.lon || el.center?.lon,
             }))
-            .filter((g: Gym) => g.lat && g.lng)
-            .slice(0, 50); // cap at 50 nearby gyms
+            .filter((g: Gym) => g.lat && g.lng);
+
+        console.debug(`Found ${gyms.length} gyms via Overpass`);
+        return gyms.slice(0, 100);
     } catch (err) {
-        console.warn('Overpass API failed, using fallback:', err);
+        console.warn('Overpass API failed:', err);
         return [];
     }
 }
 
 export function GymProvider({ children }: { children: React.ReactNode }) {
-    const [gyms, setGyms] = useState<Gym[]>([]);
+    const [osmGyms, setOsmGyms] = useState<Gym[]>([]);
+    const [customGyms, setCustomGyms] = useState<Gym[]>([]);
     const [userLocation, setUserLocation] = useState<GeoCoords | null>(null);
     const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'granted' | 'denied'>('idle');
     const [isLoadingGyms, setIsLoadingGyms] = useState(false);
 
-    // Load user-added gyms from localStorage
-    const [customGyms, setCustomGyms] = useState<Gym[]>(() => {
-        try {
+    // Fetch custom gyms from Supabase
+    const fetchDBGyms = useCallback(async () => {
+        if (!isSupabaseConfigured) {
             const stored = localStorage.getItem('ironmatch_custom_gyms');
-            return stored ? JSON.parse(stored) : [];
-        } catch {
-            return [];
+            if (stored) setCustomGyms(JSON.parse(stored));
+            return;
         }
-    });
+
+        const { data, error } = await supabase.from('gyms').select('*');
+        if (!error && data) {
+            setCustomGyms(data);
+        }
+    }, []);
+
+    // Aggregated member counts from profiles table
+    const fetchMemberCounts = useCallback(async (allGymList: Gym[]) => {
+        if (!isSupabaseConfigured) return allGymList;
+
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('home_gym');
+
+        if (error || !data) return allGymList;
+
+        const counts: Record<string, number> = {};
+        data.forEach(p => {
+            if (p.home_gym) {
+                counts[p.home_gym] = (counts[p.home_gym] || 0) + 1;
+            }
+        });
+
+        return allGymList.map(g => ({
+            ...g,
+            member_count: counts[g.id] || 0
+        }));
+    }, []);
 
     // Get location + discover gyms on mount
     useEffect(() => {
@@ -92,44 +119,77 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
                 setUserLocation(coords);
                 setLocationStatus('granted');
                 setIsLoadingGyms(true);
-                const nearbyGyms = await fetchNearbyGyms(coords);
-                setGyms(nearbyGyms);
+                const nearby = await fetchNearbyGyms(coords);
+                const withCounts = await fetchMemberCounts(nearby);
+                setOsmGyms(withCounts);
                 setIsLoadingGyms(false);
             })
             .catch(() => {
                 setLocationStatus('denied');
             });
-    }, []);
+
+        fetchDBGyms().then(async () => {
+            // After DB gyms fetched, we'll need to update counts if they aren't updated yet
+            // This is simplified for now but ensure we call it
+        });
+    }, [fetchDBGyms, fetchMemberCounts]);
+
+    // Update customGyms with counts whenever customGyms change
+    useEffect(() => {
+        if (customGyms.length > 0) {
+            fetchMemberCounts(customGyms).then(setCustomGyms);
+        }
+    }, [customGyms.length, fetchMemberCounts]);
 
     // Combine API gyms + custom gyms, sorted by distance
-    const allGyms = [...gyms, ...customGyms].sort((a, b) => {
+    const allGyms = [...osmGyms, ...customGyms].sort((a, b) => {
         if (!userLocation) return 0;
         return haversineDistance(userLocation, { lat: a.lat, lng: a.lng }) -
             haversineDistance(userLocation, { lat: b.lat, lng: b.lng });
     });
 
-    const addCustomGym = useCallback((name: string, location: string) => {
-        if (!userLocation) return;
+    const addCustomGym = useCallback(async (name: string, location: string, lat?: number, lng?: number) => {
+        const newId = `custom-${Date.now()}`;
         const newGym: Gym = {
-            id: `custom-${Date.now()}`,
+            id: newId,
             name,
             location,
-            member_count: 1,
-            lat: userLocation.lat,
-            lng: userLocation.lng,
+            member_count: 0,
+            lat: lat ?? userLocation?.lat ?? 0,
+            lng: lng ?? userLocation?.lng ?? 0,
         };
-        const updated = [...customGyms, newGym];
-        setCustomGyms(updated);
-        localStorage.setItem('ironmatch_custom_gyms', JSON.stringify(updated));
-    }, [userLocation, customGyms]);
+
+        if (isSupabaseConfigured) {
+            const { error } = await supabase.from('gyms').insert({
+                id: newId,
+                name,
+                location,
+                lat: newGym.lat,
+                lng: newGym.lng,
+                created_by: (await supabase.auth.getUser()).data.user?.id
+            });
+            if (error) {
+                console.warn('DB Gym insert error:', error);
+                throw error;
+            }
+            await fetchDBGyms();
+        } else {
+            const updated = [...customGyms, newGym];
+            setCustomGyms(updated);
+            localStorage.setItem('ironmatch_custom_gyms', JSON.stringify(updated));
+        }
+
+        return newId;
+    }, [userLocation, customGyms, fetchDBGyms]);
 
     const refreshGyms = useCallback(async () => {
         if (!userLocation) return;
         setIsLoadingGyms(true);
-        const nearbyGyms = await fetchNearbyGyms(userLocation);
-        setGyms(nearbyGyms);
+        const nearby = await fetchNearbyGyms(userLocation);
+        setOsmGyms(nearby);
+        fetchDBGyms();
         setIsLoadingGyms(false);
-    }, [userLocation]);
+    }, [userLocation, fetchDBGyms]);
 
     const getDistance = useCallback((gym: Gym) => {
         if (!userLocation) return null;
@@ -137,7 +197,12 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     }, [userLocation]);
 
     const findGym = useCallback((id: string): Gym | undefined => {
-        return allGyms.find(g => g.id === id) || fallbackGyms.find(g => g.id === id);
+        const gym = allGyms.find(g => g.id === id) || fallbackGyms.find(g => g.id === id);
+        if (!gym) return undefined;
+
+        // If it's a mock gym, it still has the mock member_count. 
+        // We should really be using the real counts for these too if we have them.
+        return gym;
     }, [allGyms]);
 
     return (

@@ -35,6 +35,7 @@ export interface User {
     name: string;
     email: string;
     home_gym: string;
+    home_gym_name?: string;
     fitness_level: FitnessLevel;
     reliability_streak: number;
     profile_image_url: string;
@@ -55,6 +56,9 @@ export interface User {
         deadlift: number;
         ohp: number;
     };
+    is_training?: boolean;
+    training_status?: string;
+    last_active_at?: string;
 }
 
 export interface Match {
@@ -81,7 +85,33 @@ export interface Post {
     gym_id: string;
     content: string;
     media_url?: string;
+    is_event?: boolean;
+    event_date?: string;
+    event_title?: string;
     created_at: string;
+}
+
+export interface GymMessage {
+    id: string;
+    gym_id: string;
+    user_id: string;
+    user_name: string;
+    user_avatar?: string;
+    content: string;
+    created_at: string;
+}
+
+export interface GymMilestone {
+    id: string;
+    gym_id: string;
+    title: string;
+    description: string;
+    target_value: number;
+    current_value: number;
+    unit: string;
+    deadline: string;
+    type: 'volume' | 'workouts' | 'xp';
+    reward_badge?: string;
 }
 
 export const ALL_GOALS: Goal[] = [

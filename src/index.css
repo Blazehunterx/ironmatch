@@ -13,13 +13,26 @@
 ::-webkit-scrollbar {
   width: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #333;
   border-radius: 8px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pb-safe-offset-4 {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+  }
 }

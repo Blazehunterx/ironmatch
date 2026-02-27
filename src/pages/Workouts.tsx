@@ -10,6 +10,9 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ActiveWorkout from '../components/ActiveWorkout';
+import AIWorkoutGenerator from '../components/AIWorkoutGenerator';
+import { Sparkles } from 'lucide-react';
+import LevelUpOverlay from '../components/LevelUpOverlay';
 
 type Tab = 'plans' | 'templates' | 'history';
 
@@ -18,6 +21,8 @@ export default function Workouts() {
     const [tab, setTab] = useState<Tab>('plans');
     const [showCreator, setShowCreator] = useState(false);
     const [activeWorkout, setActiveWorkout] = useState<WorkoutPlan | null>(null);
+    const [showAI, setShowAI] = useState(false);
+    const [showLevelUp, setShowLevelUp] = useState(false);
 
     // Plan creator state
     const [planName, setPlanName] = useState('');
@@ -193,6 +198,8 @@ export default function Workouts() {
     const handleCompleteWorkout = (log: WorkoutLog) => {
         setLogs(prev => [log, ...prev]);
         setActiveWorkout(null);
+        // Simulate level up for demo purposes
+        setShowLevelUp(true);
     };
 
     // If in active workout, show the tracker
@@ -220,6 +227,30 @@ export default function Workouts() {
                         <Plus size={20} />
                     </button>
                 </div>
+
+                {/* AI Generator Banner */}
+                {plans.length < 3 && (
+                    <motion.button
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        onClick={() => setShowAI(true)}
+                        className="w-full mb-6 group p-5 rounded-3xl bg-gradient-to-br from-lime/20 via-lime/5 to-oled border border-lime/20 flex items-center gap-5 text-left relative overflow-hidden shadow-[0_10px_40px_-15px_rgba(0,0,0,0.5)] active:scale-[0.98] transition-all"
+                    >
+                        <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity rotate-12">
+                            <Sparkles size={120} className="text-lime" />
+                        </div>
+                        <div className="p-4 bg-lime rounded-2xl text-oled shadow-2xl group-hover:rotate-6 transition-transform relative z-10">
+                            <Sparkles size={28} />
+                        </div>
+                        <div className="relative z-10">
+                            <h4 className="text-[10px] font-black text-lime uppercase tracking-[0.2em] leading-none mb-1.5">Coach Antigravity</h4>
+                            <p className="text-lg font-black text-white leading-tight">AI Workout Builder</p>
+                            <p className="text-[11px] text-gray-500 font-medium mt-1 flex items-center gap-1.5">
+                                <span className="w-1 h-1 rounded-full bg-lime animate-pulse" /> Custom plans for beginners
+                            </p>
+                        </div>
+                    </motion.button>
+                )}
 
                 {/* Tabs */}
                 <div className="flex bg-gray-900 rounded-xl p-1 border border-gray-800">
@@ -387,6 +418,33 @@ export default function Workouts() {
                                     <Dumbbell size={18} /> Save Workout Plan
                                 </button>
                             </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* AI Generator Modal */}
+            <AnimatePresence>
+                {showAI && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            onClick={() => setShowAI(false)}
+                            className="fixed inset-0 bg-black/85 backdrop-blur-md z-50"
+                        />
+                        <motion.div
+                            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 200 }}
+                            className="fixed bottom-0 left-0 right-0 z-50 bg-oled rounded-t-3xl border-t border-gray-800"
+                        >
+                            <AIWorkoutGenerator
+                                onGenerate={(plan) => {
+                                    setPlans(prev => [plan, ...prev]);
+                                    setShowAI(false);
+                                    setTab('plans');
+                                }}
+                                onClose={() => setShowAI(false)}
+                            />
                         </motion.div>
                     </>
                 )}
@@ -561,6 +619,13 @@ export default function Workouts() {
                         )}
                     </div>
                 )}
+
+                {/* Level Up Overlay */}
+                <AnimatePresence>
+                    {showLevelUp && (
+                        <LevelUpOverlay level={4} onClose={() => setShowLevelUp(false)} />
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

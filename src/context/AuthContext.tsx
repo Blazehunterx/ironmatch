@@ -9,10 +9,22 @@ interface AuthContextType {
     logout: () => void;
     signup: (userData: Partial<User> & { password?: string }) => Promise<void>;
     updateUser: (userData: Partial<User>) => void;
+    resetPasswordEmail: (email: string) => Promise<void>;
+    updatePassword: (password: string) => Promise<void>;
     loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Helper for timeout-guarded promises
+const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
+    return Promise.race([
+        promise,
+        new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+        )
+    ]);
+};
 
 // Convert a Supabase profile row into our User type
 function profileToUser(profile: any): User {
@@ -21,6 +33,7 @@ function profileToUser(profile: any): User {
         name: profile.name || '',
         email: profile.email || '',
         home_gym: profile.home_gym || '',
+        home_gym_name: profile.home_gym_name || '',
         fitness_level: profile.fitness_level || 'Beginner',
         reliability_streak: profile.reliability_streak || 0,
         profile_image_url: profile.profile_image_url || `https://api.dicebear.com/7.x/initials/svg?seed=${profile.name || 'U'}`,
@@ -36,6 +49,9 @@ function profileToUser(profile: any): User {
         xp: profile.xp || 0,
         friends: profile.friends || [],
         big4: profile.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 },
+        is_training: profile.is_training || false,
+        training_status: profile.training_status || '',
+        last_active_at: profile.last_active_at || '',
     };
 }
 
@@ -53,21 +69,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
         }
 
-        // Check current session
-        supabase.auth.getSession().then(async ({ data: { session } }) => {
-            if (session?.user) {
-                const profile = await fetchProfile(session.user.id);
-                if (profile) setUser(profile);
-            }
-            setLoading(false);
-        });
+        // Check current session with a timeout
+        const initAuth = async () => {
+            try {
+                const { data: { session } } = await withTimeout(
+                    supabase.auth.getSession(),
+                    3000,
+                    'Auth session timeout'
+                );
 
-        // Listen for auth changes (login/logout/token refresh)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            if (session?.user) {
-                const profile = await fetchProfile(session.user.id);
-                if (profile) setUser(profile);
-            } else {
+                if (session?.user) {
+                    const profile = await fetchProfile(session.user.id);
+                    if (profile) setUser(profile);
+                }
+            } catch (err) {
+                console.warn('Auth init timeout/error:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        initAuth();
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('Auth event:', event, !!session?.user);
+
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+                if (session?.user) {
+                    // Start hydration but don't block the thread
+                    fetchProfile(session.user.id).then(p => {
+                        if (p) setUser(p);
+                    }).catch(console.error);
+                }
+            } else if (event === 'SIGNED_OUT') {
                 setUser(null);
             }
         });
@@ -76,17 +111,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     async function fetchProfile(userId: string): Promise<User | null> {
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
+        try {
+            const { data, error } = await withTimeout(
+                supabase.from('profiles').select('*').eq('id', userId).single() as any,
+                8000,
+                'Profile fetch timeout'
+            ) as any;
 
-        if (error || !data) {
-            console.warn('Profile fetch error:', error);
+            if (error || !data) {
+                console.warn('Profile fetch error:', error);
+                return null;
+            }
+            return profileToUser(data);
+        } catch (err) {
+            console.warn('fetchProfile timeout:', err);
             return null;
         }
-        return profileToUser(data);
     }
 
     const login = async (email: string, password: string) => {
@@ -107,16 +147,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
         }
 
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+        const { data, error } = await withTimeout(
+            supabase.auth.signInWithPassword({ email, password }),
+            10000,
+            'Sign-in timed out. Please check your connection and refresh.'
+        ) as any;
 
         if (error) throw new Error(error.message);
         if (data.user) {
             localStorage.setItem('ironmatch_remembered_email', email);
-            const profile = await fetchProfile(data.user.id);
-            if (profile) setUser(profile);
+            // Hydrate profile with a separate timeout so login button can finish
+            fetchProfile(data.user.id).then(p => {
+                if (p) setUser(p);
+            });
         }
     };
 
@@ -196,6 +239,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     bio: updated.bio,
                     fitness_level: updated.fitness_level,
                     home_gym: updated.home_gym,
+                    home_gym_name: updated.home_gym_name,
                     is_trainer: updated.is_trainer,
                     profile_image_url: updated.profile_image_url,
                     weight_kg: updated.weight_kg,
@@ -209,6 +253,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     availability: updated.availability,
                     big4: updated.big4,
                     friends: updated.friends,
+                    is_training: updated.is_training,
+                    training_status: updated.training_status,
+                    last_active_at: updated.last_active_at,
                 })
                 .eq('id', user.id);
 
@@ -220,8 +267,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const updatePassword = async (password: string) => {
+        if (!isSupabaseConfigured) return;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('No active session found. Please request a new reset link.');
+
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw new Error(error.message);
+    };
+
+    const resetPasswordEmail = async (email: string) => {
+        if (!isSupabaseConfigured) return;
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw new Error(error.message);
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, logout, signup, updateUser, loading }}>
+        <AuthContext.Provider value={{ user, login, logout, signup, updateUser, resetPasswordEmail, updatePassword, loading }}>
             {children}
         </AuthContext.Provider>
     );

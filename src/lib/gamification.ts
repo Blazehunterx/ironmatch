@@ -27,34 +27,43 @@ export const RANKS: Rank[] = [
 ];
 
 export interface Big4Lifts {
-    bench: number;    // lbs
+    bench: number;
     squat: number;
     deadlift: number;
     ohp: number;      // overhead press
 }
 
 export function getBig4Total(lifts: Big4Lifts): number {
-    return lifts.bench + lifts.squat + lifts.deadlift + lifts.ohp;
+    return (lifts.bench || 0) + (lifts.squat || 0) + (lifts.deadlift || 0) + (lifts.ohp || 0);
 }
 
-export function getRankFromLifts(lifts: Big4Lifts): Rank {
-    const total = getBig4Total(lifts);
+export function getRankFromLifts(lifts: Big4Lifts, unit: 'lbs' | 'kg' = 'lbs'): Rank {
+    let total = getBig4Total(lifts);
+    // Normalize to lbs for rank comparison if input is in kg
+    if (unit === 'kg') {
+        total = total * 2.20462;
+    }
+
     for (let i = RANKS.length - 1; i >= 0; i--) {
         if (total >= RANKS[i].minTotal) return RANKS[i];
     }
     return RANKS[0];
 }
 
-export function getNextRank(lifts: Big4Lifts): Rank | null {
-    const current = getRankFromLifts(lifts);
+export function getNextRank(lifts: Big4Lifts, unit: 'lbs' | 'kg' = 'lbs'): Rank | null {
+    const current = getRankFromLifts(lifts, unit);
     const idx = RANKS.indexOf(current);
     return idx < RANKS.length - 1 ? RANKS[idx + 1] : null;
 }
 
-export function getRankProgress(lifts: Big4Lifts): number {
-    const total = getBig4Total(lifts);
-    const current = getRankFromLifts(lifts);
-    const next = getNextRank(lifts);
+export function getRankProgress(lifts: Big4Lifts, unit: 'lbs' | 'kg' = 'lbs'): number {
+    let total = getBig4Total(lifts);
+    if (unit === 'kg') {
+        total = total * 2.20462;
+    }
+
+    const current = getRankFromLifts(lifts, unit);
+    const next = getNextRank(lifts, unit);
     if (!next) return 100;
     return Math.min(100, ((total - current.minTotal) / (next.minTotal - current.minTotal)) * 100);
 }
@@ -72,6 +81,13 @@ export const XP_REWARDS = {
     COMPLETE_HIDDEN_QUEST: 200,
     COMMUNITY_POST: 5,
     COMMUNITY_COMMENT: 2,
+    JOIN_EVENT: 50,
+};
+
+export const calculateXPWithStreak = (baseXP: number, streak: number) => {
+    // 10% bonus per streak day, max 2x
+    const multiplier = Math.min(1 + (streak * 0.1), 2.0);
+    return Math.round(baseXP * multiplier);
 };
 
 // ═══ BODYWEIGHT-RELATIVE STRENGTH SCORING ═══
@@ -79,9 +95,9 @@ export const XP_REWARDS = {
 // A 50kg person lifting 100kg (2.0x BW) scores higher than
 // a 120kg person lifting 100kg (0.83x BW).
 
-export function getRelativeStrength(liftLbs: number, bodyweightKg: number): number {
-    // Convert lift from lbs to kg, then divide by bodyweight
-    const liftKg = liftLbs * 0.453592;
+export function getRelativeStrength(liftValue: number, unit: 'lbs' | 'kg', bodyweightKg: number): number {
+    // Convert lift to kg if it's in lbs
+    const liftKg = unit === 'lbs' ? liftValue * 0.453592 : liftValue;
     return Math.round((liftKg / bodyweightKg) * 100) / 100; // ratio like 1.25x
 }
 
@@ -89,8 +105,8 @@ export function getRelativeStrength(liftLbs: number, bodyweightKg: number): numb
  * Compare two lifters fairly using bodyweight ratio.
  * Returns the normalized score (higher = relatively stronger).
  */
-export function getDuelScore(liftLbs: number, bodyweightKg: number): number {
-    const ratio = getRelativeStrength(liftLbs, bodyweightKg);
+export function getDuelScore(liftValue: number, unit: 'lbs' | 'kg', bodyweightKg: number): number {
+    const ratio = getRelativeStrength(liftValue, unit, bodyweightKg);
     // Score = ratio * 100 (so 1.5x BW = 150 points)
     return Math.round(ratio * 100);
 }
@@ -100,11 +116,11 @@ export function getDuelScore(liftLbs: number, bodyweightKg: number): number {
  * Returns a fairness rating: 'fair' | 'slight_advantage' | 'unfair'
  */
 export function checkDuelFairness(
-    challenger: { liftLbs: number; bodyweightKg: number },
-    opponent: { liftLbs: number; bodyweightKg: number }
+    challenger: { liftValue: number; unit: 'lbs' | 'kg'; bodyweightKg: number },
+    opponent: { liftValue: number; unit: 'lbs' | 'kg'; bodyweightKg: number }
 ): { fair: boolean; label: string; color: string } {
-    const cScore = getDuelScore(challenger.liftLbs, challenger.bodyweightKg);
-    const oScore = getDuelScore(opponent.liftLbs, opponent.bodyweightKg);
+    const cScore = getDuelScore(challenger.liftValue, challenger.unit, challenger.bodyweightKg);
+    const oScore = getDuelScore(opponent.liftValue, opponent.unit, opponent.bodyweightKg);
     const diff = Math.abs(cScore - oScore);
     const avg = (cScore + oScore) / 2;
     const pct = avg > 0 ? diff / avg : 0;
@@ -285,4 +301,5 @@ export interface GymWarEntry {
     memberCount: number;
     streak: number;
     rank: number;
+    king?: { name: string; id: string };
 }
