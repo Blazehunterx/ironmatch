@@ -32,7 +32,11 @@ async function fetchNearbyGyms(coords: GeoCoords, radiusMeters = 50000): Promise
           nwr["amenity"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
           nwr["sport"="fitness"](around:${radiusMeters},${coords.lat},${coords.lng});
           nwr["sport"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
+          nwr["sport"="weightlifting"](around:${radiusMeters},${coords.lat},${coords.lng});
+          nwr["sport"="powerlifting"](around:${radiusMeters},${coords.lat},${coords.lng});
+          nwr["sport"="bodybuilding"](around:${radiusMeters},${coords.lat},${coords.lng});
           nwr["leisure"="sports_centre"](around:${radiusMeters},${coords.lat},${coords.lng});
+          nwr["leisure"="sports_hall"](around:${radiusMeters},${coords.lat},${coords.lng});
         );
         out center body;
     `;
@@ -62,7 +66,7 @@ async function fetchNearbyGyms(coords: GeoCoords, radiusMeters = 50000): Promise
             .filter((g: Gym) => g.lat && g.lng);
 
         console.debug(`Found ${gyms.length} gyms via Overpass`);
-        return gyms.slice(0, 100);
+        return gyms.slice(0, 300); // Increased limit
     } catch (err) {
         console.warn('Overpass API failed:', err);
         return [];
