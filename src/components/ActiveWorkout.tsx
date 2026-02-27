@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { WorkoutPlan, WorkoutExercise, WorkoutLog } from '../types/database';
 import { X, Check, Timer, Trophy, Dumbbell, Share2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
+import PRCelebration from './PRCelebration';
 
 interface ActiveWorkoutProps {
     plan: WorkoutPlan;
@@ -19,6 +21,8 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
     const [startTime] = useState(new Date().toISOString());
     const [finished, setFinished] = useState(false);
     const [shared, setShared] = useState(false);
+    const { user, updateUser } = useAuth();
+    const [activePR, setActivePR] = useState<{ exercise: string; newWeight: number; oldWeight: number } | null>(null);
 
     // Timer
     useEffect(() => {
@@ -34,9 +38,42 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
     };
 
     const toggleComplete = (id: string) => {
+        const exercise = exercises.find(e => e.id === id);
+        if (!exercise) return;
+
+        const isMarkingComplete = !exercise.completed;
+
         setExercises(prev => prev.map(e =>
-            e.id === id ? { ...e, completed: !e.completed } : e
+            e.id === id ? { ...e, completed: isMarkingComplete } : e
         ));
+
+        // PR Detection
+        if (isMarkingComplete && exercise.weight && user?.big4) {
+            const name = exercise.name.toLowerCase();
+            let prKey: 'bench' | 'squat' | 'deadlift' | 'ohp' | null = null;
+
+            if (name.includes('bench')) prKey = 'bench';
+            else if (name.includes('squat')) prKey = 'squat';
+            else if (name.includes('deadlift')) prKey = 'deadlift';
+            else if (name.includes('overhead press') || name.includes('ohp')) prKey = 'ohp';
+
+            if (prKey && exercise.weight > (user.big4[prKey] || 0)) {
+                const oldWeight = user.big4[prKey] || 0;
+                const newWeight = exercise.weight;
+
+                setActivePR({
+                    exercise: exercise.name,
+                    newWeight,
+                    oldWeight
+                });
+
+                // Update user PR and XP
+                updateUser({
+                    big4: { ...user.big4, [prKey]: newWeight },
+                    xp: (user.xp || 0) + 500 // PR Reward
+                });
+            }
+        }
     };
 
     const completeAll = exercises.every(e => e.completed);
@@ -208,6 +245,19 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
                     </motion.div>
                 ))}
             </div>
+
+            {/* PR Celebration Overlay */}
+            <AnimatePresence>
+                {activePR && (
+                    <PRCelebration
+                        exercise={activePR.exercise}
+                        newWeight={activePR.newWeight}
+                        oldWeight={activePR.oldWeight}
+                        unit={user?.unit_preference || 'lbs'}
+                        onClose={() => setActivePR(null)}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }

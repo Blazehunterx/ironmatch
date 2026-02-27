@@ -59,6 +59,9 @@ export interface User {
     is_training?: boolean;
     training_status?: string;
     last_active_at?: string;
+    unlocked_cosmetics?: string[];
+    active_cosmetic_frame?: string;
+    active_cosmetic_color?: string;
 }
 
 export interface Match {

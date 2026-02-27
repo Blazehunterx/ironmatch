@@ -12,6 +12,8 @@ import {
     ALL_GOALS, ALL_BODY_PARTS, ALL_DAYS, ALL_TIME_BLOCKS
 } from '../types/database';
 import { getRankFromLifts, getBig4Total, Big4Lifts } from '../lib/gamification';
+import { COSMETIC_ITEMS } from '../lib/cosmetics';
+import CosmeticShop from '../components/CosmeticShop';
 
 const goalEmoji: Record<string, string> = {
     'Workout Buddy': '🤝', 'Socialize': '💬', 'Get Pushed': '🔥', 'Learn': '📚',
@@ -30,6 +32,7 @@ export default function Profile() {
     const [isTrainer, setIsTrainer] = useState(user?.is_trainer || false);
     const [fitnessLevel, setFitnessLevel] = useState(user?.fitness_level || 'Beginner');
     const [unitPref, setUnitPref] = useState<'lbs' | 'kg'>(user?.unit_preference || 'lbs');
+    const [isShopOpen, setIsShopOpen] = useState(false);
     const toDisplay = (val: number) => val;
     const unitLabel = unitPref;
 
@@ -138,23 +141,36 @@ export default function Profile() {
             {/* Header */}
             <div className="flex justify-between items-center mb-8">
                 <h2 className="text-3xl font-bold text-white">Profile</h2>
-                <button
-                    onClick={() => setIsSettingsOpen(true)}
-                    className="p-2 text-gray-400 hover:text-white rounded-full bg-gray-900 border border-gray-800 active:scale-95 transition-all"
-                >
-                    <Settings size={20} />
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setIsShopOpen(true)}
+                        className="p-2 text-yellow-400 hover:text-white rounded-full bg-yellow-400/10 border border-yellow-400/20 active:scale-95 transition-all"
+                    >
+                        <Zap size={20} className="fill-current" />
+                    </button>
+                    <button
+                        onClick={() => setIsSettingsOpen(true)}
+                        className="p-2 text-gray-400 hover:text-white rounded-full bg-gray-900 border border-gray-800 active:scale-95 transition-all"
+                    >
+                        <Settings size={20} />
+                    </button>
+                </div>
             </div>
 
             {/* Avatar */}
             <div className="flex flex-col items-center mb-8">
                 <div className="relative mb-4 group">
-                    <img
-                        src={user.profile_image_url}
-                        alt={user.name}
-                        className="w-28 h-28 rounded-full border-4 border-gray-900 shadow-xl object-cover bg-gray-800 transition-opacity group-hover:opacity-80"
-                    />
-                    <div className="absolute bottom-0 right-0 p-1.5 bg-lime rounded-full text-oled border-2 border-oled">
+                    <div className={`p-1 rounded-full transition-all ${user.active_cosmetic_frame
+                            ? COSMETIC_ITEMS.find(i => i.id === user.active_cosmetic_frame)?.previewValue
+                            : 'border-4 border-gray-900'
+                        }`}>
+                        <img
+                            src={user.profile_image_url}
+                            alt={user.name}
+                            className="w-28 h-28 rounded-full shadow-xl object-cover bg-gray-800 transition-opacity group-hover:opacity-80"
+                        />
+                    </div>
+                    <div className="absolute bottom-1 right-1 p-1.5 bg-lime rounded-full text-oled border-2 border-oled shadow-lg">
                         <Activity size={16} />
                     </div>
                     <button
@@ -165,7 +181,10 @@ export default function Profile() {
                         <span className="text-[10px] font-semibold text-white">Edit</span>
                     </button>
                 </div>
-                <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+                <h3 className={`text-2xl font-bold flex items-center gap-2 ${user.active_cosmetic_color
+                        ? COSMETIC_ITEMS.find(i => i.id === user.active_cosmetic_color)?.previewValue
+                        : 'text-white'
+                    }`}>
                     {user.name}
                     {user.is_trainer && (
                         <span className="text-xs bg-lime/20 text-lime px-2 py-0.5 rounded-full border border-lime/30 tracking-wide">TRAINER</span>
@@ -622,6 +641,26 @@ export default function Profile() {
                             </div>
                         </motion.div>
                     </div>
+                )}
+            </AnimatePresence>
+
+            {/* Cosmetic Shop Drawer */}
+            <AnimatePresence>
+                {isShopOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            onClick={() => setIsShopOpen(false)}
+                            className="fixed inset-0 bg-black/85 backdrop-blur-md z-[60]"
+                        />
+                        <motion.div
+                            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 200 }}
+                            className="fixed bottom-0 left-0 right-0 z-[60] bg-oled rounded-t-3xl h-[85vh] border-t border-gray-800"
+                        >
+                            <CosmeticShop onClose={() => setIsShopOpen(false)} />
+                        </motion.div>
+                    </>
                 )}
             </AnimatePresence>
         </div>
