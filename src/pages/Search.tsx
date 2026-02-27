@@ -657,7 +657,14 @@ export default function Search() {
             </AnimatePresence>
 
             {/* Add Gym Modal */}
-            <AddGymModal isOpen={showAddGym} onClose={() => setShowAddGym(false)} />
+            <AddGymModal
+                isOpen={showAddGym}
+                onClose={() => setShowAddGym(false)}
+                onAdded={() => {
+                    setShowAddGym(false);
+                    refreshGyms();
+                }}
+            />
         </div>
     );
 }

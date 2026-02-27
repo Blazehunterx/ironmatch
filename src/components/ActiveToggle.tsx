@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Zap, Target, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Zap, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function ActiveToggle() {
     const { user, updateUser } = useAuth();
@@ -28,8 +28,8 @@ export default function ActiveToggle() {
             onClick={toggleActive}
             disabled={isUpdating}
             className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${user?.is_training
-                    ? 'bg-lime border-lime shadow-[0_0_30px_-5px_rgba(50,255,50,0.4)]'
-                    : 'bg-gray-900 border-gray-800 hover:border-gray-700'
+                ? 'bg-lime border-lime shadow-[0_0_30px_-5px_rgba(50,255,50,0.4)]'
+                : 'bg-gray-900 border-gray-800 hover:border-gray-700'
                 }`}
         >
             <div className="flex items-center gap-3">

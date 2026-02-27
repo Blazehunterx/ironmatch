@@ -1,16 +1,15 @@
 import { useState, useMemo, useEffect } from 'react';
-import GridCard from '../components/ProfileCard';
-import ProfileDetail from '../components/ProfileDetail';
-// import { mockUsers } from '../lib/mock';
-import { User, Goal, DayOfWeek, TimeBlock, ALL_GOALS, ALL_DAYS, ALL_TIME_BLOCKS } from '../types/database';
 import { useAuth } from '../context/AuthContext';
 import { useGyms } from '../context/GymContext';
 import { supabase } from '../lib/supabase';
-import { Ghost, SlidersHorizontal, X, GraduationCap, Calendar, Target, MapPin, Navigation, Plus, Loader2, RefreshCw, Search as SearchIcon } from 'lucide-react';
+import { Filter, RefreshCw, Ghost } from 'lucide-react';
 import RequestModal from '../components/RequestModal';
 import { motion, AnimatePresence } from 'framer-motion';
-import { formatDistance } from '../lib/location';
+import { User, Goal, DayOfWeek, TimeBlock } from '../types/database';
 import ActiveToggle from '../components/ActiveToggle';
+import ProfileCard from '../components/ProfileCard';
+import ProfileDetail from '../components/ProfileDetail';
+import CollectiveMilestones from '../components/CollectiveMilestones';
 
 export default function Home() {
     const { user } = useAuth();
@@ -25,12 +24,7 @@ export default function Home() {
     const [filterGym, setFilterGym] = useState<string | null>(null);
 
     // Gym discovery from context
-    const { gyms: sortedGyms, locationStatus, isLoadingGyms, getDistance, addCustomGym, refreshGyms } = useGyms();
-
-    // Add Gym modal
-    const [showAddGym, setShowAddGym] = useState(false);
-    const [newGymName, setNewGymName] = useState('');
-    const [newGymLocation, setNewGymLocation] = useState('');
+    const { gyms: sortedGyms } = useGyms();
 
     // Request Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,11 +39,17 @@ export default function Home() {
     const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
 
     const fetchProfiles = async () => {
-        const { data, error } = await supabase.from('profiles').select('*');
-        if (!error && data) {
-            setAllProfiles(data);
+        setIsLoadingProfiles(true);
+        try {
+            const { data, error } = await supabase.from('profiles').select('*');
+            if (!error && data) {
+                setAllProfiles(data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch profiles:', err);
+        } finally {
+            setIsLoadingProfiles(false);
         }
-        setIsLoadingProfiles(false);
     };
 
     useEffect(() => {
@@ -100,313 +100,148 @@ export default function Home() {
         setIsModalOpen(true);
     };
 
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setTargetUser(null);
-    };
-
-    const clearFilters = () => {
-        setFilterTrainer(false);
-        setFilterGoal(null);
-        setFilterDay(null);
-        setFilterTime(null);
-        setFilterLevel(null);
-        setFilterGym(null);
-    };
-
     const handleViewProfile = (u: User) => {
         setDetailUser(u);
         setIsDetailOpen(true);
     };
 
     return (
-        <div className="flex flex-col w-full min-h-[calc(100vh-120px)] pb-32">
-            <div className="flex items-center justify-between px-4 pt-4 mb-3">
+        <div className="px-4 pb-20 pt-6">
+            {/* Header / Welcome */}
+            <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-extrabold text-white tracking-tight">Discover</h1>
-                    <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                        {locationStatus === 'granted' && <Navigation size={9} className="text-lime" />}
-                        {filteredUsers.length} partner{filteredUsers.length !== 1 ? 's' : ''} nearby
-                    </p>
+                    <h1 className="text-2xl font-black text-white tracking-tight">Active Buddies</h1>
+                    <p className="text-gray-500 text-sm font-medium">Find your next training partner</p>
                 </div>
                 <div className="flex gap-2">
                     <button
-                        onClick={refreshGyms}
-                        className="p-2.5 rounded-xl border border-gray-800 bg-gray-900 text-gray-400 hover:text-lime transition-all active:rotate-180"
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`p-3 rounded-2xl border transition-all relative ${showFilters ? 'bg-lime border-lime text-oled shadow-lg' : 'bg-gray-900 border-gray-800 text-gray-400'
+                            }`}
                     >
-                        <RefreshCw size={20} className={isLoadingProfiles ? 'animate-spin' : ''} />
+                        <Filter size={20} />
+                        {activeFilterCount > 0 && !showFilters && (
+                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-lime text-oled text-[10px] font-black rounded-full flex items-center justify-center border-2 border-oled">
+                                {activeFilterCount}
+                            </span>
+                        )}
                     </button>
                     <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className={`p-2.5 rounded-xl border transition-all ${showFilters ? 'bg-lime text-oled border-lime' : 'bg-gray-900 text-gray-400 border-gray-800'}`}
+                        onClick={fetchProfiles}
+                        className="p-3 bg-gray-900 border border-gray-800 rounded-2xl text-gray-400 hover:text-lime transition-all"
                     >
-                        <SearchIcon size={20} />
+                        <RefreshCw size={20} className={isLoadingProfiles ? 'animate-spin' : ''} />
                     </button>
                 </div>
             </div>
 
-            {/* Active Training Status Toggle */}
-            <div className="px-4 mb-6">
+            <div className="mb-6">
                 <ActiveToggle />
             </div>
 
-            {/* Filter Panel */}
+            <div className="mb-8">
+                <CollectiveMilestones milestones={[]} />
+            </div>
+
+            {/* Filters Drawer */}
             <AnimatePresence>
                 {showFilters && (
                     <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                        className="overflow-hidden"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mb-8 overflow-hidden"
                     >
-                        <div className="px-4 pb-4 space-y-4">
-                            {/* Quick Clear */}
-                            {activeFilterCount > 0 && (
-                                <button onClick={clearFilters} className="text-xs text-gray-500 hover:text-red-400 flex items-center gap-1 transition-colors">
-                                    <X size={12} /> Clear all filters
+                        <div className="p-5 bg-gray-900/50 border border-gray-800 rounded-3xl space-y-6">
+                            <div className="flex justify-between items-center pb-2">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-gray-500">Filter Preferences</h3>
+                                <button
+                                    onClick={() => {
+                                        setFilterTrainer(false);
+                                        setFilterGoal(null);
+                                        setFilterDay(null);
+                                        setFilterTime(null);
+                                        setFilterLevel(null);
+                                        setFilterGym(null);
+                                    }}
+                                    className="text-[10px] font-black text-lime hover:underline"
+                                >
+                                    RESET ALL
                                 </button>
-                            )}
-
-                            {/* Trainer Toggle */}
-                            <div className="flex items-center justify-between bg-gray-900/60 border border-gray-800 rounded-xl px-3 py-2.5">
-                                <span className="text-xs font-semibold text-white flex items-center gap-1.5">
-                                    <GraduationCap size={14} className="text-lime" /> Trainers Only
-                                </span>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" className="sr-only peer" checked={filterTrainer} onChange={(e) => setFilterTrainer(e.target.checked)} />
-                                    <div className="w-9 h-5 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-lime"></div>
-                                </label>
                             </div>
 
-                            {/* Nearby Gym Filter */}
-                            <div>
-                                <span className="text-xs font-semibold text-gray-400 flex items-center gap-1 mb-2"><MapPin size={12} /> Nearby Gyms</span>
-                                {isLoadingGyms ? (
-                                    <div className="flex items-center justify-center gap-2 py-4 text-gray-500 text-xs">
-                                        <Loader2 size={14} className="animate-spin" /> Discovering gyms near you...
-                                    </div>
-                                ) : sortedGyms.length === 0 ? (
-                                    <div className="text-center py-3">
-                                        <p className="text-xs text-gray-500 mb-2">
-                                            {locationStatus === 'denied' ? 'Location access denied.' : 'No gyms found nearby.'}
-                                        </p>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-600 block mb-2 uppercase tracking-tight">Home Gym</label>
+                                    <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                                         <button
-                                            onClick={() => setShowAddGym(true)}
-                                            className="text-xs text-lime hover:underline"
+                                            onClick={() => setFilterGym(null)}
+                                            className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${!filterGym ? 'bg-lime border-lime text-oled' : 'bg-gray-900 border-gray-800 text-gray-400'}`}
                                         >
-                                            + Add your gym
+                                            All Gyms
                                         </button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                                            {sortedGyms.map(g => {
-                                                const dist = getDistance(g);
-                                                return (
-                                                    <button
-                                                        key={g.id}
-                                                        onClick={() => setFilterGym(filterGym === g.id ? null : g.id)}
-                                                        className={`w-full flex items-center gap-2 text-left px-3 py-2 rounded-xl border text-xs transition-all ${filterGym === g.id
-                                                            ? 'bg-lime/10 border-lime/40 text-lime'
-                                                            : 'bg-gray-900 border-gray-800 text-gray-400 hover:border-gray-600'
-                                                            }`}
-                                                    >
-                                                        <MapPin size={12} className={filterGym === g.id ? 'text-lime' : 'text-gray-600'} />
-                                                        <span className="flex-1 font-semibold truncate">{g.name}</span>
-                                                        <span className="text-[10px] text-gray-500 truncate max-w-[60px]">{g.location}</span>
-                                                        {dist !== null && (
-                                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${dist < 3 ? 'bg-lime/10 text-lime' : 'bg-gray-800 text-gray-500'}`}>
-                                                                {formatDistance(dist)}
-                                                            </span>
-                                                        )}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                        <button
-                                            onClick={() => setShowAddGym(true)}
-                                            className="w-full mt-1.5 py-2 rounded-xl bg-gray-900 border border-gray-800 border-dashed text-gray-500 text-[10px] font-medium hover:border-lime/30 hover:text-gray-400 transition-colors flex items-center justify-center gap-1"
-                                        >
-                                            <Plus size={10} /> Can't find your gym? Add it
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                            <div>
-                                <span className="text-xs font-semibold text-gray-400 flex items-center gap-1 mb-2"><Target size={12} /> Goal</span>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {ALL_GOALS.map(g => (
-                                        <button
-                                            key={g}
-                                            onClick={() => setFilterGoal(filterGoal === g ? null : g)}
-                                            className={`text-[10px] font-semibold px-2 py-1 rounded-lg border transition-all ${filterGoal === g
-                                                ? 'bg-lime/20 border-lime/50 text-lime'
-                                                : 'bg-gray-900 border-gray-800 text-gray-400 hover:border-gray-600'
-                                                }`}
-                                        >
-                                            {g}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Fitness Level */}
-                            <div>
-                                <span className="text-xs font-semibold text-gray-400 mb-2 block">Level</span>
-                                <div className="flex gap-1.5">
-                                    {['Beginner', 'Intermediate', 'Professional'].map(level => (
-                                        <button
-                                            key={level}
-                                            onClick={() => setFilterLevel(filterLevel === level ? null : level)}
-                                            className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border transition-all ${filterLevel === level
-                                                ? 'bg-lime/20 border-lime/50 text-lime'
-                                                : 'bg-gray-900 border-gray-800 text-gray-400 hover:border-gray-600'
-                                                }`}
-                                        >
-                                            {level}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Availability Filter */}
-                            <div>
-                                <span className="text-xs font-semibold text-gray-400 flex items-center gap-1 mb-2"><Calendar size={12} /> Available On</span>
-                                <div className="flex gap-1 mb-2">
-                                    {ALL_DAYS.map(day => (
-                                        <button
-                                            key={day}
-                                            onClick={() => { setFilterDay(filterDay === day ? null : day); if (filterDay === day) setFilterTime(null); }}
-                                            className={`flex-1 text-[10px] font-bold py-1.5 rounded-lg border text-center transition-all ${filterDay === day
-                                                ? 'bg-lime/20 border-lime/50 text-lime'
-                                                : 'bg-gray-900 border-gray-800 text-gray-500 hover:border-gray-600'
-                                                }`}
-                                        >
-                                            {day}
-                                        </button>
-                                    ))}
-                                </div>
-                                {filterDay && (
-                                    <div className="flex gap-1.5">
-                                        {ALL_TIME_BLOCKS.map(block => (
+                                        {sortedGyms.slice(0, 5).map(g => (
                                             <button
-                                                key={block}
-                                                onClick={() => setFilterTime(filterTime === block ? null : block)}
-                                                className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border transition-all ${filterTime === block
-                                                    ? 'bg-lime/20 border-lime/50 text-lime'
-                                                    : 'bg-gray-900 border-gray-800 text-gray-400 hover:border-gray-600'
-                                                    }`}
+                                                key={g.id}
+                                                onClick={() => setFilterGym(g.id)}
+                                                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${filterGym === g.id ? 'bg-lime border-lime text-oled' : 'bg-gray-900 border-gray-800 text-gray-400'}`}
                                             >
-                                                {block}
+                                                {g.name}
                                             </button>
                                         ))}
                                     </div>
-                                )}
+                                </div>
                             </div>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* Grid */}
-            <div className="px-4">
-                {isLoadingProfiles ? (
-                    <div className="flex flex-col items-center justify-center py-20 gap-4">
-                        <div className="w-8 h-8 border-4 border-lime/30 border-t-lime rounded-full animate-spin" />
-                        <p className="text-xs text-gray-500 font-bold">Discovering partners...</p>
+            {/* Main Content */}
+            {isLoadingProfiles ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                    <div className="w-12 h-12 border-4 border-lime/20 border-t-lime rounded-full animate-spin" />
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-600">Syncing profiles...</p>
+                </div>
+            ) : filteredUsers.length === 0 ? (
+                <div className="text-center py-20 px-8">
+                    <div className="w-16 h-16 bg-gray-900 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-gray-800">
+                        <Ghost className="text-gray-700" size={32} />
                     </div>
-                ) : filteredUsers.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center text-gray-500 gap-4 py-20">
-                        <div className="w-20 h-20 rounded-full bg-gray-900 flex items-center justify-center border border-gray-800">
-                            <Ghost size={32} className="text-gray-600" />
-                        </div>
-                        <p className="text-center font-medium">No partners match your filters.</p>
-                        <button onClick={clearFilters} className="text-sm text-lime hover:underline">Clear filters</button>
-                    </div>
-                ) : (
-                    <div className="flex flex-col gap-3">
-                        {filteredUsers.map((feedUser, index) => (
-                            <GridCard
-                                key={feedUser.id}
-                                user={feedUser}
-                                index={index}
-                                onRequest={handleRequest}
-                                onViewProfile={handleViewProfile}
-                            />
-                        ))}
-                    </div>
-                )}
-            </div>
+                    <h3 className="text-white font-bold mb-1">No matches found</h3>
+                    <p className="text-gray-500 text-sm">Try adjusting your filters to find more training partners.</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 gap-4">
+                    {filteredUsers.map((u, i) => (
+                        <ProfileCard
+                            key={u.id}
+                            user={u}
+                            index={i}
+                            onRequest={handleRequest}
+                            onViewProfile={handleViewProfile}
+                        />
+                    ))}
+                </div>
+            )}
 
-            {
-                targetUser && (
-                    <RequestModal
-                        isOpen={isModalOpen}
-                        onClose={handleCloseModal}
-                        user={targetUser}
-                    />
-                )
-            }
+            {/* Modals */}
+            {targetUser && (
+                <RequestModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    user={targetUser}
+                />
+            )}
 
-            <ProfileDetail
-                user={detailUser}
-                isOpen={isDetailOpen}
-                onClose={() => setIsDetailOpen(false)}
-                onRequest={handleRequest}
-            />
-
-            {/* Add Your Gym Modal */}
-            <AnimatePresence>
-                {showAddGym && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
-                            className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-sm p-6"
-                        >
-                            <h3 className="font-bold text-lg text-white mb-1">Add Your Gym</h3>
-                            <p className="text-xs text-gray-500 mb-4">We'll pin it to your current location.</p>
-                            <div className="space-y-3 mb-5">
-                                <input
-                                    type="text"
-                                    value={newGymName}
-                                    onChange={(e) => setNewGymName(e.target.value)}
-                                    placeholder="Gym name (e.g. Gold's Gym Kuta)"
-                                    className="w-full bg-oled border border-gray-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-lime"
-                                    autoFocus
-                                />
-                                <input
-                                    type="text"
-                                    value={newGymLocation}
-                                    onChange={(e) => setNewGymLocation(e.target.value)}
-                                    placeholder="Area / neighborhood (e.g. Seminyak)"
-                                    className="w-full bg-oled border border-gray-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-lime"
-                                />
-                            </div>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => { setShowAddGym(false); setNewGymName(''); setNewGymLocation(''); }}
-                                    className="flex-1 py-2.5 rounded-xl bg-gray-800 text-white font-medium hover:bg-gray-700 transition"
-                                >Cancel</button>
-                                <button
-                                    onClick={() => {
-                                        if (newGymName.trim()) {
-                                            addCustomGym(newGymName.trim(), newGymLocation.trim() || 'My Area');
-                                            setShowAddGym(false);
-                                            setNewGymName('');
-                                            setNewGymLocation('');
-                                        }
-                                    }}
-                                    disabled={!newGymName.trim()}
-                                    className="flex-1 py-2.5 rounded-xl bg-lime text-oled font-bold hover:bg-lime/90 transition disabled:opacity-30"
-                                >Add Gym</button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+            {detailUser && (
+                <ProfileDetail
+                    isOpen={isDetailOpen}
+                    onClose={() => setIsDetailOpen(false)}
+                    user={detailUser}
+                    onRequest={handleRequest}
+                />
+            )}
         </div>
     );
 }
