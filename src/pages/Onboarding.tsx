@@ -79,6 +79,17 @@ export default function Onboarding() {
 
     const finish = async () => {
         const hg = allGyms.find(g => g.id === homeGym);
+
+        // Convert lifts to lbs internally if entered in kg
+        const processedLifts = { ...lifts };
+        if (unitPref === 'kg') {
+            (Object.keys(processedLifts) as Array<keyof typeof lifts>).forEach(k => {
+                if (processedLifts[k]) {
+                    processedLifts[k] = Math.round(processedLifts[k] * 2.20462);
+                }
+            });
+        }
+
         const data = {
             profile_image_url: profileImage || 'https://i.pravatar.cc/300',
             home_gym: homeGym || undefined,
@@ -87,7 +98,7 @@ export default function Onboarding() {
             height_cm: heightCm || undefined,
             unit_preference: unitPref,
             discipline,
-            big4: lifts.bench || lifts.squat || lifts.deadlift || lifts.ohp ? lifts : undefined,
+            big4: lifts.bench || lifts.squat || lifts.deadlift || lifts.ohp ? processedLifts : undefined,
             goals,
             sub_goals: subGoals,
             fitness_level: fitnessLevel,
@@ -212,7 +223,7 @@ export default function Onboarding() {
                                     ) : (
                                         allGyms
                                             .filter(g => g.name.toLowerCase().includes(searchGymQuery.toLowerCase()))
-                                            .slice(0, 15)
+                                            .slice(0, 50)
                                             .map((gym) => (
                                                 <button
                                                     key={gym.id}

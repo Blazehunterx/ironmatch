@@ -31,6 +31,7 @@ export default function Profile() {
     const [fitnessLevel, setFitnessLevel] = useState(user?.fitness_level || 'Beginner');
     const [unitPref, setUnitPref] = useState<'lbs' | 'kg'>(user?.unit_preference || 'lbs');
     const toDisplay = (lbs: number) => unitPref === 'kg' ? Math.round(lbs * 0.453592) : lbs;
+    const toLbs = (val: number) => unitPref === 'kg' ? Math.round(val * 2.20462) : val;
     const unitLabel = unitPref;
 
     // Image
@@ -47,7 +48,7 @@ export default function Profile() {
 
     // Big 4 / Body stats editing
     const [isEditingPRs, setIsEditingPRs] = useState(false);
-    const [tempLifts, setTempLifts] = useState<Big4Lifts>(user?.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 });
+    const [tempLifts, setTempLifts] = useState<Big4Lifts>({ bench: 0, squat: 0, deadlift: 0, ohp: 0 });
     const [tempWeight, setTempWeight] = useState(user?.weight_kg || 0);
     const [tempHeight, setTempHeight] = useState(user?.height_cm || 0);
 
@@ -221,7 +222,14 @@ export default function Profile() {
                     </h4>
                     <button
                         onClick={() => {
-                            setTempLifts(user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 });
+                            const currentLifts = user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 };
+                            // Load display values into editor
+                            setTempLifts({
+                                bench: toDisplay(currentLifts.bench),
+                                squat: toDisplay(currentLifts.squat),
+                                deadlift: toDisplay(currentLifts.deadlift),
+                                ohp: toDisplay(currentLifts.ohp),
+                            });
                             setTempWeight(user.weight_kg || 0);
                             setTempHeight(user.height_cm || 0);
                             setIsEditingPRs(!isEditingPRs);
@@ -265,7 +273,14 @@ export default function Profile() {
                             <div className="flex gap-2">
                                 <button onClick={() => setIsEditingPRs(false)} className="p-2 text-gray-400 hover:text-white rounded-lg"><X size={18} /></button>
                                 <button onClick={() => {
-                                    updateUser({ big4: tempLifts, weight_kg: tempWeight, height_cm: tempHeight });
+                                    // Convert display values back to lbs for storage
+                                    const savedLifts = {
+                                        bench: toLbs(tempLifts.bench),
+                                        squat: toLbs(tempLifts.squat),
+                                        deadlift: toLbs(tempLifts.deadlift),
+                                        ohp: toLbs(tempLifts.ohp),
+                                    };
+                                    updateUser({ big4: savedLifts, weight_kg: tempWeight, height_cm: tempHeight });
                                     setIsEditingPRs(false);
                                 }} className="p-2 text-lime hover:bg-lime/20 rounded-lg"><Check size={18} /></button>
                             </div>
