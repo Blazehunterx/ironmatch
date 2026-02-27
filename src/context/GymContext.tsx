@@ -11,6 +11,8 @@ interface GymContextType {
     isLoadingGyms: boolean;
     addCustomGym: (name: string, location: string, lat?: number, lng?: number) => Promise<string>;
     refreshGyms: () => void;
+    searchRadius: number;
+    setSearchRadius: (km: number) => void;
     getDistance: (gym: Gym) => number | null;
     findGym: (id: string) => Gym | undefined;
 }
@@ -73,6 +75,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     const [userLocation, setUserLocation] = useState<GeoCoords | null>(null);
     const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'granted' | 'denied'>('idle');
     const [isLoadingGyms, setIsLoadingGyms] = useState(false);
+    const [searchRadius, setSearchRadius] = useState(50); // Default 50km
 
     // Fetch custom gyms from Supabase
     const fetchDBGyms = useCallback(async () => {
@@ -119,7 +122,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
                 setUserLocation(coords);
                 setLocationStatus('granted');
                 setIsLoadingGyms(true);
-                const nearby = await fetchNearbyGyms(coords);
+                const nearby = await fetchNearbyGyms(coords, searchRadius * 1000);
                 const withCounts = await fetchMemberCounts(nearby);
                 setOsmGyms(withCounts);
                 setIsLoadingGyms(false);
@@ -185,11 +188,11 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     const refreshGyms = useCallback(async () => {
         if (!userLocation) return;
         setIsLoadingGyms(true);
-        const nearby = await fetchNearbyGyms(userLocation);
+        const nearby = await fetchNearbyGyms(userLocation, searchRadius * 1000);
         setOsmGyms(nearby);
         fetchDBGyms();
         setIsLoadingGyms(false);
-    }, [userLocation, fetchDBGyms]);
+    }, [userLocation, fetchDBGyms, searchRadius]);
 
     const getDistance = useCallback((gym: Gym) => {
         if (!userLocation) return null;
@@ -213,6 +216,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
             isLoadingGyms,
             addCustomGym,
             refreshGyms,
+            searchRadius,
+            setSearchRadius,
             getDistance,
             findGym,
         }}>

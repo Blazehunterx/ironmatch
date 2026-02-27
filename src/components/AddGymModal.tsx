@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, MapPin, Navigation, Map, ShieldCheck } from 'lucide-react';
 import { useGyms } from '../context/GymContext';
@@ -34,6 +34,16 @@ export default function AddGymModal({ isOpen, onClose, onAdded }: AddGymModalPro
             setIsLocating(false);
         }
     };
+
+    // Background Scroll Lock
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [isOpen]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -77,7 +87,7 @@ export default function AddGymModal({ isOpen, onClose, onAdded }: AddGymModalPro
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-md bg-gray-900 border border-gray-800 rounded-3xl p-6 z-[201] shadow-2xl"
+                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-md bg-gray-900 border border-gray-800 rounded-3xl p-6 z-[201] shadow-2xl overflow-y-auto max-h-[90vh]"
                     >
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">

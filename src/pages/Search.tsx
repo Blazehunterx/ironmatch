@@ -20,7 +20,10 @@ interface EnhancedPost extends Post {
 
 export default function Search() {
     const { user } = useAuth();
-    const { gyms: allGyms, findGym, locationStatus, refreshGyms, isLoadingGyms: isSearchingGyms } = useGyms();
+    const {
+        gyms: allGyms, findGym, locationStatus, refreshGyms,
+        isLoadingGyms: isSearchingGyms, searchRadius, setSearchRadius
+    } = useGyms();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedGym, setSelectedGym] = useState(user?.home_gym || 'g1');
     const [showGymPicker, setShowGymPicker] = useState(false);
@@ -328,6 +331,29 @@ export default function Search() {
                                         <Zap size={14} className={isSearchingGyms ? 'animate-pulse text-lime' : ''} />
                                     </button>
                                 </div>
+
+                                {/* Range Selector */}
+                                <div className="p-3 bg-gray-900 border-b border-gray-800">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Search Radius</span>
+                                        <span className="text-xs font-bold text-lime">{searchRadius} km</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {[5, 10, 20, 50, 100].map(km => (
+                                            <button
+                                                key={km}
+                                                onClick={() => { setSearchRadius(km); }}
+                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${searchRadius === km
+                                                        ? 'bg-lime border-lime text-oled shadow-lg'
+                                                        : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-white'
+                                                    }`}
+                                            >
+                                                {km}k
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 <div className="max-h-60 overflow-y-auto">
                                     {locationStatus === 'denied' && (
                                         <div className="p-3 text-[10px] text-red-400 bg-red-500/5 border-b border-gray-800">

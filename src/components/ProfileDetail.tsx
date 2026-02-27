@@ -1,8 +1,9 @@
-import { User, ALL_TIME_BLOCKS } from '../types/database';
+import { useEffect } from 'react';
+import { User } from '../types/database';
 import { useGyms } from '../context/GymContext';
 import {
     X, Dumbbell, MapPin, Zap, GraduationCap, Flame,
-    Award, CalendarDays, Target, MessageSquare, UserPlus, UserCheck
+    Award, CalendarDays, Target, MessageSquare, UserPlus, UserCheck, Trophy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFriends } from '../context/FriendsContext';
@@ -22,6 +23,17 @@ const goalEmoji: Record<string, string> = {
 
 export default function ProfileDetail({ user, isOpen, onClose, onRequest }: ProfileDetailProps) {
     const { findGym } = useGyms();
+
+    // Background Scroll Lock
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [isOpen]);
+
     if (!user) return null;
     const gym = findGym(user.home_gym);
 
@@ -139,20 +151,17 @@ export default function ProfileDetail({ user, isOpen, onClose, onRequest }: Prof
                                 {user.availability && user.availability.length > 0 && (
                                     <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
                                         <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1">
-                                            <CalendarDays size={12} /> Availability
+                                            <CalendarDays size={12} /> Training Schedule
                                         </h4>
-                                        <div className="space-y-1.5">
+                                        <div className="space-y-3">
                                             {user.availability.map(slot => (
-                                                <div key={slot.day} className="flex items-center gap-3">
-                                                    <span className="w-8 text-xs font-bold text-white">{slot.day}</span>
-                                                    <div className="flex gap-1 flex-wrap">
-                                                        {ALL_TIME_BLOCKS.map(block => (
+                                                <div key={slot.day} className="flex flex-col gap-1.5">
+                                                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{slot.day}</span>
+                                                    <div className="flex gap-1.5 flex-wrap">
+                                                        {slot.blocks.map(block => (
                                                             <span
                                                                 key={block}
-                                                                className={`text-[9px] font-semibold px-2 py-0.5 rounded ${slot.blocks.includes(block)
-                                                                    ? 'bg-lime/15 text-lime border border-lime/25'
-                                                                    : 'bg-gray-800/50 text-gray-700 border border-gray-800'
-                                                                    }`}
+                                                                className="text-[9px] font-bold px-3 py-1 rounded bg-lime/10 text-lime border border-lime/20"
                                                             >
                                                                 {block}
                                                             </span>
@@ -163,6 +172,41 @@ export default function ProfileDetail({ user, isOpen, onClose, onRequest }: Prof
                                         </div>
                                     </div>
                                 )}
+
+                                {/* Strength Stats */}
+                                {user.big4 && (
+                                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1">
+                                            <Trophy size={12} className="text-yellow-500" /> Strength Milestone
+                                        </h4>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="p-2 bg-oled rounded-lg border border-gray-800">
+                                                <span className="text-[8px] text-gray-600 block uppercase">Bench</span>
+                                                <span className="text-sm font-black text-white">{user.big4.bench || 0} <span className="text-[8px] text-gray-600">lbs</span></span>
+                                            </div>
+                                            <div className="p-2 bg-oled rounded-lg border border-gray-800">
+                                                <span className="text-[8px] text-gray-600 block uppercase">Squat</span>
+                                                <span className="text-sm font-black text-white">{user.big4.squat || 0} <span className="text-[8px] text-gray-600">lbs</span></span>
+                                            </div>
+                                            <div className="p-2 bg-oled rounded-lg border border-gray-800">
+                                                <span className="text-[8px] text-gray-600 block uppercase">Deadlift</span>
+                                                <span className="text-sm font-black text-white">{user.big4.deadlift || 0} <span className="text-[8px] text-gray-600">lbs</span></span>
+                                            </div>
+                                            <div className="p-2 bg-oled rounded-lg border border-gray-800">
+                                                <span className="text-[8px] text-gray-600 block uppercase">OHP</span>
+                                                <span className="text-sm font-black text-white">{user.big4.ohp || 0} <span className="text-[8px] text-gray-600">lbs</span></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Extra Info */}
+                                <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                        <GraduationCap size={12} /> Discipline
+                                    </h4>
+                                    <p className="text-sm text-gray-300">{user.discipline || 'General Fitness'}</p>
+                                </div>
                             </div>
                         </div>
 
