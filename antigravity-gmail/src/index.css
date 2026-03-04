@@ -1,0 +1,189 @@
+@import url('https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-haki-obsidian: #0A0A0A;
+  --color-haki-red: #E61E2A;
+  --color-haki-crimson: #8B0000;
+  --color-haki-slate: #1A1A1A;
+  --color-haki-glow: rgba(230, 30, 42, 0.4);
+
+  --font-sans: "Inter", "sans-serif";
+  --font-mono: "Orbitron", "monospace";
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-haki-obsidian text-slate-100 font-sans antialiased overflow-hidden;
+  margin: 0;
+}
+
+/* --- Thousand Sunny HUD Background --- */
+.bg-strawhat-deck {
+  background-color: #0A0A0B;
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(230, 30, 42, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(255, 207, 0, 0.05) 0%, transparent 50%);
+  position: relative;
+}
+
+/* --- Red Haki Aura --- */
+@keyframes haki-surge {
+  0% {
+    box-shadow: 0 0 15px rgba(230, 30, 42, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(230, 30, 42, 0.6);
+  }
+
+  100% {
+    box-shadow: 0 0 15px rgba(230, 30, 42, 0.3);
+  }
+}
+
+.haki-aura-red {
+  animation: haki-surge 3s infinite ease-in-out;
+}
+
+/* --- Base Deck Styles --- */
+.haki-deck {
+  background: var(--color-haki-obsidian);
+  color: #FFFFFF;
+}
+
+.haki-card {
+  background: rgba(26, 26, 26, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(40px);
+  border-radius: 1rem;
+  transition: all 0.5s ease;
+}
+
+.haki-card-active {
+  border-color: rgba(230, 30, 42, 0.4);
+  background: rgba(230, 30, 42, 0.05);
+  box-shadow: 0 0 50px rgba(230, 30, 42, 0.1);
+}
+
+/* --- Haki Bolts (Lightning Strokes) --- */
+@keyframes haki-bolt-surge {
+  0% {
+    transform: scaleY(0) translateY(0);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  40% {
+    transform: scaleY(1.2) translateY(-10px);
+    opacity: 0.8;
+  }
+
+  60% {
+    opacity: 1;
+    filter: hue-rotate(10deg);
+  }
+
+  80% {
+    transform: scaleY(0.8) translateY(5px);
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: scaleY(0) translateY(0);
+    opacity: 0;
+  }
+}
+
+.haki-bolt {
+  position: absolute;
+  width: 2px;
+  background: linear-gradient(to bottom, transparent, var(--color-haki-red), transparent);
+  pointer-events: none;
+  z-index: 10;
+  filter: blur(1px);
+}
+
+.haki-surge-active .haki-bolt {
+  animation: haki-bolt-surge 0.4s ease-out infinite;
+}
+
+/* --- Wanted Poster Card Style --- */
+.wanted-card {
+  background: rgba(26, 26, 26, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 1rem;
+  position: relative;
+  overflow: hidden;
+  background-image: linear-gradient(135deg, rgba(242, 227, 201, 0.02) 0%, transparent 100%);
+}
+
+.wanted-card::before {
+  content: "DEAD OR ALIVE";
+  @apply absolute top-2 left-1/2 -translate-x-1/2 text-[8px] font-black tracking-[0.4em] text-white/30 font-mono;
+}
+
+/* --- Haki Mail Buttons --- */
+@utility haki-btn-primary {
+  @apply bg-haki-red text-white py-2 px-6 rounded-lg font-black uppercase tracking-widest transition-all;
+  box-shadow: 0 10px 30px rgba(230, 30, 42, 0.2);
+}
+
+.haki-btn-primary:hover {
+  background-color: var(--color-haki-crimson);
+  transform: translateY(-2px);
+  box-shadow: 0 15px 40px rgba(230, 30, 42, 0.3);
+}
+
+@utility haki-btn-ghost {
+  @apply bg-white/5 border border-white/10 text-slate-400 py-2 px-6 rounded-lg font-black uppercase tracking-widest transition-all hover:bg-white/10 hover:text-white;
+}
+
+/* --- Signal List Refinement --- */
+@utility haki-signal-row {
+  @apply p-4 border-b border-white/5 hover:bg-white/[0.02] transition-colors cursor-pointer relative;
+}
+
+/* --- Animated Flame Background --- */
+@keyframes flame-flicker {
+
+  0%,
+  100% {
+    opacity: 0.1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.2;
+    transform: scale(1.1);
+  }
+}
+
+/* --- Overlay/Aura Effects --- */
+.haki-aura-crimson {
+  box-shadow: inset 0 0 100px rgba(139, 0, 0, 0.1), 0 0 50px rgba(0, 0, 0, 0.8);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-haki-red);
+}
