@@ -1329,32 +1329,34 @@ const App: React.FC = () => {
                   {/* Thread Conversation View */}
                   <div className="space-y-6">
                     {threadMessages.length > 1 ? (
-                      threadMessages.map((msg) => (
-                        <div
-                          key={msg.id}
-                          className={`relative group p-8 haki-card shadow-xl overflow-hidden border-white/10 ${msg.isSent ? 'bg-haki-red/5 border-l-2 border-l-haki-red' : 'bg-black/40'
-                            }`}
-                        >
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black ${msg.isSent ? 'bg-haki-red/20 text-haki-red' : 'bg-white/10 text-slate-400'
-                                }`}>
-                                {msg.from?.[0] || '?'}
+                      [...threadMessages]
+                        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                        .map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`relative group p-8 haki-card shadow-xl overflow-hidden border-white/10 ${msg.isSent ? 'bg-haki-red/5 border-l-2 border-l-haki-red' : 'bg-black/40'
+                              }`}
+                          >
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black ${msg.isSent ? 'bg-haki-red/20 text-haki-red' : 'bg-white/10 text-slate-400'
+                                  }`}>
+                                  {msg.from?.[0] || '?'}
+                                </div>
+                                <span className={`text-[10px] font-black uppercase tracking-[0.2em] font-mono ${msg.isSent ? 'text-haki-red' : 'text-slate-500'
+                                  }`}>
+                                  {msg.isSent ? 'YOU' : msg.from}
+                                </span>
                               </div>
-                              <span className={`text-[10px] font-black uppercase tracking-[0.2em] font-mono ${msg.isSent ? 'text-haki-red' : 'text-slate-500'
-                                }`}>
-                                {msg.isSent ? 'YOU' : msg.from}
+                              <span className="text-[8px] text-slate-600 font-mono">
+                                {msg.date?.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
-                            <span className="text-[8px] text-slate-600 font-mono">
-                              {msg.date?.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                            </span>
+                            <p className="text-[15px] lg:text-[16px] leading-[1.8] text-white/90 font-medium whitespace-pre-wrap selection:bg-haki-red/40 font-sans tracking-tight">
+                              {msg.body}
+                            </p>
                           </div>
-                          <p className="text-[15px] lg:text-[16px] leading-[1.8] text-white/90 font-medium whitespace-pre-wrap selection:bg-haki-red/40 font-sans tracking-tight">
-                            {msg.body}
-                          </p>
-                        </div>
-                      ))
+                        ))
                     ) : (
                       <div className="relative group p-10 haki-card shadow-2xl overflow-hidden min-h-[400px] border-white/10 bg-black/40">
                         <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-full bg-haki-red opacity-0 group-hover:opacity-100 transition-opacity`} />
