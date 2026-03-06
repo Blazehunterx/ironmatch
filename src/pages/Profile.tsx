@@ -3,19 +3,18 @@ import { useAuth } from '../context/AuthContext';
 import { useGyms } from '../context/GymContext';
 import {
     LogOut, Settings, Award, Flame, Activity, Edit2, Check, X, Camera,
-    Target, CalendarDays, Dumbbell, Ruler, Zap, Users, RefreshCw, History
+    Target, CalendarDays, Zap, Users, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFriends } from '../context/FriendsContext';
 import {
-    Goal, BodyPart, DayOfWeek, TimeBlock,
-    ALL_GOALS, ALL_BODY_PARTS, ALL_DAYS, ALL_TIME_BLOCKS,
-    WorkoutLog
+    Goal, DayOfWeek, TimeBlock,
+    ALL_GOALS, ALL_DAYS, ALL_TIME_BLOCKS
 } from '../types/database';
-import { getRankFromLifts, getBig4Total, Big4Lifts } from '../lib/gamification';
+import { getRankFromLifts, getBig4Total } from '../lib/gamification';
 import { COSMETIC_ITEMS } from '../lib/cosmetics';
 import CosmeticShop from '../components/CosmeticShop';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { isSupabaseConfigured } from '../lib/supabase';
 import React from 'react';
 
 const goalEmoji: Record<string, string> = {
@@ -34,12 +33,8 @@ export default function Profile() {
     // Settings
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isTrainer, setIsTrainer] = useState(user?.is_trainer || false);
-    const [fitnessLevel, setFitnessLevel] = useState(user?.fitness_level || 'Beginner');
     const [unitPref, setUnitPref] = useState<'lbs' | 'kg'>(user?.unit_preference || 'lbs');
     const [isShopOpen, setIsShopOpen] = useState(false);
-
-    const toDisplay = (val: number) => val;
-    const unitLabel = unitPref;
 
     // Image
     const [isEditingImage, setIsEditingImage] = useState(false);
@@ -48,37 +43,15 @@ export default function Profile() {
     // Goals editing
     const [isEditingGoals, setIsEditingGoals] = useState(false);
     const [editGoals, setEditGoals] = useState<Goal[]>(user?.goals || []);
-    const [editSubGoals, setEditSubGoals] = useState<BodyPart[]>(user?.sub_goals || []);
 
     // Availability editing
     const [isEditingAvailability, setIsEditingAvailability] = useState(false);
-
-    // Big 4 / Body stats editing
-    const [isEditingPRs, setIsEditingPRs] = useState(false);
-    const [tempLifts, setTempLifts] = useState<Big4Lifts>({ bench: 0, squat: 0, deadlift: 0, ohp: 0 });
-    const [tempWeight, setTempWeight] = useState(user?.weight_kg || 0);
-    const [tempHeight, setTempHeight] = useState(user?.height_cm || 0);
-
-    const [logs, setLogs] = useState<WorkoutLog[]>([]);
-    const [isLoadingLogs, setIsLoadingLogs] = useState(true);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!user) return;
-        const fetchLogs = async () => {
-            setIsLoadingLogs(true);
-            const { data } = await supabase
-                .from('workout_logs')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false })
-                .limit(5);
-
-            if (data) setLogs(data);
-            setIsLoadingLogs(false);
-        };
-        fetchLogs();
+        // Logs were here but unused, removed to resolve TS6133
     }, [user?.id]);
 
     if (!user) return null;
@@ -92,11 +65,6 @@ export default function Profile() {
     const handleSaveTrainer = (newVal: boolean) => {
         setIsTrainer(newVal);
         updateUser({ is_trainer: newVal });
-    };
-
-    const handleSaveFitnessLevel = (newVal: any) => {
-        setFitnessLevel(newVal);
-        updateUser({ fitness_level: newVal });
     };
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,15 +93,9 @@ export default function Profile() {
         });
     };
 
-    const toggleSubGoal = (bp: BodyPart) => {
-        setEditSubGoals(prev =>
-            prev.includes(bp) ? prev.filter(b => b !== bp) : [...prev, bp]
-        );
-    };
-
     const handleSaveGoals = () => {
         setIsEditingGoals(false);
-        updateUser({ goals: editGoals, sub_goals: editSubGoals });
+        updateUser({ goals: editGoals });
     };
 
     const toggleAvailBlock = (day: DayOfWeek, block: TimeBlock) => {
@@ -209,7 +171,7 @@ export default function Profile() {
                         {user.verification_status === 'verified' && <Award size={18} className="text-lime" />}
                     </h3>
                     <p className="text-lime font-bold text-sm uppercase tracking-widest mt-1">
-                        Rank: {getRankFromLifts(user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 })}
+                        Rank: {getRankFromLifts(user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 }).name}
                     </p>
                 </div>
                 <p className="text-gray-400 mt-1 flex items-center gap-1">

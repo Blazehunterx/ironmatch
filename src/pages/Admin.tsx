@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { User } from '../types/database';
-import { Check, X, ExternalLink, ShieldAlert, Award, ArrowLeft, MapPin, TrendingUp, Users, Activity, Trophy, Zap } from 'lucide-react';
+import { ShieldAlert, Award, ArrowLeft, MapPin, TrendingUp, Users, Activity, Trophy, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Admin() {

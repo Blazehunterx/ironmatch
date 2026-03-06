@@ -29,7 +29,7 @@ interface ConversationContextType {
 const ConversationContext = createContext<ConversationContextType | null>(null);
 
 // Owner of the app who welcomes new users
-const OWNER_EMAIL = 'marvin.2000.sluis@gmail.com';
+// Owner of the app who welcomes new users
 
 export function ConversationProvider({ children, currentUserId }: { children: React.ReactNode; currentUserId: string }) {
     const [conversations, setConversations] = useState<Conversation[]>([]);

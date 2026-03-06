@@ -11,7 +11,7 @@ interface GymWarArenaProps {
     onClose?: () => void;
 }
 
-export default function GymWarArena({ war, gym1, gym2, onClose }: GymWarArenaProps) {
+export default function GymWarArena({ war, gym1, gym2 }: GymWarArenaProps) {
     const [stats, setStats] = useState<{ gym1_score: number; gym2_score: number }>({ gym1_score: 0, gym2_score: 0 });
     const [recentLogs, setRecentLogs] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
