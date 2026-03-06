@@ -3,6 +3,9 @@ import { WorkoutPlan, WorkoutExercise, WorkoutLog } from '../types/database';
 import { X, Check, Timer, Trophy, Dumbbell, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { useGyms } from '../context/GymContext';
+import { isNearGym } from '../lib/geofencing';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import PRCelebration from './PRCelebration';
 
 interface ActiveWorkoutProps {
@@ -22,6 +25,7 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
     const [finished, setFinished] = useState(false);
     const [shared, setShared] = useState(false);
     const { user, updateUser } = useAuth();
+    const { findGym, getActiveWar, userLocation } = useGyms();
     const [activePR, setActivePR] = useState<{ exercise: string; newWeight: number; oldWeight: number } | null>(null);
 
     // Timer
@@ -79,7 +83,7 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
     const completeAll = exercises.every(e => e.completed);
     const completedCount = exercises.filter(e => e.completed).length;
 
-    const handleFinish = () => {
+    const handleFinish = async () => {
         setFinished(true);
         const log: WorkoutLog = {
             id: `wl-${Date.now()}`,
@@ -90,6 +94,39 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
             completed_at: new Date().toISOString(),
             duration_min: Math.round(elapsed / 60)
         };
+
+        // Activity Logging & Gym War Contribution
+        if (isSupabaseConfigured && user?.home_gym) {
+            const activeWar = await getActiveWar(user.home_gym);
+            const gym = findGym(user.home_gym);
+
+            let isVerifiedLocation = false;
+            if (gym && userLocation) {
+                isVerifiedLocation = isNearGym(userLocation.lat, userLocation.lng, gym.lat, gym.lng);
+            }
+
+            const totalVolume = exercises.reduce((acc, ex) =>
+                acc + (ex.completed ? (ex.sets * ex.reps * (ex.weight || 0)) : 0), 0
+            );
+
+            await supabase.from('activity_logs').insert({
+                user_id: user.id,
+                gym_id: user.home_gym,
+                type: 'workout',
+                value: totalVolume,
+                metadata: {
+                    plan_name: plan.name,
+                    is_war_contribution: !!activeWar && isVerifiedLocation,
+                    war_id: activeWar?.id,
+                    geofenced: isVerifiedLocation
+                }
+            });
+
+            if (activeWar && !isVerifiedLocation) {
+                console.log('Workout logged, but too far from gym to count for Gym War.');
+            }
+        }
+
         setTimeout(() => onComplete(log), 2500);
     };
 

@@ -7,8 +7,9 @@ import {
 } from 'lucide-react';
 import { useGyms } from '../context/GymContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Goal, BodyPart, ALL_GOALS, ALL_BODY_PARTS, FitnessLevel, FitnessDiscipline } from '../types/database';
+import { Goal, BodyPart, ALL_GOALS, ALL_BODY_PARTS, FitnessLevel, FitnessDiscipline, User } from '../types/database';
 import { getRankFromLifts, Big4Lifts } from '../lib/gamification';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const goalEmoji: Record<string, string> = {
     'Workout Buddy': '🤝', 'Socialize': '💬', 'Get Pushed': '🔥', 'Learn': '📚',
@@ -94,11 +95,43 @@ export default function Onboarding() {
             fitness_level: fitnessLevel,
             bio,
         };
+
+        let newUserProfile: User | null = null;
         if (user) {
             updateUser(data);
+            newUserProfile = { ...user, ...data } as User;
         } else {
             await signup(data);
+            // After signup, AuthContext updates the user state
         }
+
+        // Send Welcome Message from the Owner if Supabase is alive
+        if (isSupabaseConfigured) {
+            try {
+                // 1. Find the owner's ID
+                const { data: owner } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('email', 'marvin.2000.sluis@gmail.com')
+                    .single();
+
+                if (owner?.id && (user?.id || newUserProfile?.id)) {
+                    const recipientId = user?.id || newUserProfile?.id;
+                    if (!recipientId) return;
+
+                    // 2. Insert welcome message
+                    await supabase.from('messages').insert({
+                        sender_id: owner.id,
+                        receiver_id: recipientId,
+                        content: `Welcome to IronMatch, ${data.goals.includes('Workout Buddy') ? 'partner' : 'lifter'}! 💪 I'm Marvin, the creator. Glad to have you here. Let's get these gains!`,
+                        is_read: false
+                    });
+                }
+            } catch (err) {
+                console.warn('Could not send owner welcome message:', err);
+            }
+        }
+
         navigate('/');
     };
 

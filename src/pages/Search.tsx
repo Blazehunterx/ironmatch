@@ -2,12 +2,13 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { mockUsers, mockPosts } from '../lib/mock';
 import { useGyms } from '../context/GymContext';
-import { Heart, MessageCircle, MapPin, Users, ChevronDown, Search as SearchIcon, Image as ImageIcon, Send, Zap, Calendar, Trophy, RefreshCw } from 'lucide-react';
+import { Heart, MessageCircle, MapPin, Users, ChevronDown, Search as SearchIcon, Image as ImageIcon, Send, Zap, Calendar, Trophy, RefreshCw, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Post } from '../types/database';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import AddGymModal from '../components/AddGymModal';
 import GymShoutbox from '../components/GymShoutbox';
+import GymWarModal from '../components/GymWarModal';
 import BuddyMatch from '../components/BuddyMatch';
 
 interface EnhancedPost extends Post {
@@ -37,6 +38,7 @@ export default function Search() {
     const [eventDate, setEventDate] = useState('');
     const [eventTitle, setEventTitle] = useState('');
     const [showBuddyMatch, setShowBuddyMatch] = useState(false);
+    const [showWarModal, setShowWarModal] = useState(false);
 
     // Real Data States
     const [profiles, setProfiles] = useState<User[]>([]);
@@ -85,11 +87,21 @@ export default function Search() {
                 .select('*')
                 .in('post_id', postIds);
 
+            // Fetch Comments for these posts
+            const { data: commentData } = await supabase
+                .from('post_comments')
+                .select('*, profiles(*)')
+                .in('post_id', postIds)
+                .order('created_at', { ascending: true });
+
             const enhancedPosts = postData.map(p => ({
                 ...p,
                 likes_count: likeData?.filter(l => l.post_id === p.id).length || 0,
                 liked: user ? !!likeData?.find(l => l.post_id === p.id && l.user_id === user.id) : false,
-                comments: [], // Comments TBD
+                comments: (commentData?.filter(c => c.post_id === p.id) || []).map(c => ({
+                    user: c.profiles as unknown as User,
+                    text: c.content
+                })),
                 showComments: false
             }));
             setPosts(enhancedPosts);
@@ -132,13 +144,27 @@ export default function Search() {
         ));
     };
 
-    const addComment = (postId: string) => {
+    const addComment = async (postId: string) => {
         const text = newComment[postId]?.trim();
         if (!text || !user) return;
+
+        // Optimistic update
         setPosts(prev => prev.map(p =>
             p.id === postId ? { ...p, comments: [...p.comments, { user, text }] } : p
         ));
         setNewComment(prev => ({ ...prev, [postId]: '' }));
+
+        if (isSupabaseConfigured) {
+            const { error } = await supabase.from('post_comments').insert({
+                post_id: postId,
+                user_id: user.id,
+                content: text
+            });
+            if (error) {
+                console.error('Error adding comment:', error);
+                fetchData(); // Rollback/refresh on error
+            }
+        }
     };
 
     const postImageRef = useRef<HTMLInputElement>(null);
@@ -305,93 +331,150 @@ export default function Search() {
                     <span className="text-[10px] text-gray-500 flex items-center gap-1 shrink-0"><Users size={10} /> {gym?.member_count}</span>
                     <ChevronDown size={14} className={`text-gray-500 transition-transform ${showGymPicker ? 'rotate-180' : ''}`} />
                 </button>
-                <AnimatePresence>
-                    {showGymPicker && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="overflow-hidden"
+
+                {gym && !gym.owner_id && (
+                    <div className="mt-3 p-4 rounded-2xl bg-lime/10 border border-lime/20 flex flex-col gap-3">
+                        <div className="flex items-start gap-3">
+                            <div className="p-2 bg-lime/20 rounded-lg shrink-0">
+                                <Trophy className="text-lime" size={20} />
+                            </div>
+                            <div>
+                                <h4 className="text-xs font-bold text-white">Official Community Owner</h4>
+                                <p className="text-[10px] text-gray-400">Claim this gym to create events, send free passes, and challenge other gyms to wars!</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={async () => {
+                                if (!user) return;
+                                if (!isSupabaseConfigured) {
+                                    alert('Demo Mode: In a real app, this sends a request to the builder.');
+                                    return;
+                                }
+                                const proof = window.prompt('Please provide a link to proof of ownership/management (e.g. Website, LinkedIn, Business License):');
+                                if (proof) {
+                                    await supabase.from('profiles').update({
+                                        verification_status: 'pending',
+                                        trainer_license_url: `GYM_CLAIM:${selectedGym} - Proof: ${proof}`
+                                    }).eq('id', user.id);
+                                    alert('Claim request sent! We will verify and give you access.');
+                                }
+                            }}
+                            className="w-full py-2.5 bg-lime text-oled rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-lime/10 active:scale-95 transition-all"
                         >
-                            <div className="mt-2 bg-gray-900 border border-gray-800 rounded-xl divide-y divide-gray-800">
-                                <div className="p-2 border-b border-gray-800 flex items-center gap-2">
-                                    <SearchIcon size={14} className="text-gray-500 ml-1" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search gyms..."
-                                        value={searchGymQuery}
-                                        onChange={(e) => setSearchGymQuery(e.target.value)}
-                                        className="bg-transparent text-white text-sm w-full focus:outline-none placeholder:text-gray-600 flex-1"
-                                    />
-                                    <button
-                                        onClick={refreshGyms}
-                                        className="p-1.5 hover:text-lime transition-colors text-gray-500"
-                                        title="Refresh Location"
-                                    >
-                                        <Zap size={14} className={isSearchingGyms ? 'animate-pulse text-lime' : ''} />
-                                    </button>
+                            Claim this Community
+                        </button>
+                    </div>
+                )}
+
+                {gym && gym.owner_id === user?.id && gym.is_verified_gym && (
+                    <div className="mt-3 p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <ShieldAlert size={16} className="text-blue-400" />
+                                <span className="text-xs font-bold text-white uppercase tracking-wider">Owner Controls</span>
+                            </div>
+                            <span className="text-[9px] bg-blue-500 text-white px-1.5 py-0.5 rounded font-black">VERIFIED</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button className="py-2.5 bg-gray-900 border border-gray-800 rounded-xl text-[10px] font-bold text-white hover:border-blue-500/50 transition-all flex items-center justify-center gap-2">
+                                <Zap size={14} className="text-blue-400" /> Free Passes
+                            </button>
+                            <button
+                                onClick={() => setShowWarModal(true)}
+                                className="py-2.5 bg-gray-900 border border-gray-800 rounded-xl text-[10px] font-bold text-white hover:border-red-500/50 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Trophy size={14} className="text-red-400" /> Start 1v1 War
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+            <AnimatePresence>
+                {showGymPicker && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="mt-2 bg-gray-900 border border-gray-800 rounded-xl divide-y divide-gray-800">
+                            <div className="p-2 border-b border-gray-800 flex items-center gap-2">
+                                <SearchIcon size={14} className="text-gray-500 ml-1" />
+                                <input
+                                    type="text"
+                                    placeholder="Search gyms..."
+                                    value={searchGymQuery}
+                                    onChange={(e) => setSearchGymQuery(e.target.value)}
+                                    className="bg-transparent text-white text-sm w-full focus:outline-none placeholder:text-gray-600 flex-1"
+                                />
+                                <button
+                                    onClick={refreshGyms}
+                                    className="p-1.5 hover:text-lime transition-colors text-gray-500"
+                                    title="Refresh Location"
+                                >
+                                    <Zap size={14} className={isSearchingGyms ? 'animate-pulse text-lime' : ''} />
+                                </button>
+                            </div>
+
+                            {/* Range Selector */}
+                            <div className="p-3 bg-gray-900 border-b border-gray-800">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Search Radius</span>
+                                    <span className="text-xs font-bold text-lime">{searchRadius} km</span>
                                 </div>
-
-                                {/* Range Selector */}
-                                <div className="p-3 bg-gray-900 border-b border-gray-800">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Search Radius</span>
-                                        <span className="text-xs font-bold text-lime">{searchRadius} km</span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        {[5, 10, 20, 50, 100].map(km => (
-                                            <button
-                                                key={km}
-                                                onClick={() => { setSearchRadius(km); }}
-                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${searchRadius === km
-                                                        ? 'bg-lime border-lime text-oled shadow-lg'
-                                                        : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-white'
-                                                    }`}
-                                            >
-                                                {km}k
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="max-h-60 overflow-y-auto">
-                                    {locationStatus === 'denied' && (
-                                        <div className="p-3 text-[10px] text-red-400 bg-red-500/5 border-b border-gray-800">
-                                            Location access denied. Enable it in browser settings for automatic discovery.
-                                        </div>
-                                    )}
-                                    {allGyms
-                                        .filter(g => g.name.toLowerCase().includes(searchGymQuery.toLowerCase()))
-                                        .slice(0, 15)
-                                        .map(g => (
-                                            <button
-                                                key={g.id}
-                                                onClick={() => { setSelectedGym(g.id); setShowGymPicker(false); }}
-                                                className={`w-full flex items-center gap-3 p-3 text-left transition-colors ${selectedGym === g.id ? 'bg-lime/5' : 'hover:bg-gray-800/50'}`}
-                                            >
-                                                <MapPin size={12} className={selectedGym === g.id ? 'text-lime' : 'text-gray-600'} />
-                                                <div className="flex-1">
-                                                    <span className={`text-sm font-semibold ${selectedGym === g.id ? 'text-lime' : 'text-white'}`}>{g.name}</span>
-                                                    <span className="text-xs text-gray-500 ml-2">{g.location}</span>
-                                                </div>
-                                                <span className="text-[10px] text-gray-600 shrink-0">{g.member_count} members</span>
-                                            </button>
-                                        ))}
-
-                                    <div className="p-3 border-t border-gray-800">
+                                <div className="flex gap-2">
+                                    {[5, 10, 20, 50, 100].map(km => (
                                         <button
-                                            onClick={() => setShowAddGym(true)}
-                                            className="w-full py-2 rounded-lg border border-dashed border-gray-700 text-gray-500 text-xs font-bold hover:border-lime/50 hover:text-lime transition-all"
+                                            key={km}
+                                            onClick={() => { setSearchRadius(km); }}
+                                            className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${searchRadius === km
+                                                ? 'bg-lime border-lime text-oled shadow-lg'
+                                                : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-white'
+                                                }`}
                                         >
-                                            + Add Custom Gym
+                                            {km}k
                                         </button>
-                                    </div>
+                                    ))}
                                 </div>
                             </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
+
+                            <div className="max-h-60 overflow-y-auto">
+                                {locationStatus === 'denied' && (
+                                    <div className="p-3 text-[10px] text-red-400 bg-red-500/5 border-b border-gray-800">
+                                        Location access denied. Enable it in browser settings for automatic discovery.
+                                    </div>
+                                )}
+                                {allGyms
+                                    .filter(g => g.name.toLowerCase().includes(searchGymQuery.toLowerCase()))
+                                    .slice(0, 15)
+                                    .map(g => (
+                                        <button
+                                            key={g.id}
+                                            onClick={() => { setSelectedGym(g.id); setShowGymPicker(false); }}
+                                            className={`w-full flex items-center gap-3 p-3 text-left transition-colors ${selectedGym === g.id ? 'bg-lime/5' : 'hover:bg-gray-800/50'}`}
+                                        >
+                                            <MapPin size={12} className={selectedGym === g.id ? 'text-lime' : 'text-gray-600'} />
+                                            <div className="flex-1">
+                                                <span className={`text-sm font-semibold ${selectedGym === g.id ? 'text-lime' : 'text-white'}`}>{g.name}</span>
+                                                <span className="text-xs text-gray-500 ml-2">{g.location}</span>
+                                            </div>
+                                            <span className="text-[10px] text-gray-600 shrink-0">{g.member_count} members</span>
+                                        </button>
+                                    ))}
+
+                                <div className="p-3 border-t border-gray-800">
+                                    <button
+                                        onClick={() => setShowAddGym(true)}
+                                        className="w-full py-2 rounded-lg border border-dashed border-gray-700 text-gray-500 text-xs font-bold hover:border-lime/50 hover:text-lime transition-all"
+                                    >
+                                        + Add Custom Gym
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Tab Selector */}
             <div className="px-4 mb-4">
@@ -417,242 +500,284 @@ export default function Search() {
                 </div>
             </div>
 
-            {viewMode === 'shouts' ? (
-                <div className="px-4 flex-1 flex flex-col min-h-[500px] mb-4">
-                    <GymShoutbox gymId={selectedGym} gymName={gym?.name || 'Gym'} />
-                </div>
-            ) : (
-                <>
-                    {/* New Post Button */}
-                    <div className="px-4 mb-4">
-                        {!showNewPost ? (
-                            <button
-                                onClick={() => setShowNewPost(true)}
-                                className="w-full py-3 rounded-xl bg-gray-900 border border-gray-800 border-dashed text-gray-500 text-sm font-medium hover:border-lime/30 hover:text-gray-400 transition-colors"
-                            >
-                                + Share something with the community...
-                            </button>
-                        ) : (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3"
-                            >
-                                <textarea
-                                    value={newPostText}
-                                    onChange={(e) => setNewPostText(e.target.value)}
-                                    placeholder={isEvent ? "Details about the event..." : "What's on your mind?"}
-                                    className="w-full bg-oled border border-gray-700 text-white rounded-xl p-3 text-sm focus:outline-none focus:border-lime resize-none"
-                                    rows={3}
-                                    autoFocus
-                                />
+            {
+                viewMode === 'shouts' ? (
+                    <div className="px-4 flex-1 flex flex-col min-h-[500px] mb-4">
+                        <GymShoutbox gymId={selectedGym} gymName={gym?.name || 'Gym'} />
+                    </div>
+                ) : (
+                    <>
+                        {/* New Post Button */}
+                        <div className="px-4 mb-4">
+                            {!showNewPost ? (
+                                <button
+                                    onClick={() => setShowNewPost(true)}
+                                    className="w-full py-3 rounded-xl bg-gray-900 border border-gray-800 border-dashed text-gray-500 text-sm font-medium hover:border-lime/30 hover:text-gray-400 transition-colors"
+                                >
+                                    + Share something with the community...
+                                </button>
+                            ) : (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3"
+                                >
+                                    <textarea
+                                        value={newPostText}
+                                        onChange={(e) => setNewPostText(e.target.value)}
+                                        placeholder={isEvent ? "Details about the event..." : "What's on your mind?"}
+                                        className="w-full bg-oled border border-gray-700 text-white rounded-xl p-3 text-sm focus:outline-none focus:border-lime resize-none"
+                                        rows={3}
+                                        autoFocus
+                                    />
 
-                                {isEvent && (
-                                    <div className="space-y-3 p-3 bg-lime/10 border border-lime/30 rounded-xl">
-                                        <input
-                                            type="text"
-                                            value={eventTitle}
-                                            onChange={(e) => setEventTitle(e.target.value)}
-                                            placeholder="Event Title (e.g. Sunday Leg Massacre)"
-                                            className="w-full bg-oled border border-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:border-lime outline-none"
-                                        />
-                                        <div className="flex items-center gap-2">
-                                            <Calendar size={14} className="text-lime" />
+                                    {isEvent && (
+                                        <div className="space-y-3 p-3 bg-lime/10 border border-lime/30 rounded-xl">
                                             <input
-                                                type="datetime-local"
-                                                value={eventDate}
-                                                onChange={(e) => setEventDate(e.target.value)}
-                                                className="bg-oled border border-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:border-lime outline-none flex-1 [color-scheme:dark]"
+                                                type="text"
+                                                value={eventTitle}
+                                                onChange={(e) => setEventTitle(e.target.value)}
+                                                placeholder="Event Title (e.g. Sunday Leg Massacre)"
+                                                className="w-full bg-oled border border-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:border-lime outline-none"
                                             />
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            ref={postImageRef}
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={handlePostImageSelect}
-                                            className="hidden"
-                                        />
-                                        <button
-                                            onClick={() => postImageRef.current?.click()}
-                                            className="flex items-center gap-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded-lg px-3 py-2 text-xs font-medium hover:text-white hover:border-gray-600 active:scale-95 transition-all"
-                                        >
-                                            <ImageIcon size={14} /> {newPostImage ? 'Change Photo' : 'Photo'}
-                                        </button>
-
-                                        <button
-                                            onClick={() => setIsEvent(!isEvent)}
-                                            className={`flex items-center gap-1.5 border rounded-lg px-3 py-2 text-xs font-black uppercase tracking-wider active:scale-95 transition-all ${isEvent
-                                                ? 'bg-lime text-oled border-lime shadow-[0_0_15px_-3px_rgba(50,255,50,0.5)]'
-                                                : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
-                                                }`}
-                                        >
-                                            <Trophy size={14} /> {isEvent ? 'Gym Event' : 'Make Event'}
-                                        </button>
-                                    </div>
-
-                                    {newPostImage && (
-                                        <div className="relative">
-                                            <img src={newPostImage} className="h-10 w-10 rounded-lg object-cover border border-gray-700 shadow-lg" />
-                                            <button
-                                                onClick={() => setNewPostImage('')}
-                                                className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-black shadow-md"
-                                            >✕</button>
+                                            <div className="flex items-center gap-2">
+                                                <Calendar size={14} className="text-lime" />
+                                                <input
+                                                    type="datetime-local"
+                                                    value={eventDate}
+                                                    onChange={(e) => setEventDate(e.target.value)}
+                                                    className="bg-oled border border-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:border-lime outline-none flex-1 [color-scheme:dark]"
+                                                />
+                                            </div>
                                         </div>
                                     )}
-                                </div>
 
-                                <div className="flex gap-2 justify-end pt-2 border-t border-gray-800/50">
-                                    <button onClick={() => setShowNewPost(false)} className="px-5 py-2.5 rounded-xl bg-gray-800 text-gray-400 text-xs font-bold hover:bg-gray-700 transition">Cancel</button>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                ref={postImageRef}
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handlePostImageSelect}
+                                                className="hidden"
+                                            />
+                                            <button
+                                                onClick={() => postImageRef.current?.click()}
+                                                className="flex items-center gap-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded-lg px-3 py-2 text-xs font-medium hover:text-white hover:border-gray-600 active:scale-95 transition-all"
+                                            >
+                                                <ImageIcon size={14} /> {newPostImage ? 'Change Photo' : 'Photo'}
+                                            </button>
+
+                                            <button
+                                                onClick={() => setIsEvent(!isEvent)}
+                                                className={`flex items-center gap-1.5 border rounded-lg px-3 py-2 text-xs font-black uppercase tracking-wider active:scale-95 transition-all ${isEvent
+                                                    ? 'bg-lime text-oled border-lime shadow-[0_0_15px_-3px_rgba(50,255,50,0.5)]'
+                                                    : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
+                                                    }`}
+                                            >
+                                                <Trophy size={14} /> {isEvent ? 'Gym Event' : 'Make Event'}
+                                            </button>
+                                        </div>
+
+                                        {newPostImage && (
+                                            <div className="relative">
+                                                <img src={newPostImage} className="h-10 w-10 rounded-lg object-cover border border-gray-700 shadow-lg" alt="New post" />
+                                                <button
+                                                    onClick={() => setNewPostImage('')}
+                                                    className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-black shadow-md"
+                                                >✕</button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-2 justify-end pt-2 border-t border-gray-800/50">
+                                        <button onClick={() => setShowNewPost(false)} className="px-5 py-2.5 rounded-xl bg-gray-800 text-gray-400 text-xs font-bold hover:bg-gray-700 transition">Cancel</button>
+                                        <button
+                                            onClick={handleNewPost}
+                                            disabled={!newPostText.trim() || (isEvent && (!eventDate || !eventTitle))}
+                                            className="px-6 py-2.5 rounded-xl bg-lime text-oled text-xs font-black uppercase tracking-widest hover:bg-lime/90 disabled:opacity-30 transition shadow-lg"
+                                        >
+                                            Post
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </div>
+
+                        {/* User Search Results */}
+                        <AnimatePresence>
+                            {searchQuery.length >= 2 && searchResults.length === 0 && (
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-4 py-8 text-center bg-gray-900/30 rounded-3xl border border-gray-800/50 mx-4 mb-6">
+                                    <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <SearchIcon size={20} className="text-gray-600" />
+                                    </div>
+                                    <p className="text-sm font-bold text-gray-400 mb-1">No lifters found</p>
+                                    <p className="text-[10px] text-gray-600">Try a different name or invite your gym partner! 🤝</p>
+                                </motion.div>
+                            )}
+                            {searchResults.length > 0 && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="px-4 overflow-hidden mb-6"
+                                >
+                                    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden divide-y divide-gray-800">
+                                        {searchResults.map(u => (
+                                            <button key={u.id} className="w-full flex items-center gap-3 p-3 hover:bg-gray-800 transition-colors text-left">
+                                                <img src={u.profile_image_url} className="w-10 h-10 rounded-full border border-gray-700 object-cover" />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-bold text-white truncate">{u.name}</p>
+                                                    <p className="text-[10px] text-gray-500">{u.home_gym_name || 'No home gym'}</p>
+                                                </div>
+                                                <Zap size={14} className="text-lime" />
+                                            </button>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Posts Feed */}
+                        <div className="px-4 space-y-4">
+                            {isLoading ? (
+                                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                                    <div className="w-8 h-8 border-4 border-lime/30 border-t-lime rounded-full animate-spin" />
+                                    <p className="text-xs text-gray-500 font-bold">Loading community...</p>
+                                </div>
+                            ) : gymPosts.length === 0 ? (
+                                <div className="text-center py-20 bg-gray-900/30 rounded-3xl border border-dashed border-gray-800 p-8">
+                                    <div className="w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-800">
+                                        <MessageCircle size={28} className="text-gray-700" />
+                                    </div>
+                                    <h4 className="text-white font-bold mb-2">The Shoutbox is quiet...</h4>
+                                    <p className="text-xs text-gray-500 mb-6 leading-relaxed">
+                                        Nobody has posted at <strong>{gym?.name || 'this gym'}</strong> yet. <br />
+                                        Break the ice and start the community!
+                                    </p>
                                     <button
-                                        onClick={handleNewPost}
-                                        disabled={!newPostText.trim() || (isEvent && (!eventDate || !eventTitle))}
-                                        className="px-6 py-2.5 rounded-xl bg-lime text-oled text-xs font-black uppercase tracking-widest hover:bg-lime/90 disabled:opacity-30 transition shadow-lg"
+                                        onClick={() => setShowNewPost(true)}
+                                        className="px-6 py-2.5 rounded-xl bg-lime text-oled text-[10px] font-black uppercase tracking-widest hover:bg-lime/90 transition shadow-lg inline-flex items-center gap-2"
                                     >
-                                        Post
+                                        <Send size={14} /> Send First Shout
                                     </button>
                                 </div>
-                            </motion.div>
-                        )}
-                    </div>
-
-                    {/* Posts Feed */}
-                    <div className="px-4 space-y-4">
-                        {isLoading ? (
-                            <div className="flex flex-col items-center justify-center py-20 gap-4">
-                                <div className="w-8 h-8 border-4 border-lime/30 border-t-lime rounded-full animate-spin" />
-                                <p className="text-xs text-gray-500 font-bold">Loading community...</p>
-                            </div>
-                        ) : gymPosts.length === 0 ? (
-                            <div className="text-center py-16 text-gray-600">
-                                <p className="font-medium mb-1">No posts in this community yet.</p>
-                                <p className="text-sm">Be the first to share!</p>
-                            </div>
-                        ) : (
-                            gymPosts.map((post, idx) => {
-                                const author = getAuthor(post);
-                                return (
-                                    <motion.div
-                                        key={post.id}
-                                        initial={{ opacity: 0, y: 12 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: idx * 0.08 }}
-                                        className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden"
-                                    >
-                                        {/* Post Header */}
-                                        <div className="flex items-center gap-3 p-4 pb-2">
-                                            <img src={author?.profile_image_url} alt="" className="w-10 h-10 rounded-full border border-gray-700 object-cover" />
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="text-sm font-bold text-white truncate">{author?.name}</h4>
-                                                <p className="text-[10px] text-gray-500">
-                                                    {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {gym?.name}
-                                                </p>
-                                            </div>
-                                            {author?.is_trainer && <span className="text-[8px] bg-lime/20 text-lime px-1.5 py-0.5 rounded font-bold shrink-0">TRAINER</span>}
-                                        </div>
-
-                                        {/* Post Content */}
-                                        <div className="px-4 pb-3">
-                                            {post.is_event ? (
-                                                <div className="mt-1 p-4 rounded-2xl bg-gradient-to-br from-lime/20 via-lime/5 to-transparent border border-lime/30 shadow-[inset_0_0_20px_-10px_rgba(50,255,50,0.3)]">
-                                                    <div className="flex items-center gap-2 mb-3">
-                                                        <div className="p-2 bg-lime rounded-xl">
-                                                            <Calendar size={18} className="text-oled" />
-                                                        </div>
-                                                        <div>
-                                                            <h5 className="text-xs font-black text-lime uppercase tracking-widest leading-none mb-1">Upcoming Event</h5>
-                                                            <h4 className="text-lg font-black text-white leading-tight">{post.event_title}</h4>
-                                                        </div>
-                                                    </div>
-                                                    <p className="text-sm text-gray-300 leading-relaxed mb-4">{post.content}</p>
-                                                    <div className="flex items-center justify-between pt-3 border-t border-lime/20">
-                                                        <div className="flex items-center gap-2 text-[11px] font-black text-white uppercase tracking-wider">
-                                                            <Zap size={14} className="text-lime fill-current" />
-                                                            {post.event_date ? new Date(post.event_date).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'TBD'}
-                                                        </div>
-                                                        <button className="px-4 py-1.5 bg-lime text-oled text-[10px] font-black rounded-lg uppercase tracking-widest active:scale-95 transition-all shadow-md">
-                                                            Join In
-                                                        </button>
-                                                    </div>
+                            ) : (
+                                gymPosts.map((post, idx) => {
+                                    const author = getAuthor(post);
+                                    return (
+                                        <motion.div
+                                            key={post.id}
+                                            initial={{ opacity: 0, y: 12 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: idx * 0.08 }}
+                                            className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden"
+                                        >
+                                            <div className="flex items-center gap-3 p-4 pb-2">
+                                                <img src={author?.profile_image_url} alt="" className="w-10 h-10 rounded-full border border-gray-700 object-cover" />
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="text-sm font-bold text-white truncate">{author?.name}</h4>
+                                                    <p className="text-[10px] text-gray-500">
+                                                        {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {gym?.name}
+                                                    </p>
                                                 </div>
-                                            ) : (
-                                                <p className="text-sm text-gray-200 leading-relaxed">{post.content}</p>
-                                            )}
-                                        </div>
+                                                {author?.is_trainer && <span className="text-[8px] bg-lime/20 text-lime px-1.5 py-0.5 rounded font-bold shrink-0">TRAINER</span>}
+                                            </div>
 
-                                        {/* Media */}
-                                        {post.media_url && !post.is_event && (
-                                            <img src={post.media_url} alt="" className="w-full aspect-video object-cover" />
-                                        )}
-
-                                        {/* Actions */}
-                                        <div className="flex items-center gap-4 px-4 py-3 border-t border-gray-800/50">
-                                            <button
-                                                onClick={() => toggleLike(post.id)}
-                                                className={`flex items-center gap-1 text-xs font-semibold transition-colors ${post.liked ? 'text-red-500' : 'text-gray-500 hover:text-red-400'}`}
-                                            >
-                                                <Heart size={16} className={post.liked ? 'fill-current' : ''} /> {post.likes_count}
-                                            </button>
-                                            <button
-                                                onClick={() => toggleComments(post.id)}
-                                                className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-white transition-colors"
-                                            >
-                                                <MessageCircle size={16} /> {post.comments.length}
-                                            </button>
-                                        </div>
-
-                                        {/* Comments */}
-                                        <AnimatePresence>
-                                            {post.showComments && (
-                                                <motion.div
-                                                    initial={{ height: 0 }}
-                                                    animate={{ height: 'auto' }}
-                                                    exit={{ height: 0 }}
-                                                    className="overflow-hidden"
-                                                >
-                                                    <div className="px-4 pb-3 border-t border-gray-800/50 pt-3 space-y-2.5">
-                                                        {post.comments.map((c, ci) => (
-                                                            <div key={ci} className="flex items-start gap-2">
-                                                                <img src={c.user.profile_image_url} alt="" className="w-7 h-7 rounded-full border border-gray-700 object-cover mt-0.5" />
-                                                                <div className="bg-gray-800/50 rounded-xl px-3 py-1.5 flex-1">
-                                                                    <span className="text-[10px] font-bold text-white">{c.user.name}</span>
-                                                                    <p className="text-xs text-gray-400">{c.text}</p>
-                                                                </div>
+                                            <div className="px-4 pb-3">
+                                                {post.is_event ? (
+                                                    <div className="mt-1 p-4 rounded-2xl bg-gradient-to-br from-lime/20 via-lime/5 to-transparent border border-lime/30 shadow-[inset_0_0_20px_-10px_rgba(50,255,50,0.3)]">
+                                                        <div className="flex items-center gap-2 mb-3">
+                                                            <div className="p-2 bg-lime rounded-xl">
+                                                                <Calendar size={18} className="text-oled" />
                                                             </div>
-                                                        ))}
-                                                        {/* Add comment */}
-                                                        <div className="flex gap-2 pt-1">
-                                                            <input
-                                                                type="text"
-                                                                value={newComment[post.id] || ''}
-                                                                onChange={(e) => setNewComment(prev => ({ ...prev, [post.id]: e.target.value }))}
-                                                                onKeyDown={(e) => e.key === 'Enter' && addComment(post.id)}
-                                                                placeholder="Add a comment..."
-                                                                className="flex-1 bg-oled border border-gray-700 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-lime"
-                                                            />
-                                                            <button
-                                                                onClick={() => addComment(post.id)}
-                                                                disabled={!newComment[post.id]?.trim()}
-                                                                className="p-2 rounded-lg bg-lime text-oled disabled:opacity-30 active:scale-95 transition"
-                                                            >
-                                                                <Send size={14} />
+                                                            <div>
+                                                                <h5 className="text-xs font-black text-lime uppercase tracking-widest leading-none mb-1">Upcoming Event</h5>
+                                                                <h4 className="text-lg font-black text-white leading-tight">{post.event_title}</h4>
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-sm text-gray-300 leading-relaxed mb-4">{post.content}</p>
+                                                        <div className="flex items-center justify-between pt-3 border-t border-lime/20">
+                                                            <div className="flex items-center gap-2 text-[11px] font-black text-white uppercase tracking-wider">
+                                                                <Zap size={14} className="text-lime fill-current" />
+                                                                {post.event_date ? new Date(post.event_date).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'TBD'}
+                                                            </div>
+                                                            <button className="px-4 py-1.5 bg-lime text-oled text-[10px] font-black rounded-lg uppercase tracking-widest active:scale-95 transition-all shadow-md">
+                                                                Join In
                                                             </button>
                                                         </div>
                                                     </div>
-                                                </motion.div>
+                                                ) : (
+                                                    <p className="text-sm text-gray-200 leading-relaxed">{post.content}</p>
+                                                )}
+                                            </div>
+
+                                            {post.media_url && !post.is_event && (
+                                                <img src={post.media_url} alt="" className="w-full aspect-video object-cover" />
                                             )}
-                                        </AnimatePresence>
-                                    </motion.div>
-                                );
-                            })
-                        )}
-                    </div>
-                </>
-            )}
+
+                                            <div className="flex items-center gap-4 px-4 py-3 border-t border-gray-800/50">
+                                                <button
+                                                    onClick={() => toggleLike(post.id)}
+                                                    className={`flex items-center gap-1 text-xs font-semibold transition-colors ${post.liked ? 'text-red-500' : 'text-gray-500 hover:text-red-400'}`}
+                                                >
+                                                    <Heart size={16} className={post.liked ? 'fill-current' : ''} /> {post.likes_count}
+                                                </button>
+                                                <button
+                                                    onClick={() => toggleComments(post.id)}
+                                                    className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-white transition-colors"
+                                                >
+                                                    <MessageCircle size={16} /> {post.comments.length}
+                                                </button>
+                                            </div>
+
+                                            <AnimatePresence>
+                                                {post.showComments && (
+                                                    <motion.div
+                                                        initial={{ height: 0 }}
+                                                        animate={{ height: 'auto' }}
+                                                        exit={{ height: 0 }}
+                                                        className="overflow-hidden bg-black/20"
+                                                    >
+                                                        <div className="px-4 pb-3 border-t border-gray-800/50 pt-3 space-y-2.5">
+                                                            {post.comments.map((c, ci) => (
+                                                                <div key={ci} className="flex items-start gap-2">
+                                                                    <img src={c.user.profile_image_url} alt="" className="w-7 h-7 rounded-full border border-gray-700 object-cover mt-0.5" />
+                                                                    <div className="bg-gray-800/50 rounded-xl px-3 py-1.5 flex-1">
+                                                                        <span className="text-[10px] font-bold text-white">{c.user.name}</span>
+                                                                        <p className="text-xs text-gray-400">{c.text}</p>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                            <div className="flex gap-2 pt-1">
+                                                                <input
+                                                                    type="text"
+                                                                    value={newComment[post.id] || ''}
+                                                                    onChange={(e) => setNewComment(prev => ({ ...prev, [post.id]: e.target.value }))}
+                                                                    onKeyDown={(e) => e.key === 'Enter' && addComment(post.id)}
+                                                                    placeholder="Add a comment..."
+                                                                    className="flex-1 bg-oled border border-gray-700 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-lime"
+                                                                />
+                                                                <button
+                                                                    onClick={() => addComment(post.id)}
+                                                                    disabled={!newComment[post.id]?.trim()}
+                                                                    className="p-2 rounded-lg bg-lime text-oled disabled:opacity-30 active:scale-95 transition"
+                                                                >
+                                                                    <Send size={14} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </motion.div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </>
+                )
+            }
 
             {/* Buddy Match Modal */}
             <AnimatePresence>
@@ -691,6 +816,17 @@ export default function Search() {
                     refreshGyms();
                 }}
             />
-        </div>
+            {/* Gym War Modal */}
+            {
+                gym && (
+                    <GymWarModal
+                        isOpen={showWarModal}
+                        onClose={() => setShowWarModal(false)}
+                        ownerGym={gym}
+                        allGyms={allGyms}
+                    />
+                )
+            }
+        </div >
     );
 }

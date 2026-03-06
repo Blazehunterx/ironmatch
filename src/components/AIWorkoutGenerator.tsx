@@ -59,7 +59,7 @@ export default function AIWorkoutGenerator({ onGenerate, onClose }: AIWorkoutGen
     };
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="p-6 pb-12 space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="p-2 bg-lime rounded-xl shadow-[0_0_15px_-5px_#bef264]">

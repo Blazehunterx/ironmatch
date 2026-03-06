@@ -56,7 +56,7 @@ export default function RequestModal({ isOpen, onClose, user }: RequestModalProp
                         animate={{ y: 0 }}
                         exit={{ y: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 rounded-t-2xl z-50 p-6 shadow-2xl pb-safe pb-8 overflow-y-auto max-h-[95vh]"
+                        className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 rounded-t-2xl z-50 p-6 shadow-2xl pb-32 overflow-y-auto max-h-[95vh] scrollbar-hide"
                     >
                         {status === 'success' ? (
                             <div className="flex flex-col items-center justify-center py-12 space-y-4">

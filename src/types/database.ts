@@ -62,6 +62,9 @@ export interface User {
     unlocked_cosmetics?: string[];
     active_cosmetic_frame?: string;
     active_cosmetic_color?: string;
+    is_admin?: boolean;
+    verification_status?: 'none' | 'pending' | 'verified';
+    trainer_license_url?: string;
 }
 
 export interface Match {
@@ -80,6 +83,43 @@ export interface Gym {
     member_count: number;
     lat: number;
     lng: number;
+    owner_id?: string;
+    is_verified_gym?: boolean;
+}
+
+export interface GymWar {
+    id: string;
+    gym_1_id: string;
+    gym_2_id: string;
+    status: 'pending' | 'active' | 'completed' | 'declined';
+    start_date?: string;
+    end_date?: string;
+    winner_id?: string;
+    battle_type: 'volume';
+    created_at: string;
+}
+
+export interface GroupSession {
+    id: string;
+    trainer_id: string;
+    gym_id: string;
+    title: string;
+    description?: string;
+    workout_plan_id?: string;
+    start_time: string;
+    status: 'active' | 'completed';
+    join_code: string;
+    created_at: string;
+}
+
+export interface SessionParticipant {
+    session_id: string;
+    user_id: string;
+    joined_at: string;
+    profiles?: {
+        name: string;
+        profile_image_url: string;
+    };
 }
 
 export interface Post {
@@ -158,6 +198,7 @@ export interface WorkoutLog {
     started_at: string;
     completed_at?: string;
     duration_min?: number;
+    created_at?: string;
 }
 
 export const EXERCISE_LIBRARY: Record<BodyPart, string[]> = {
@@ -170,3 +211,30 @@ export const EXERCISE_LIBRARY: Record<BodyPart, string[]> = {
     'Glutes': ['Hip Thrust', 'Glute Bridge', 'Bulgarian Split Squat', 'Cable Kickback', 'Sumo Deadlift', 'Step-ups'],
     'Full Body': ['Clean & Press', 'Thrusters', 'Burpees', 'Kettlebell Swing', 'Turkish Get-up', 'Man Makers'],
 };
+
+export interface ChatMessage {
+    id: string;
+    sender_id: string;
+    receiver_id: string;
+    content: string;
+    created_at: string;
+    is_read: boolean;
+    is_voice?: boolean;
+}
+
+export interface Duel {
+    id: string;
+    challenger_id: string;
+    opponent_id: string;
+    type: 'reps' | 'weight' | 'workouts' | 'custom';
+    exercise: string;
+    target: string;
+    status: 'pending' | 'active' | 'completed' | 'expired';
+    challenger_progress: number;
+    opponent_progress: number;
+    xp_reward: number;
+    created_at: string;
+    expires_at: string;
+    challenger_proof_url?: string;
+    opponent_proof_url?: string;
+}

@@ -18,6 +18,7 @@ import Signup from './pages/Signup';
 import Onboarding from './pages/Onboarding';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Admin from './pages/Admin';
 
 function AppRoutes() {
     const { user } = useAuth();
@@ -47,6 +48,7 @@ function AppRoutes() {
                         <Route path="/arena" element={<Arena />} />
                         <Route path="/messages" element={<Messages />} />
                         <Route path="/profile" element={<Profile />} />
+                        <Route path="/admin" element={<Admin />} />
                     </Route>
                 </Routes>
             </FriendsProvider>

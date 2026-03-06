@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useCallback } from 'react';
-import { User } from '../types/database';
-import { mockUsers } from '../lib/mock';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { User, ChatMessage } from '../types/database';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface Message {
     from: string;
@@ -23,89 +23,159 @@ interface ConversationContextType {
     addConversation: (user: User, isAccepted?: boolean) => void;
     sendMessage: (userId: string, text: string, isVoice?: boolean, fromUserId?: string) => void;
     getUnreadCount: () => number;
+    loading: boolean;
 }
 
 const ConversationContext = createContext<ConversationContextType | null>(null);
 
+// Owner of the app who welcomes new users
+const OWNER_EMAIL = 'marvin.2000.sluis@gmail.com';
+
 export function ConversationProvider({ children, currentUserId }: { children: React.ReactNode; currentUserId: string }) {
-    const [conversations, setConversations] = useState<Conversation[]>(() => {
-        const others = mockUsers.filter(u => u.id !== currentUserId).slice(0, 4);
-        return [
-            {
-                user: others[0],
-                lastMessage: 'Sounds good, see you at 6!',
-                time: '12:30 PM',
-                unread: false,
-                accepted: true,
-                messages: [
-                    { from: currentUserId, text: `Hey ${others[0]?.name?.split(' ')[0]}, want to hit a session tomorrow?`, time: '11:20 AM' },
-                    { from: others[0]?.id || '', text: 'Yes! What time works for you?', time: '11:45 AM' },
-                    { from: currentUserId, text: 'How about 6 PM? Leg day 🔥', time: '12:10 PM' },
-                    { from: others[0]?.id || '', text: 'Sounds good, see you at 6!', time: '12:30 PM' },
-                ]
-            },
-            {
-                user: others[1],
-                lastMessage: 'Are you still looking for a spotter?',
-                time: 'Yesterday',
-                unread: true,
-                accepted: true,
-                messages: [
-                    { from: others[1]?.id || '', text: 'Hey! Saw your profile. I need a spotter for bench day.', time: 'Yesterday' },
-                    { from: currentUserId, text: 'Sure, I\'m at Iron Forge most evenings', time: 'Yesterday' },
-                    { from: others[1]?.id || '', text: 'Are you still looking for a spotter?', time: 'Yesterday' },
-                ]
-            },
-            {
-                user: others[2],
-                lastMessage: 'Sent you a workout request!',
-                time: 'Mon',
-                unread: false,
-                accepted: false,
-                messages: [
-                    { from: others[2]?.id || '', text: 'Sent you a workout request!', time: 'Mon' },
-                ]
-            },
-        ].filter(c => c.user);
-    });
+    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchConversations = useCallback(async () => {
+        if (!isSupabaseConfigured || !currentUserId) {
+            setLoading(false);
+            return;
+        }
+
+        try {
+            // 1. Fetch all messages for the current user
+            const { data: messages, error } = await supabase
+                .from('messages')
+                .select('*')
+                .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
+                .order('created_at', { ascending: true });
+
+            if (error) throw error;
+
+            // 2. Group by the OTHER user
+            const grouped: Record<string, ChatMessage[]> = {};
+            messages?.forEach(m => {
+                const otherId = m.sender_id === currentUserId ? m.receiver_id : m.sender_id;
+                if (!grouped[otherId]) grouped[otherId] = [];
+                grouped[otherId].push(m);
+            });
+
+            // 3. Fetch profiles for all other users
+            const otherIds = Object.keys(grouped);
+            if (otherIds.length === 0) {
+                setConversations([]);
+                setLoading(false);
+                return;
+            }
+
+            const { data: profiles, error: pError } = await supabase
+                .from('profiles')
+                .select('*')
+                .in('id', otherIds);
+
+            if (pError) throw pError;
+
+            // 4. Construct conversation objects
+            const newConversations: Conversation[] = profiles.map(profile => {
+                const userMsgs = grouped[profile.id];
+                const lastMsg = userMsgs[userMsgs.length - 1];
+
+                return {
+                    user: profile as User,
+                    lastMessage: lastMsg.is_voice ? '🎤 Voice message' : lastMsg.content,
+                    time: new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    unread: !lastMsg.is_read && lastMsg.receiver_id === currentUserId,
+                    accepted: true, // Defaulting to true for now, can be linked to friends/matches later
+                    messages: userMsgs.map(m => ({
+                        from: m.sender_id,
+                        text: m.content,
+                        time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        isVoice: m.is_voice
+                    }))
+                };
+            }).sort((a, b) => {
+                // Sort by last message time
+                const aTime = grouped[a.user.id][grouped[a.user.id].length - 1].created_at;
+                const bTime = grouped[b.user.id][grouped[b.user.id].length - 1].created_at;
+                return new Date(bTime).getTime() - new Date(aTime).getTime();
+            });
+
+            setConversations(newConversations);
+        } catch (err) {
+            console.error('Error fetching conversations:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [currentUserId]);
+
+    useEffect(() => {
+        fetchConversations();
+
+        if (!isSupabaseConfigured || !currentUserId) return;
+
+        // Real-time subscription
+        const channel = supabase
+            .channel('realtime:messages')
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages',
+                filter: `receiver_id=eq.${currentUserId}`
+            }, () => {
+                fetchConversations();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [fetchConversations, currentUserId]);
 
     const addConversation = useCallback((user: User, isAccepted = true) => {
         setConversations(prev => {
-            // Don't add duplicate
             if (prev.find(c => c.user.id === user.id)) {
-                // If it already exists, just mark as accepted
                 return prev.map(c => c.user.id === user.id ? { ...c, accepted: isAccepted } : c);
             }
-            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             return [{
                 user,
-                lastMessage: isAccepted ? 'Workout request accepted! 💪' : 'Sent you a workout request!',
+                lastMessage: 'Starting a new conversation...',
                 time: 'Just now',
-                unread: true,
+                unread: false,
                 accepted: isAccepted,
-                messages: [{
-                    from: isAccepted ? 'system' : user.id,
-                    text: isAccepted ? `${user.name} accepted your workout request! Say hi 👋` : 'Sent you a workout request!',
-                    time: now,
-                }]
+                messages: []
             }, ...prev];
         });
     }, []);
 
-    const sendMessage = useCallback((userId: string, text: string, isVoice?: boolean, fromUserId?: string) => {
+    const sendMessage = useCallback(async (userId: string, text: string, isVoice?: boolean) => {
+        if (!currentUserId) return;
+
+        // Optimistic update
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const newMessage = { from: currentUserId, text, time: now, isVoice };
+
         setConversations(prev => prev.map(c => {
             if (c.user.id === userId) {
-                const newMsg: Message = { from: fromUserId || currentUserId, text, time: 'Just now', isVoice };
                 return {
                     ...c,
                     lastMessage: isVoice ? '🎤 Voice message' : text,
-                    time: 'Just now',
+                    time: now,
                     unread: false,
-                    messages: [...c.messages, newMsg]
+                    messages: [...c.messages, newMessage]
                 };
             }
             return c;
         }));
+
+        if (isSupabaseConfigured) {
+            const { error } = await supabase.from('messages').insert({
+                sender_id: currentUserId,
+                receiver_id: userId,
+                content: text,
+                is_voice: isVoice || false,
+                is_read: false
+            });
+            if (error) console.error('Error sending message:', error);
+        }
     }, [currentUserId]);
 
     const getUnreadCount = useCallback(() => {
@@ -113,7 +183,7 @@ export function ConversationProvider({ children, currentUserId }: { children: Re
     }, [conversations]);
 
     return (
-        <ConversationContext.Provider value={{ conversations, addConversation, sendMessage, getUnreadCount }}>
+        <ConversationContext.Provider value={{ conversations, addConversation, sendMessage, getUnreadCount, loading }}>
             {children}
         </ConversationContext.Provider>
     );

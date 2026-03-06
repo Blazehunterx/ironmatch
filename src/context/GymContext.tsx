@@ -15,6 +15,7 @@ interface GymContextType {
     setSearchRadius: (km: number) => void;
     getDistance: (gym: Gym) => number | null;
     findGym: (id: string) => Gym | undefined;
+    getActiveWar: (gymId: string) => Promise<any | null>;
 }
 
 const GymContext = createContext<GymContextType | null>(null);
@@ -30,13 +31,7 @@ async function fetchNearbyGyms(coords: GeoCoords, radiusMeters = 50000): Promise
           nwr["leisure"="fitness_centre"](around:${radiusMeters},${coords.lat},${coords.lng});
           nwr["leisure"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
           nwr["amenity"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
-          nwr["sport"="fitness"](around:${radiusMeters},${coords.lat},${coords.lng});
-          nwr["sport"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
-          nwr["sport"="weightlifting"](around:${radiusMeters},${coords.lat},${coords.lng});
-          nwr["sport"="powerlifting"](around:${radiusMeters},${coords.lat},${coords.lng});
-          nwr["sport"="bodybuilding"](around:${radiusMeters},${coords.lat},${coords.lng});
-          nwr["leisure"="sports_centre"](around:${radiusMeters},${coords.lat},${coords.lng});
-          nwr["leisure"="sports_hall"](around:${radiusMeters},${coords.lat},${coords.lng});
+          nwr["sport"~"fitness|gym|weightlifting|powerlifting|bodybuilding"](around:${radiusMeters},${coords.lat},${coords.lng});
         );
         out center body;
     `;
@@ -79,7 +74,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     const [userLocation, setUserLocation] = useState<GeoCoords | null>(null);
     const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'granted' | 'denied'>('idle');
     const [isLoadingGyms, setIsLoadingGyms] = useState(false);
-    const [searchRadius, setSearchRadius] = useState(50); // Default 50km
+    const [searchRadius, setSearchRadius] = useState(20); // Tighter default 20km
 
     // Fetch custom gyms from Supabase
     const fetchDBGyms = useCallback(async () => {
@@ -212,6 +207,19 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         return gym;
     }, [allGyms]);
 
+    const getActiveWar = useCallback(async (gymId: string) => {
+        if (!isSupabaseConfigured) return null;
+        const { data, error } = await supabase
+            .from('gym_wars')
+            .select('*')
+            .or(`gym_1_id.eq.${gymId},gym_2_id.eq.${gymId}`)
+            .eq('status', 'active')
+            .single();
+
+        if (error) return null;
+        return data;
+    }, []);
+
     return (
         <GymContext.Provider value={{
             gyms: allGyms,
@@ -224,6 +232,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
             setSearchRadius,
             getDistance,
             findGym,
+            getActiveWar,
         }}>
             {children}
         </GymContext.Provider>

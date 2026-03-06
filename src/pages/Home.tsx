@@ -10,6 +10,8 @@ import ActiveToggle from '../components/ActiveToggle';
 import ProfileCard from '../components/ProfileCard';
 import ProfileDetail from '../components/ProfileDetail';
 import CollectiveMilestones from '../components/CollectiveMilestones';
+import GymWarArena from '../components/GymWarArena';
+import { Swords, Trophy, X } from 'lucide-react';
 
 export default function Home() {
     const { user } = useAuth();
@@ -37,6 +39,9 @@ export default function Home() {
     // Real Data Persistence
     const [allProfiles, setAllProfiles] = useState<User[]>([]);
     const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
+    const [activeWar, setActiveWar] = useState<any | null>(null);
+    const [showArena, setShowArena] = useState(false);
+    const { getActiveWar, findGym } = useGyms();
 
     const fetchProfiles = async () => {
         setIsLoadingProfiles(true);
@@ -44,6 +49,11 @@ export default function Home() {
             const { data, error } = await supabase.from('profiles').select('*');
             if (!error && data) {
                 setAllProfiles(data);
+            }
+
+            if (user?.home_gym) {
+                const war = await getActiveWar(user.home_gym);
+                setActiveWar(war);
             }
         } catch (err) {
             console.error('Failed to fetch profiles:', err);
@@ -138,6 +148,32 @@ export default function Home() {
             <div className="mb-6">
                 <ActiveToggle />
             </div>
+
+            {activeWar && (
+                <motion.button
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={() => setShowArena(true)}
+                    className="w-full mb-8 p-4 rounded-3xl bg-gradient-to-r from-red-600 to-red-900 border border-white/10 flex items-center gap-4 relative overflow-hidden group shadow-2xl shadow-red-900/40"
+                >
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform">
+                        <Swords size={80} />
+                    </div>
+                    <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl text-white shadow-xl">
+                        <Swords size={24} className="fill-current" />
+                    </div>
+                    <div className="text-left">
+                        <h4 className="text-[10px] font-black text-red-200 uppercase tracking-[0.2em] leading-none mb-1.5 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" /> Live Gym War
+                        </h4>
+                        <p className="text-lg font-black text-white leading-tight">Arena is Open!</p>
+                        <p className="text-[11px] text-red-100/60 font-medium">Contribute volume and claim victory</p>
+                    </div>
+                    <div className="ml-auto p-2 bg-white/20 rounded-xl">
+                        <Trophy size={16} className="text-white" />
+                    </div>
+                </motion.button>
+            )}
 
             <div className="mb-8">
                 <CollectiveMilestones milestones={[]} />
@@ -242,6 +278,40 @@ export default function Home() {
                     onRequest={handleRequest}
                 />
             )}
+
+            {/* Gym War Arena Modal */}
+            <AnimatePresence>
+                {showArena && activeWar && (
+                    <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-0 sm:p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowArena(false)}
+                            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+                        />
+                        <motion.div
+                            initial={{ y: "100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "100%" }}
+                            className="bg-oled border-t border-gray-800 sm:border border-gray-800 w-full max-w-lg h-[80vh] sm:rounded-2xl overflow-hidden z-10 relative"
+                        >
+                            <GymWarArena
+                                war={activeWar}
+                                gym1={findGym(activeWar.gym_1_id)!}
+                                gym2={findGym(activeWar.gym_2_id)!}
+                                onClose={() => setShowArena(false)}
+                            />
+                            <button
+                                onClick={() => setShowArena(false)}
+                                className="absolute top-4 right-4 p-2 bg-black/40 backdrop-blur-md rounded-full text-white/70 hover:text-white transition-colors z-20"
+                            >
+                                <X size={20} />
+                            </button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

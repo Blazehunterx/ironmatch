@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import {
     getRankFromLifts, getNextRank, getRankProgress, getBig4Total,
     getActiveWeeklyQuests, DUEL_TEMPLATES, HIDDEN_QUESTS, HIDDEN_QUEST_REVEALS,
-    checkDuelFairness,
+    checkDuelFairness, calculateEquivalentWeight,
     Duel, GymWarEntry, Big4Lifts
 } from '../lib/gamification';
 import {
@@ -31,6 +31,7 @@ export default function Arena() {
     const [customExercise, setCustomExercise] = useState('');
     const [customTarget, setCustomTarget] = useState('');
     const [useCustomDuel, setUseCustomDuel] = useState(false);
+    const [duelWeight, setDuelWeight] = useState<number>(0);
 
     // Real Data States
     const [allProfiles, setAllProfiles] = useState<User[]>([]);
@@ -53,19 +54,49 @@ export default function Arena() {
     useEffect(() => {
         fetchProfiles();
         fetchMilestones();
+        fetchDuels();
     }, [fetchProfiles]);
+
+    const [duels, setDuels] = useState<Duel[]>([]);
+    const fetchDuels = async () => {
+        if (!isSupabaseConfigured || !user?.id) {
+            setDuels([]); // Start empty for news users/no connection
+            return;
+        }
+
+        const { data } = await supabase
+            .from('duels')
+            .select('*')
+            .or(`challenger_id.eq.${user.id},opponent_id.eq.${user.id}`)
+            .order('created_at', { ascending: false });
+
+        if (data) {
+            // Map DB fields to local UI interface
+            setDuels(data.map(d => ({
+                id: d.id,
+                challengerId: d.challenger_id,
+                challengerName: allProfiles.find(p => p.id === d.challenger_id)?.name || 'Lifter',
+                challengerAvatar: allProfiles.find(p => p.id === d.challenger_id)?.profile_image_url || 'https://i.pravatar.cc/150',
+                opponentId: d.opponent_id,
+                opponentName: allProfiles.find(p => p.id === d.opponent_id)?.name || 'Lifter',
+                opponentAvatar: allProfiles.find(p => p.id === d.opponent_id)?.profile_image_url || 'https://i.pravatar.cc/150',
+                type: d.type,
+                exercise: d.exercise,
+                target: d.target,
+                status: d.status,
+                challengerProgress: d.challenger_progress,
+                opponentProgress: d.opponent_progress,
+                createdAt: d.created_at,
+                endsAt: '7d left', // Simplified for now
+                xpReward: d.xp_reward
+            })));
+        }
+    };
 
     const [milestones, setMilestones] = useState<GymMilestone[]>([]);
     const fetchMilestones = async () => {
         if (!isSupabaseConfigured || !user?.home_gym) {
-            // Mock milestone if no supabase
-            setMilestones([{
-                id: 'm1', gym_id: user?.home_gym || 'g1', title: 'The Million Pound Month',
-                description: 'Collectively lift 1,000,000 lbs in Big 4 exercises this month!',
-                target_value: 1000000, current_value: 452000, unit: 'lbs',
-                deadline: new Date(Date.now() + 864000000).toISOString(), type: 'volume',
-                reward_badge: 'Titan'
-            }]);
+            setMilestones([]);
             return;
         }
         const { data } = await supabase.from('gym_milestones').select('*').eq('gym_id', user.home_gym);
@@ -108,36 +139,7 @@ export default function Arena() {
     }).sort((a, b) => b.totalXP - a.totalXP).map((g, i) => ({ ...g, rank: i + 1 }));
     const userGym = gymWars.find(g => g.gymId === user?.home_gym);
 
-    // ═══ DUELS ═══
-    const [duels, setDuels] = useState<Duel[]>([
-        {
-            id: 'd1', challengerId: 'u1', challengerName: 'Alex Thompson',
-            challengerAvatar: 'https://i.pravatar.cc/300?u=a042581f4e29026704d', opponentId: user?.id || '',
-            opponentName: user?.name || 'You', opponentAvatar: user?.profile_image_url || '',
-            type: 'weight', exercise: 'Bench Press', target: 'Heaviest 1RM',
-            status: 'active', challengerProgress: 225, opponentProgress: 205,
-            createdAt: new Date(Date.now() - 86400000).toISOString(),
-            endsAt: '5d left', xpReward: 150,
-        }
-    ]);
-
-    const handleCreateDuel = () => {
-        if (selectedOpponent === null || selectedDuelTemplate === null || !user) return;
-        const opponent = allProfiles.find(u => u.id === selectedOpponent);
-        const template = DUEL_TEMPLATES[selectedDuelTemplate];
-        if (!opponent || !template) return;
-        setDuels(prev => [{
-            id: `d${Date.now()}`, challengerId: user.id, challengerName: user.name,
-            challengerAvatar: user.profile_image_url, opponentId: opponent.id,
-            opponentName: opponent.name, opponentAvatar: opponent.profile_image_url,
-            type: template.type, exercise: template.exercise, target: template.target,
-            status: 'pending', challengerProgress: 0, opponentProgress: 0,
-            createdAt: new Date().toISOString(), endsAt: '48h to accept', xpReward: 150,
-        }, ...prev]);
-        setShowDuelCreator(false);
-        setSelectedOpponent(null);
-        setSelectedDuelTemplate(null);
-    };
+    // Duels state is handled by fetchDuels now
 
     const tabs: { key: Tab; icon: typeof Swords; label: string }[] = [
         { key: 'wars', icon: Shield, label: 'Gym Wars' },
@@ -559,10 +561,11 @@ export default function Arena() {
                             })()}
 
                             {/* Challenge picker */}
+                            {/* Challenge picker */}
                             <div className="mb-3">
                                 <div className="flex items-center justify-between mb-2">
                                     <p className="text-xs font-bold text-gray-400 flex items-center gap-1"><Swords size={12} /> {useCustomDuel ? 'Custom Challenge' : 'Choose Challenge'}</p>
-                                    <button onClick={() => { setUseCustomDuel(!useCustomDuel); setSelectedDuelTemplate(null); }}
+                                    <button onClick={() => { setUseCustomDuel(!useCustomDuel); setSelectedDuelTemplate(null); setDuelWeight(0); }}
                                         className="text-[10px] text-lime font-bold hover:underline">
                                         {useCustomDuel ? 'Use Templates' : 'Create Custom'}
                                     </button>
@@ -578,37 +581,127 @@ export default function Arena() {
                                             className="w-full bg-oled border border-gray-700 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-lime" />
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-2 gap-1.5">
-                                        {DUEL_TEMPLATES.map((t, i) => (
-                                            <button key={i} onClick={() => setSelectedDuelTemplate(i)}
-                                                className={`p-3 rounded-xl border text-left transition-all ${selectedDuelTemplate === i
-                                                    ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-800/50 border-gray-800 hover:border-gray-700'}`}>
-                                                <p className={`text-xs font-bold ${selectedDuelTemplate === i ? 'text-red-400' : 'text-white'}`}>{t.exercise}</p>
-                                                <p className="text-[9px] text-gray-500 mt-0.5">{t.target}</p>
-                                            </button>
-                                        ))}
-                                    </div>
+                                    <>
+                                        <div className="grid grid-cols-2 gap-1.5 mb-3">
+                                            {DUEL_TEMPLATES.map((t, i) => (
+                                                <button key={i} onClick={() => { setSelectedDuelTemplate(i); setDuelWeight(0); }}
+                                                    className={`p-3 rounded-xl border text-left transition-all ${selectedDuelTemplate === i
+                                                        ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-800/50 border-gray-800 hover:border-gray-700'}`}>
+                                                    <p className={`text-xs font-bold ${selectedDuelTemplate === i ? 'text-red-400' : 'text-white'}`}>{t.exercise}</p>
+                                                    <p className="text-[9px] text-gray-500 mt-0.5">{t.target}</p>
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {selectedDuelTemplate !== null && DUEL_TEMPLATES[selectedDuelTemplate].type === 'weight' && (
+                                            <div className="space-y-3 p-4 bg-gray-800/30 rounded-2xl border border-gray-800">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 block">Your Target Weight ({user?.unit_preference || 'lbs'})</label>
+                                                    <input type="number" value={duelWeight || ''} onChange={e => setDuelWeight(Number(e.target.value))}
+                                                        placeholder="Enter weight..."
+                                                        className="w-full bg-oled border border-gray-700 text-white text-lg font-black rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" />
+                                                </div>
+
+                                                {selectedOpponent && user?.weight_kg && duelWeight > 0 && (() => {
+                                                    const opp = allProfiles.find(u => u.id === selectedOpponent);
+                                                    if (!opp?.weight_kg) return null;
+                                                    const eqWeight = calculateEquivalentWeight(duelWeight, user.weight_kg, opp.weight_kg);
+                                                    return (
+                                                        <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
+                                                            className="bg-red-500/5 border border-red-500/20 rounded-xl p-3 flex items-center justify-between">
+                                                            <div>
+                                                                <p className="text-[10px] text-gray-500 font-bold uppercase">FairDuel Target for {opp.name.split(' ')[0]}</p>
+                                                                <p className="text-sm font-black text-red-400">{eqWeight} {opp.unit_preference || 'lbs'}</p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-[9px] text-gray-500">Relative Effort</p>
+                                                                <p className="text-[10px] font-bold text-white">{(duelWeight / user.weight_kg).toFixed(2)}x BW</p>
+                                                            </div>
+                                                        </motion.div>
+                                                    );
+                                                })()}
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </div>
 
-                            <button onClick={() => {
-                                if (useCustomDuel && customExercise.trim() && customTarget.trim() && selectedOpponent && user) {
+                            <button onClick={async () => {
+                                if (!user) return;
+                                let newDuelData: any = null;
+
+                                if (useCustomDuel && customExercise.trim() && customTarget.trim() && selectedOpponent) {
                                     const opp = allProfiles.find(u => u.id === selectedOpponent);
                                     if (!opp) return;
-                                    setDuels(prev => [{
-                                        id: `d${Date.now()}`, challengerId: user.id, challengerName: user.name,
-                                        challengerAvatar: user.profile_image_url, opponentId: opp.id,
-                                        opponentName: opp.name, opponentAvatar: opp.profile_image_url,
-                                        type: 'custom', exercise: customExercise.trim(), target: customTarget.trim(),
-                                        status: 'pending', challengerProgress: 0, opponentProgress: 0,
-                                        createdAt: new Date().toISOString(), endsAt: '48h to accept', xpReward: 150,
-                                    }, ...prev]);
-                                    setShowDuelCreator(false); setSelectedOpponent(null); setCustomExercise(''); setCustomTarget('');
-                                } else {
-                                    handleCreateDuel();
+
+                                    newDuelData = {
+                                        challenger_id: user.id,
+                                        opponent_id: opp.id,
+                                        type: 'custom',
+                                        exercise: customExercise.trim(),
+                                        target: customTarget.trim(),
+                                        status: 'pending',
+                                        challenger_progress: 0,
+                                        opponent_progress: 0,
+                                        xp_reward: 150
+                                    };
+                                } else if (selectedDuelTemplate !== null) {
+                                    const opp = allProfiles.find(u => u.id === selectedOpponent);
+                                    const template = DUEL_TEMPLATES[selectedDuelTemplate];
+                                    if (!opp || !template) return;
+
+                                    let finalTarget = template.target;
+                                    if (template.type === 'weight' && duelWeight > 0) {
+                                        const oppWeight = calculateEquivalentWeight(duelWeight, user.weight_kg || 75, opp.weight_kg || 75);
+                                        finalTarget = `Lift ${duelWeight}${user.unit_preference} (Opponent: ${oppWeight}${opp.unit_preference})`;
+                                    }
+
+                                    newDuelData = {
+                                        challenger_id: user.id,
+                                        opponent_id: opp.id,
+                                        type: template.type,
+                                        exercise: template.exercise,
+                                        target: finalTarget,
+                                        status: 'pending',
+                                        challenger_progress: 0,
+                                        opponent_progress: 0,
+                                        xp_reward: 150
+                                    };
+                                }
+
+                                if (newDuelData) {
+                                    if (isSupabaseConfigured) {
+                                        const { error } = await supabase.from('duels').insert(newDuelData);
+                                        if (error) {
+                                            console.error('Error creating duel:', error);
+                                            alert('Failed to send challenge. Please try again.');
+                                            return;
+                                        }
+                                        fetchDuels();
+                                    } else {
+                                        // Mock local support
+                                        setDuels(prev => [{
+                                            id: `d${Date.now()}`,
+                                            challengerId: newDuelData.challenger_id,
+                                            challengerName: user.name,
+                                            challengerAvatar: user.profile_image_url,
+                                            opponentId: newDuelData.opponent_id,
+                                            opponentName: allProfiles.find(p => p.id === newDuelData.opponent_id)?.name || 'Opponent',
+                                            opponentAvatar: allProfiles.find(p => p.id === newDuelData.opponent_id)?.profile_image_url || '',
+                                            ...newDuelData, // This will have some snake_case vs camelCase issues, but it's mock
+                                            endsAt: '48h to accept'
+                                        }, ...prev]);
+                                    }
+                                    setShowDuelCreator(false);
+                                    setSelectedOpponent(null);
+                                    setSelectedDuelTemplate(null);
+                                    setDuelWeight(0);
+                                    setCustomExercise('');
+                                    setCustomTarget('');
+                                    alert('Challenge sent!');
                                 }
                             }}
-                                disabled={selectedOpponent === null || (useCustomDuel ? !customExercise.trim() || !customTarget.trim() : selectedDuelTemplate === null)}
+                                disabled={selectedOpponent === null || (useCustomDuel ? !customExercise.trim() || !customTarget.trim() : (selectedDuelTemplate === null || (DUEL_TEMPLATES[selectedDuelTemplate].type === 'weight' && duelWeight <= 0)))}
                                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-2">
                                 <Swords size={18} /> Send Challenge
                             </button>

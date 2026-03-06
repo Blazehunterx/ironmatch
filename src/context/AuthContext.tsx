@@ -52,6 +52,9 @@ function profileToUser(profile: any): User {
         is_training: profile.is_training || false,
         training_status: profile.training_status || '',
         last_active_at: profile.last_active_at || '',
+        is_admin: profile.is_admin || false,
+        verification_status: profile.verification_status || 'none',
+        trainer_license_url: profile.trainer_license_url || '',
     };
 }
 
@@ -256,6 +259,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     is_training: updated.is_training,
                     training_status: updated.training_status,
                     last_active_at: updated.last_active_at,
+                    is_admin: updated.is_admin,
+                    verification_status: updated.verification_status,
+                    trainer_license_url: updated.trainer_license_url,
                 })
                 .eq('id', user.id);
 

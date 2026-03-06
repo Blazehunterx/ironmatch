@@ -1,20 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 import {
     WorkoutPlan, WorkoutExercise, WorkoutLog, BodyPart,
     ALL_BODY_PARTS, EXERCISE_LIBRARY
 } from '../types/database';
 import {
     Plus, Play, Share2, Trash2, Dumbbell,
-    Clock, CheckCircle2, X
+    Clock, CheckCircle2, X, Users, GraduationCap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ActiveWorkout from '../components/ActiveWorkout';
 import AIWorkoutGenerator from '../components/AIWorkoutGenerator';
+import GroupWorkoutModal from '../components/GroupWorkoutModal';
 import { Sparkles } from 'lucide-react';
 import LevelUpOverlay from '../components/LevelUpOverlay';
+import JoinSessionModal from '../components/JoinSessionModal';
+import LiveGroupSession from '../components/LiveGroupSession';
+import { GroupSession } from '../types/database';
 
-type Tab = 'plans' | 'templates' | 'history';
+type Tab = 'plans' | 'community' | 'marketplace' | 'templates' | 'history';
 
 export default function Workouts() {
     const { user } = useAuth();
@@ -23,6 +28,9 @@ export default function Workouts() {
     const [activeWorkout, setActiveWorkout] = useState<WorkoutPlan | null>(null);
     const [showAI, setShowAI] = useState(false);
     const [showLevelUp, setShowLevelUp] = useState(false);
+    const [showGroupModal, setShowGroupModal] = useState(false);
+    const [showJoinModal, setShowJoinModal] = useState(false);
+    const [activeGroupSession, setActiveGroupSession] = useState<GroupSession | null>(null);
 
     // Plan creator state
     const [planName, setPlanName] = useState('');
@@ -31,37 +39,9 @@ export default function Workouts() {
     const [showExercisePicker, setShowExercisePicker] = useState(false);
 
     // Plans & logs stored in state (mock persistence)
-    const [plans, setPlans] = useState<WorkoutPlan[]>(() => [
-        {
-            id: 'wp1',
-            name: 'Push Day Destroyer',
-            author_id: user?.id || '',
-            target: 'Chest',
-            exercises: [
-                { id: 'e1', name: 'Bench Press', sets: 4, reps: 8, weight: 185 },
-                { id: 'e2', name: 'Incline Dumbbell Press', sets: 3, reps: 10, weight: 60 },
-                { id: 'e3', name: 'Cable Fly', sets: 3, reps: 12, weight: 30 },
-                { id: 'e4', name: 'Dips', sets: 3, reps: 12 },
-            ],
-            shared: false,
-            created_at: new Date().toISOString()
-        },
-        {
-            id: 'wp2',
-            name: 'Leg Day',
-            author_id: user?.id || '',
-            target: 'Legs',
-            exercises: [
-                { id: 'e5', name: 'Squat', sets: 5, reps: 5, weight: 225 },
-                { id: 'e6', name: 'Romanian Deadlift', sets: 3, reps: 10, weight: 155 },
-                { id: 'e7', name: 'Leg Press', sets: 4, reps: 12, weight: 360 },
-                { id: 'e8', name: 'Leg Curl', sets: 3, reps: 12, weight: 90 },
-                { id: 'e9', name: 'Calf Raise', sets: 4, reps: 15, weight: 135 },
-            ],
-            shared: false,
-            created_at: new Date(Date.now() - 86400000).toISOString()
-        }
-    ]);
+    const [plans, setPlans] = useState<WorkoutPlan[]>([]);
+    const [communityPlans, setCommunityPlans] = useState<WorkoutPlan[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     // ═══ STARTER TEMPLATES ═══
     const starterTemplates: WorkoutPlan[] = [
@@ -119,34 +99,102 @@ export default function Workouts() {
         },
     ];
 
-    const useTemplate = (template: WorkoutPlan) => {
-        const plan: WorkoutPlan = {
-            ...template,
-            id: `wp-${Date.now()}`,
-            author_id: user?.id || '',
-            created_at: new Date().toISOString(),
-            exercises: template.exercises.map(e => ({ ...e, id: `e-${Date.now()}-${Math.random()}` })),
-        };
-        setPlans(prev => [plan, ...prev]);
-        setTab('plans');
+    const marketplacePrograms = [
+        {
+            id: 'mp1',
+            name: 'Elite Hypertrophy',
+            trainer: 'Marcus Steele',
+            duration: '12 Weeks',
+            price: '$49.99',
+            intensity: 'Expert',
+            description: 'Scientific approach to maximum muscle growth using Periodization.',
+            reviews: 4.9,
+            students: 1240,
+            image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=60'
+        },
+        {
+            id: 'mp2',
+            name: 'Functional Strength',
+            trainer: 'Sarah Power',
+            duration: '8 Weeks',
+            price: '$29.99',
+            intensity: 'Advanced',
+            description: 'Hybrid training focusing on explosive power and athletic mobility.',
+            reviews: 4.8,
+            students: 850,
+            image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&auto=format&fit=crop&q=60'
+        },
+        {
+            id: 'mp3',
+            name: 'Bodyweight Mastery',
+            trainer: 'Alex Chen',
+            duration: '6 Weeks',
+            price: '$19.99',
+            intensity: 'Intermediate',
+            description: 'Master your own weight with progressive calisthenics skills.',
+            reviews: 4.7,
+            students: 2100,
+            image: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=800&auto=format&fit=crop&q=60'
+        }
+    ];
+
+    const [logs, setLogs] = useState<WorkoutLog[]>([]);
+
+    const fetchPlans = async () => {
+        if (!user) return;
+        setIsLoading(true);
+        const { data } = await supabase
+            .from('workout_plans')
+            .select('*')
+            .eq('author_id', user.id);
+
+        if (data) setPlans(data);
+
+        // Fetch shared plans from other verified trainers
+        const { data: cData } = await supabase
+            .from('workout_plans')
+            .select('*, profiles(name, profile_image_url)')
+            .eq('shared', true)
+            .neq('author_id', user.id);
+
+        if (cData) setCommunityPlans(cData);
+        setIsLoading(false);
     };
 
-    const [logs, setLogs] = useState<WorkoutLog[]>(() => [
-        {
-            id: 'wl1',
-            plan_id: 'wp1',
-            user_id: user?.id || '',
-            exercises: [
-                { id: 'e1', name: 'Bench Press', sets: 4, reps: 8, weight: 185, completed: true },
-                { id: 'e2', name: 'Incline Dumbbell Press', sets: 3, reps: 10, weight: 60, completed: true },
-                { id: 'e3', name: 'Cable Fly', sets: 3, reps: 12, weight: 30, completed: true },
-                { id: 'e4', name: 'Dips', sets: 3, reps: 12, completed: false },
-            ],
-            started_at: new Date(Date.now() - 172800000).toISOString(),
-            completed_at: new Date(Date.now() - 169200000).toISOString(),
-            duration_min: 62
+    const fetchLogs = async () => {
+        if (!user) return;
+        const { data } = await supabase
+            .from('workout_logs')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+        if (data) setLogs(data);
+    };
+
+    useEffect(() => {
+        fetchPlans();
+        fetchLogs();
+    }, [user]);
+
+    const useTemplate = async (template: WorkoutPlan) => {
+        if (!user) return;
+        const { data } = await supabase
+            .from('workout_plans')
+            .insert({
+                author_id: user.id,
+                name: template.name,
+                target: template.target,
+                exercises: template.exercises,
+                shared: false
+            })
+            .select()
+            .single();
+
+        if (data) {
+            setPlans(prev => [data, ...prev]);
+            setTab('plans');
         }
-    ]);
+    };
 
     const addExercise = (name: string) => {
         setPlanExercises(prev => [...prev, {
@@ -168,38 +216,73 @@ export default function Workouts() {
         setPlanExercises(prev => prev.filter(e => e.id !== id));
     };
 
-    const savePlan = () => {
-        if (!planName.trim() || planExercises.length === 0) return;
-        const plan: WorkoutPlan = {
-            id: `wp-${Date.now()}`,
-            name: planName,
-            author_id: user?.id || '',
-            target: planTarget,
-            exercises: planExercises,
-            shared: false,
-            created_at: new Date().toISOString()
-        };
-        setPlans(prev => [plan, ...prev]);
-        setPlanName('');
-        setPlanExercises([]);
-        setShowCreator(false);
+    const savePlan = async () => {
+        if (!planName.trim() || planExercises.length === 0 || !user) return;
+
+        const { data } = await supabase
+            .from('workout_plans')
+            .insert({
+                author_id: user.id,
+                name: planName,
+                target: planTarget,
+                exercises: planExercises,
+                shared: false
+            })
+            .select()
+            .single();
+
+        if (data) {
+            setPlans(prev => [data, ...prev]);
+            setPlanName('');
+            setPlanExercises([]);
+            setShowCreator(false);
+        }
     };
 
-    const deletePlan = (id: string) => {
-        setPlans(prev => prev.filter(p => p.id !== id));
+    const deletePlan = async (id: string) => {
+        const { error } = await supabase
+            .from('workout_plans')
+            .delete()
+            .eq('id', id);
+        if (!error) setPlans(prev => prev.filter(p => p.id !== id));
     };
 
-    const toggleShare = (id: string) => {
-        setPlans(prev => prev.map(p =>
-            p.id === id ? { ...p, shared: !p.shared } : p
-        ));
+    const toggleShare = async (id: string) => {
+        const plan = plans.find(p => p.id === id);
+        if (!plan) return;
+
+        const { error } = await supabase
+            .from('workout_plans')
+            .update({ shared: !plan.shared })
+            .eq('id', id);
+
+        if (!error) {
+            setPlans(prev => prev.map(p =>
+                p.id === id ? { ...p, shared: !p.shared } : p
+            ));
+        }
     };
 
-    const handleCompleteWorkout = (log: WorkoutLog) => {
-        setLogs(prev => [log, ...prev]);
-        setActiveWorkout(null);
-        // Simulate level up for demo purposes
-        setShowLevelUp(true);
+    const handleCompleteWorkout = async (log: WorkoutLog) => {
+        const { data } = await supabase
+            .from('workout_logs')
+            .insert({
+                user_id: user?.id,
+                plan_id: log.plan_id,
+                exercises: log.exercises,
+                started_at: log.started_at,
+                completed_at: log.completed_at,
+                duration_min: log.duration_min,
+                gym_id: user?.home_gym
+            })
+            .select()
+            .single();
+
+        if (data) {
+            setLogs(prev => [data, ...prev]);
+            setActiveWorkout(null);
+            setShowLevelUp(true);
+        }
     };
 
     // If in active workout, show the tracker
@@ -214,18 +297,39 @@ export default function Workouts() {
         );
     }
 
+    // If in live group session
+    if (activeGroupSession) {
+        const sessionPlan = plans.find(p => p.id === activeGroupSession.workout_plan_id) || starterTemplates[0];
+        return (
+            <LiveGroupSession
+                session={activeGroupSession}
+                plan={sessionPlan}
+                userId={user?.id || ''}
+                onClose={() => setActiveGroupSession(null)}
+            />
+        );
+    }
+
     return (
         <div className="flex flex-col min-h-screen pb-24">
             {/* Header */}
             <div className="px-4 pt-6 pb-4">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-3xl font-bold text-white">Workouts</h2>
-                    <button
-                        onClick={() => setShowCreator(true)}
-                        className="p-2.5 rounded-xl bg-lime text-oled hover:bg-lime/90 active:scale-95 transition-all"
-                    >
-                        <Plus size={20} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setShowJoinModal(true)}
+                            className="p-2.5 rounded-xl bg-gray-900 border border-gray-800 text-lime hover:bg-gray-800 active:scale-95 transition-all"
+                        >
+                            <Users size={20} />
+                        </button>
+                        <button
+                            onClick={() => setShowCreator(true)}
+                            className="p-2.5 rounded-xl bg-lime text-oled hover:bg-lime/90 active:scale-95 transition-all"
+                        >
+                            <Plus size={20} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* AI Generator Banner */}
@@ -252,18 +356,42 @@ export default function Workouts() {
                     </motion.button>
                 )}
 
+                {/* Trainer Group Workout Banner */}
+                {user?.is_trainer && user?.verification_status === 'verified' && (
+                    <motion.button
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        onClick={() => setShowGroupModal(true)}
+                        className="w-full mb-6 group p-5 rounded-3xl bg-gradient-to-br from-purple-500/20 via-purple-500/5 to-oled border border-purple-500/20 flex items-center gap-5 text-left relative overflow-hidden shadow-xl active:scale-[0.98] transition-all"
+                    >
+                        <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity rotate-12">
+                            <Users size={120} className="text-purple-500" />
+                        </div>
+                        <div className="p-4 bg-purple-600 rounded-2xl text-white shadow-2xl group-hover:rotate-6 transition-transform relative z-10">
+                            <Users size={28} />
+                        </div>
+                        <div className="relative z-10">
+                            <h4 className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] leading-none mb-1.5 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" /> Live Now
+                            </h4>
+                            <p className="text-lg font-black text-white leading-tight">Host Group Workout</p>
+                            <p className="text-[11px] text-gray-500 font-medium mt-1">Lounge a live session for your clients</p>
+                        </div>
+                    </motion.button>
+                )}
+
                 {/* Tabs */}
                 <div className="flex bg-gray-900 rounded-xl p-1 border border-gray-800">
-                    {(['plans', 'templates', 'history'] as Tab[]).map(t => (
+                    {(['plans', 'community', 'templates', 'history'] as Tab[]).map(t => (
                         <button
                             key={t}
                             onClick={() => setTab(t)}
-                            className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${tab === t
+                            className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${tab === t
                                 ? 'bg-lime text-oled'
                                 : 'text-gray-500 hover:text-gray-300'
                                 }`}
                         >
-                            {t === 'plans' ? '📋 Plans' : t === 'templates' ? '⭐ Templates' : '📊 History'}
+                            {t === 'plans' ? '📋 Plans' : t === 'community' ? '🤝 Discovery' : t === 'templates' ? '⭐ Starter' : '📊 History'}
                         </button>
                     ))}
                 </div>
@@ -281,9 +409,9 @@ export default function Workouts() {
                         <motion.div
                             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
                             transition={{ type: 'spring', damping: 28, stiffness: 200 }}
-                            className="fixed bottom-0 left-0 right-0 z-50 bg-oled rounded-t-3xl max-h-[85vh] overflow-y-auto"
+                            className="fixed bottom-0 left-0 right-0 z-50 bg-oled rounded-t-3xl max-h-[92vh] overflow-y-auto scrollbar-hide"
                         >
-                            <div className="px-5 py-6 space-y-4">
+                            <div className="px-5 pt-6 pb-32 space-y-4">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-xl font-bold text-white">New Workout Plan</h3>
                                     <button onClick={() => setShowCreator(false)} className="p-2 text-gray-500 hover:text-white rounded-lg">
@@ -435,20 +563,39 @@ export default function Workouts() {
                         <motion.div
                             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
                             transition={{ type: 'spring', damping: 28, stiffness: 200 }}
-                            className="fixed bottom-0 left-0 right-0 z-50 bg-oled rounded-t-3xl border-t border-gray-800"
+                            className="fixed bottom-0 left-0 right-0 z-50 bg-oled rounded-t-3xl border-t border-gray-800 max-h-[92vh] overflow-y-auto scrollbar-hide"
                         >
-                            <AIWorkoutGenerator
-                                onGenerate={(plan) => {
-                                    setPlans(prev => [plan, ...prev]);
-                                    setShowAI(false);
-                                    setTab('plans');
-                                }}
-                                onClose={() => setShowAI(false)}
-                            />
+                            <div className="pb-32">
+                                <AIWorkoutGenerator
+                                    onGenerate={(plan) => {
+                                        setPlans(prev => [plan, ...prev]);
+                                        setShowAI(false);
+                                        setTab('plans');
+                                    }}
+                                    onClose={() => setShowAI(false)}
+                                />
+                            </div>
                         </motion.div>
                     </>
                 )}
             </AnimatePresence>
+
+            {/* Group Workout Modal */}
+            <GroupWorkoutModal
+                isOpen={showGroupModal}
+                onClose={() => setShowGroupModal(false)}
+                trainerId={user?.id || ''}
+                homeGymId={user?.home_gym || ''}
+                plans={plans}
+            />
+
+            {/* Join Session Modal */}
+            <JoinSessionModal
+                isOpen={showJoinModal}
+                onClose={() => setShowJoinModal(false)}
+                userId={user?.id || ''}
+                onJoined={(session) => setActiveGroupSession(session)}
+            />
 
             {/* Content */}
             <div className="px-4">
@@ -531,6 +678,117 @@ export default function Workouts() {
                                 </motion.div>
                             ))
                         )}
+                    </div>
+                ) : tab === 'community' ? (
+                    /* Discovery Tab */
+                    <div className="space-y-3">
+                        {isLoading ? (
+                            <div className="flex flex-col items-center justify-center py-20 gap-3">
+                                <div className="w-10 h-10 border-2 border-lime/30 border-t-lime rounded-full animate-spin" />
+                                <p className="text-xs text-gray-500">Scanning for trainer expertise...</p>
+                            </div>
+                        ) : communityPlans.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center text-gray-500 py-20 gap-4">
+                                <div className="w-16 h-16 rounded-full bg-gray-900 flex items-center justify-center border border-gray-800">
+                                    <GraduationCap size={24} className="text-gray-600" />
+                                </div>
+                                <p className="text-center font-medium">No shared plans found.</p>
+                                <p className="text-xs text-center px-8">Follow verified trainers to see their shared workout routines here.</p>
+                            </div>
+                        ) : (
+                            communityPlans.map((plan: any, idx) => (
+                                <motion.div
+                                    key={plan.id}
+                                    initial={{ opacity: 0, scale: 0.98 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: idx * 0.05 }}
+                                    className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 overflow-hidden relative group"
+                                >
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-8 h-8 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center overflow-hidden">
+                                            {plan.profiles?.profile_image_url ? (
+                                                <img src={plan.profiles.profile_image_url} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <Users size={14} className="text-gray-500" />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{plan.profiles?.name || 'Trainer'}</p>
+                                            <h4 className="font-bold text-white text-sm">{plan.name}</h4>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-1.5 mb-3">
+                                        <span className="text-[9px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 font-bold uppercase">{plan.target}</span>
+                                        <span className="text-[9px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded font-bold uppercase">{plan.exercises.length} Exercises</span>
+                                    </div>
+
+                                    <button
+                                        onClick={() => useTemplate(plan)}
+                                        className="w-full py-2.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-blue-500/20 active:scale-[0.98] transition-all"
+                                    >
+                                        <Plus size={14} /> Add to My Plans
+                                    </button>
+                                </motion.div>
+                            ))
+                        )}
+                    </div>
+                ) : tab === 'marketplace' ? (
+                    /* Marketplace Tab */
+                    <div className="space-y-4">
+                        <div className="bg-lime/10 border border-lime/30 rounded-2xl p-4 flex items-center gap-4">
+                            <div className="p-3 bg-lime rounded-xl text-oled">
+                                <Sparkles size={20} />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-white">Marketplace</h4>
+                                <p className="text-[10px] text-gray-400">Premium programs from world-class trainers.</p>
+                            </div>
+                        </div>
+
+                        {marketplacePrograms.map((prog, idx) => (
+                            <motion.div
+                                key={prog.id}
+                                initial={{ opacity: 0, y: 15 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: idx * 0.1 }}
+                                className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden group shadow-2xl"
+                            >
+                                <div className="h-40 relative">
+                                    <img src={prog.image} alt={prog.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/20 to-transparent" />
+                                    <div className="absolute top-4 left-4 flex gap-2">
+                                        <span className="text-[9px] bg-lime text-oled px-2 py-1 rounded-lg font-black uppercase tracking-wider">{prog.intensity}</span>
+                                        <span className="text-[9px] bg-black/50 backdrop-blur-md text-white px-2 py-1 rounded-lg font-black uppercase tracking-wider">{prog.duration}</span>
+                                    </div>
+                                    <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
+                                        <div>
+                                            <p className="text-[10px] text-lime font-black uppercase tracking-[0.2em]">{prog.trainer}</p>
+                                            <h4 className="text-lg font-black text-white">{prog.name}</h4>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xl font-black text-white">{prog.price}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-gray-900/50">
+                                    <p className="text-xs text-gray-400 leading-relaxed mb-4">{prog.description}</p>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex items-center gap-1 text-[10px] text-yellow-500 font-bold">
+                                                <Sparkles size={12} /> {prog.reviews}
+                                            </div>
+                                            <div className="flex items-center gap-1 text-[10px] text-gray-500 font-bold">
+                                                <Users size={12} /> {prog.students} students
+                                            </div>
+                                        </div>
+                                        <button className="px-5 py-2 rounded-xl bg-white text-black text-[10px] font-black hover:bg-lime transition-all active:scale-95 shadow-xl">
+                                            View Details
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
                     </div>
                 ) : tab === 'templates' ? (
                     /* Templates Tab */

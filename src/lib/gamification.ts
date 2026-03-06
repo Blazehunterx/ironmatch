@@ -130,6 +130,20 @@ export function checkDuelFairness(
     return { fair: false, label: 'Unfair matchup', color: '#EF4444' };
 }
 
+/**
+ * Calculates how much the opponent would need to lift to match the challenger's difficulty
+ * (difficulty is defined as lift/bodyweight ratio).
+ */
+export function calculateEquivalentWeight(
+    challengerLift: number,
+    challengerBW: number,
+    opponentBW: number
+): number {
+    const ratio = challengerLift / challengerBW;
+    const equivalent = ratio * opponentBW;
+    return Math.round(equivalent);
+}
+
 // ═══ QUESTS (50 total: 40 public + 10 hidden) ═══
 
 export type QuestCategory = 'bodypart' | 'cardio' | 'social' | 'endurance' | 'pr' | 'variety' | 'gymwar' | 'duel';

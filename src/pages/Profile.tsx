@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useGyms } from '../context/GymContext';
 import {
     LogOut, Settings, Award, Flame, Activity, Edit2, Check, X, Camera,
-    Target, CalendarDays, Dumbbell, Ruler, Zap, Users, RefreshCw
+    Target, CalendarDays, Dumbbell, Ruler, Zap, Users, RefreshCw, History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFriends } from '../context/FriendsContext';
@@ -14,6 +14,9 @@ import {
 import { getRankFromLifts, getBig4Total, Big4Lifts } from '../lib/gamification';
 import { COSMETIC_ITEMS } from '../lib/cosmetics';
 import CosmeticShop from '../components/CosmeticShop';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { WorkoutLog } from '../types/database';
+import { useEffect } from 'react';
 
 const goalEmoji: Record<string, string> = {
     'Workout Buddy': '🤝', 'Socialize': '💬', 'Get Pushed': '🔥', 'Learn': '📚',
@@ -57,6 +60,26 @@ export default function Profile() {
     if (!user) return null;
     const { findGym } = useGyms();
     const homeGym = findGym(user.home_gym);
+
+    const [logs, setLogs] = useState<WorkoutLog[]>([]);
+    const [isLoadingLogs, setIsLoadingLogs] = useState(true);
+
+    useEffect(() => {
+        if (!user) return;
+        const fetchLogs = async () => {
+            setIsLoadingLogs(true);
+            const { data } = await supabase
+                .from('workout_logs')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(5);
+
+            if (data) setLogs(data);
+            setIsLoadingLogs(false);
+        };
+        fetchLogs();
+    }, [user.id]);
 
     const handleSaveBio = () => {
         setIsEditingBio(false);
@@ -161,8 +184,8 @@ export default function Profile() {
             <div className="flex flex-col items-center mb-8">
                 <div className="relative mb-4 group">
                     <div className={`p-1 rounded-full transition-all ${user.active_cosmetic_frame
-                            ? COSMETIC_ITEMS.find(i => i.id === user.active_cosmetic_frame)?.previewValue
-                            : 'border-4 border-gray-900'
+                        ? COSMETIC_ITEMS.find(i => i.id === user.active_cosmetic_frame)?.previewValue
+                        : 'border-4 border-gray-900'
                         }`}>
                         <img
                             src={user.profile_image_url}
@@ -182,8 +205,8 @@ export default function Profile() {
                     </button>
                 </div>
                 <h3 className={`text-2xl font-bold flex items-center gap-2 ${user.active_cosmetic_color
-                        ? COSMETIC_ITEMS.find(i => i.id === user.active_cosmetic_color)?.previewValue
-                        : 'text-white'
+                    ? COSMETIC_ITEMS.find(i => i.id === user.active_cosmetic_color)?.previewValue
+                    : 'text-white'
                     }`}>
                     {user.name}
                     {user.is_trainer && (
@@ -422,34 +445,54 @@ export default function Profile() {
 
             {/* Recent Workout History */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4">
-                <h4 className="font-semibold text-white flex items-center gap-2 mb-3">
-                    <Dumbbell size={16} className="text-lime" /> Recent Workouts
-                </h4>
-                <div className="space-y-2">
-                    {[
-                        { name: 'Push Day Destroyer', target: 'Chest', duration: 62, completed: 3, total: 4, date: '2 days ago' },
-                        { name: 'Leg Day', target: 'Legs', duration: 55, completed: 5, total: 5, date: '4 days ago' },
-                        { name: 'Pull Day', target: 'Back', duration: 48, completed: 4, total: 5, date: '6 days ago' },
-                    ].map((w, idx) => (
-                        <motion.div key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }}
-                            className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-800/50 border border-gray-800">
-                            <div className="w-10 h-10 rounded-xl bg-lime/10 border border-lime/20 flex items-center justify-center shrink-0">
-                                <Dumbbell size={16} className="text-lime" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-white truncate">{w.name}</p>
-                                <div className="flex items-center gap-2 text-[10px] text-gray-500">
-                                    <span>{w.target}</span>
-                                    <span>•</span>
-                                    <span>{w.duration}min</span>
-                                    <span>•</span>
-                                    <span className="text-lime">{w.completed}/{w.total} done</span>
-                                </div>
-                            </div>
-                            <span className="text-[10px] text-gray-600 shrink-0">{w.date}</span>
-                        </motion.div>
-                    ))}
+                <div className="flex justify-between items-center mb-3">
+                    <h4 className="font-semibold text-white flex items-center gap-2">
+                        <History size={16} className="text-lime" /> Recent History
+                    </h4>
                 </div>
+
+                {isLoadingLogs ? (
+                    <div className="flex justify-center py-6">
+                        <div className="w-5 h-5 border-2 border-lime/20 border-t-lime rounded-full animate-spin" />
+                    </div>
+                ) : logs.length === 0 ? (
+                    <div className="text-center py-8">
+                        <div className="w-12 h-12 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-gray-700">
+                            <Dumbbell className="text-gray-600" size={20} />
+                        </div>
+                        <p className="text-xs text-gray-500">No workouts logged yet.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {logs.map((log, idx) => (
+                            <motion.div
+                                key={log.id}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: idx * 0.05 }}
+                                className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-800/50 border border-gray-800"
+                            >
+                                <div className="w-10 h-10 rounded-xl bg-lime/10 border border-lime/20 flex items-center justify-center shrink-0">
+                                    <Dumbbell size={16} className="text-lime" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-white truncate">
+                                        {/* Try to find a name, or fallback to target */}
+                                        Workout Session
+                                    </p>
+                                    <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                                        <span>{log.duration_min}min</span>
+                                        <span>•</span>
+                                        <span className="text-lime">{log.exercises.length} Exercises</span>
+                                    </div>
+                                </div>
+                                <span className="text-[10px] text-gray-600 shrink-0">
+                                    {new Date(log.created_at || '').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                </span>
+                            </motion.div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Friends Section */}
@@ -510,8 +553,58 @@ export default function Profile() {
                 )}
             </div>
 
-            {/* Sign Out */}
-            <div className="space-y-3 mt-auto pt-4">
+            {/* Premium / Admin Actions */}
+            <div className="space-y-3 mt-6">
+                {user.is_trainer && user.verification_status === 'none' && (
+                    <div className="p-4 rounded-2xl bg-lime/10 border border-lime/20">
+                        <div className="flex items-start gap-3 mb-3">
+                            <div className="p-2.5 bg-lime/20 rounded-xl">
+                                <Award className="text-lime" size={22} />
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-white">Get Verified Pro</h4>
+                                <p className="text-[10px] text-gray-400 leading-relaxed">Verified trainers unlock group workouts, client training plans, and a pro badge.</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => {
+                                const url = window.prompt('Paste a link to your Trainer Certification or License (e.g. Google Drive/Dropbox/LinkedIn):');
+                                if (url) {
+                                    updateUser({
+                                        verification_status: 'pending',
+                                        trainer_license_url: url
+                                    });
+                                    alert('Request sent! An admin will review your license soon.');
+                                }
+                            }}
+                            className="w-full py-3 bg-lime text-oled rounded-xl text-xs font-black shadow-lg shadow-lime/10 active:scale-95 transition-all"
+                        >
+                            SUBMIT FOR VERIFICATION
+                        </button>
+                    </div>
+                )}
+
+                {user.is_trainer && user.verification_status === 'pending' && (
+                    <div className="p-4 rounded-2xl bg-gray-900 border border-gray-800 flex items-center gap-3">
+                        <div className="p-2 bg-gray-800 rounded-xl">
+                            <RefreshCw className="text-gray-400 animate-spin" size={20} />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-white">Verification Pending</h4>
+                            <p className="text-[10px] text-gray-500">Manual review usually takes 24 hours.</p>
+                        </div>
+                    </div>
+                )}
+
+                {user.is_admin && (
+                    <button
+                        onClick={() => window.location.href = '/admin'}
+                        className="w-full py-4 bg-purple-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
+                    >
+                        <Settings size={20} /> OPEN ADMIN BACKEND
+                    </button>
+                )}
+
                 <button
                     onClick={logout}
                     className="w-full py-4 rounded-xl flex items-center justify-center gap-2 font-semibold text-red-500 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors"
@@ -574,6 +667,7 @@ export default function Profile() {
                                         </div>
                                     </div>
                                 </div>
+                                {/* User ID moved to main profile view */}
                                 <div className="flex flex-col gap-2 pt-4 border-t border-gray-800">
                                     <div>
                                         <h4 className="font-semibold text-white">App Cache</h4>
@@ -663,6 +757,42 @@ export default function Profile() {
                     </>
                 )}
             </AnimatePresence>
+
+            {/* User ID & Status - BOTTOM OF PROFILE */}
+            <div className="mt-8 px-2 pb-8 space-y-4">
+                <div className="p-4 rounded-2xl bg-gray-900/50 border border-gray-800">
+                    <div className="flex justify-between items-center mb-3">
+                        <div>
+                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Your User ID</h4>
+                            <p className="text-[10px] text-gray-600">Unique database identifier</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                if (user?.id) {
+                                    navigator.clipboard.writeText(user.id);
+                                    alert('User ID copied to clipboard!');
+                                }
+                            }}
+                            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-[10px] font-bold rounded-lg border border-gray-700 active:scale-95 transition-all"
+                        >
+                            Copy ID
+                        </button>
+                    </div>
+                    <div className="bg-oled/60 rounded-xl p-3 border border-gray-800/50">
+                        <code className="text-[10px] text-lime font-mono break-all opacity-80">{user?.id}</code>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between px-2">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${isSupabaseConfigured ? 'bg-lime animate-pulse' : 'bg-orange-500'}`} />
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                            {isSupabaseConfigured ? 'Live Supabase Sync' : 'Mock Data Mode'}
+                        </span>
+                    </div>
+                    <span className="text-[10px] text-gray-700 font-mono">v1.2.0-prod</span>
+                </div>
+            </div>
         </div>
     );
 }

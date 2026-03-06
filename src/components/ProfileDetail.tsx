@@ -96,7 +96,7 @@ export default function ProfileDetail({ user, isOpen, onClose, onRequest }: Prof
                             </div>
 
                             {/* Content */}
-                            <div className="px-5 pb-10 space-y-6">
+                            <div className="px-5 pb-32 space-y-6">
                                 {/* Stats Row */}
                                 <div className="grid grid-cols-3 gap-3">
                                     <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">

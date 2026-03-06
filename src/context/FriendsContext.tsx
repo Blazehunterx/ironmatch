@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useCallback } from 'react';
 import { User } from '../types/database';
 import { mockUsers } from '../lib/mock';
 import { useAuth } from './AuthContext';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { useEffect } from 'react';
 
 type FriendStatus = 'none' | 'pending_sent' | 'pending_received' | 'friends';
 
@@ -23,18 +25,43 @@ export function FriendsProvider({ children }: { children: React.ReactNode }) {
     const { user, updateUser } = useAuth();
 
     // Friends = accepted connections (stored as user IDs)
-    const [friendIds, setFriendIds] = useState<string[]>(() => {
-        return user?.friends || ['u2', 'u4']; // Start with a couple mock friends
-    });
-
-    // Pending requests received from others
-    const [pendingReceivedIds, setPendingReceivedIds] = useState<string[]>(['u6']);
-
-    // Pending requests sent to others
+    // ID Lists (Source of truth)
+    const [friendIds, setFriendIds] = useState<string[]>(() => user?.friends || []);
+    const [pendingReceivedIds, setPendingReceivedIds] = useState<string[]>([]);
     const [pendingSentIds, setPendingSentIds] = useState<string[]>([]);
 
-    const friends = friendIds.map(id => mockUsers.find(u => u.id === id)).filter(Boolean) as User[];
-    const pendingReceived = pendingReceivedIds.map(id => mockUsers.find(u => u.id === id)).filter(Boolean) as User[];
+    // Friends lookup (Real profiles hydrated from IDs)
+    const [friends, setFriends] = useState<User[]>([]);
+    const [pendingReceived, setPendingReceived] = useState<User[]>([]);
+
+    useEffect(() => {
+        const fetchProfiles = async () => {
+            const allIds = [...new Set([...friendIds, ...pendingReceivedIds])];
+            if (allIds.length === 0) {
+                setFriends([]);
+                setPendingReceived([]);
+                return;
+            }
+
+            if (!isSupabaseConfigured) {
+                setFriends(friendIds.map(id => mockUsers.find(u => u.id === id)).filter(Boolean) as User[]);
+                setPendingReceived(pendingReceivedIds.map(id => mockUsers.find(u => u.id === id)).filter(Boolean) as User[]);
+                return;
+            }
+
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .in('id', allIds);
+
+            if (data && !error) {
+                setFriends(friendIds.map(id => data.find(p => p.id === id)).filter(Boolean) as User[]);
+                setPendingReceived(pendingReceivedIds.map(id => data.find(p => p.id === id)).filter(Boolean) as User[]);
+            }
+        };
+
+        fetchProfiles();
+    }, [friendIds, pendingReceivedIds]);
 
     const sendFriendRequest = useCallback((userId: string) => {
         if (friendIds.includes(userId) || pendingSentIds.includes(userId)) return;

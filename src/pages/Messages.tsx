@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useConversations } from '../context/ConversationContext';
-import { mockUsers } from '../lib/mock';
+import { supabase } from '../lib/supabase';
+import { User } from '../types/database';
+import { useEffect } from 'react';
 import { MessageSquare, Search as SearchIcon, ChevronRight, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatThread from '../components/ChatThread';
@@ -14,11 +16,33 @@ export default function Messages() {
     const [showNewChat, setShowNewChat] = useState(false);
     const [newChatSearch, setNewChatSearch] = useState('');
 
-    const availableUsers = mockUsers.filter(u =>
-        u.id !== user?.id &&
-        !conversations.find(c => c.user.id === u.id) &&
-        u.name.toLowerCase().includes(newChatSearch.toLowerCase())
-    );
+    const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+
+    useEffect(() => {
+        if (!showNewChat || !newChatSearch.trim()) {
+            setAvailableUsers([]);
+            return;
+        }
+
+        const devSearch = async () => {
+            setIsSearching(true);
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .neq('id', user?.id)
+                .ilike('name', `%${newChatSearch}%`)
+                .limit(10);
+
+            if (!error && data) {
+                setAvailableUsers(data as User[]);
+            }
+            setIsSearching(false);
+        };
+
+        const timer = setTimeout(devSearch, 300);
+        return () => clearTimeout(timer);
+    }, [newChatSearch, showNewChat, user?.id]);
 
     const filtered = conversations.filter(c =>
         c.user.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -150,8 +174,14 @@ export default function Messages() {
                                     <SearchIcon size={18} className="text-gray-500 absolute left-4 top-1/2 -translate-y-1/2" />
                                 </div>
                                 <div className="space-y-1">
-                                    {availableUsers.length === 0 ? (
-                                        <p className="text-sm text-gray-500 text-center py-8">No users found</p>
+                                    {isSearching ? (
+                                        <div className="flex justify-center py-8">
+                                            <div className="w-6 h-6 border-2 border-lime/30 border-t-lime rounded-full animate-spin" />
+                                        </div>
+                                    ) : availableUsers.length === 0 ? (
+                                        <p className="text-sm text-gray-500 text-center py-8">
+                                            {newChatSearch.trim() ? 'No users found' : 'Type to search people...'}
+                                        </p>
                                     ) : (
                                         availableUsers.map(u => (
                                             <button
