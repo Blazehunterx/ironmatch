@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useGyms } from '../context/GymContext';
 import {
@@ -9,14 +9,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useFriends } from '../context/FriendsContext';
 import {
     Goal, BodyPart, DayOfWeek, TimeBlock,
-    ALL_GOALS, ALL_BODY_PARTS, ALL_DAYS, ALL_TIME_BLOCKS
+    ALL_GOALS, ALL_BODY_PARTS, ALL_DAYS, ALL_TIME_BLOCKS,
+    WorkoutLog
 } from '../types/database';
 import { getRankFromLifts, getBig4Total, Big4Lifts } from '../lib/gamification';
 import { COSMETIC_ITEMS } from '../lib/cosmetics';
 import CosmeticShop from '../components/CosmeticShop';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { WorkoutLog } from '../types/database';
-import { useEffect } from 'react';
+import React from 'react';
 
 const goalEmoji: Record<string, string> = {
     'Workout Buddy': '🤝', 'Socialize': '💬', 'Get Pushed': '🔥', 'Learn': '📚',
@@ -25,6 +25,7 @@ const goalEmoji: Record<string, string> = {
 
 export default function Profile() {
     const { user, logout, updateUser } = useAuth();
+    const { findGym } = useGyms();
 
     // Bio editing
     const [isEditingBio, setIsEditingBio] = useState(false);
@@ -36,6 +37,7 @@ export default function Profile() {
     const [fitnessLevel, setFitnessLevel] = useState(user?.fitness_level || 'Beginner');
     const [unitPref, setUnitPref] = useState<'lbs' | 'kg'>(user?.unit_preference || 'lbs');
     const [isShopOpen, setIsShopOpen] = useState(false);
+
     const toDisplay = (val: number) => val;
     const unitLabel = unitPref;
 
@@ -57,12 +59,10 @@ export default function Profile() {
     const [tempWeight, setTempWeight] = useState(user?.weight_kg || 0);
     const [tempHeight, setTempHeight] = useState(user?.height_cm || 0);
 
-    if (!user) return null;
-    const { findGym } = useGyms();
-    const homeGym = findGym(user.home_gym);
-
     const [logs, setLogs] = useState<WorkoutLog[]>([]);
     const [isLoadingLogs, setIsLoadingLogs] = useState(true);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!user) return;
@@ -79,7 +79,10 @@ export default function Profile() {
             setIsLoadingLogs(false);
         };
         fetchLogs();
-    }, [user.id]);
+    }, [user?.id]);
+
+    if (!user) return null;
+    const homeGym = findGym(user.home_gym);
 
     const handleSaveBio = () => {
         setIsEditingBio(false);
@@ -95,8 +98,6 @@ export default function Profile() {
         setFitnessLevel(newVal);
         updateUser({ fitness_level: newVal });
     };
-
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -116,7 +117,6 @@ export default function Profile() {
         }
     };
 
-    // Goal toggling (max 2)
     const toggleGoal = (goal: Goal) => {
         setEditGoals(prev => {
             if (prev.includes(goal)) return prev.filter(g => g !== goal);
@@ -136,7 +136,6 @@ export default function Profile() {
         updateUser({ goals: editGoals, sub_goals: editSubGoals });
     };
 
-    // Availability toggling
     const toggleAvailBlock = (day: DayOfWeek, block: TimeBlock) => {
         const current = user.availability || [];
         const daySlot = current.find(a => a.day === day);
@@ -160,9 +159,9 @@ export default function Profile() {
     };
 
     return (
-        <div className="flex flex-col min-h-screen px-4 pt-8 pb-24 relative">
+        <div className="flex flex-col min-h-screen px-4 pt-8 pb-24 relative overflow-y-auto">
             {/* Header */}
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex justify-between items-center mb-8 shrink-0">
                 <h2 className="text-3xl font-bold text-white">Profile</h2>
                 <div className="flex gap-2">
                     <button
@@ -180,8 +179,8 @@ export default function Profile() {
                 </div>
             </div>
 
-            {/* Avatar */}
-            <div className="flex flex-col items-center mb-8">
+            {/* Avatar Section */}
+            <div className="flex flex-col items-center mb-8 shrink-0">
                 <div className="relative mb-4 group">
                     <div className={`p-1 rounded-full transition-all ${user.active_cosmetic_frame
                         ? COSMETIC_ITEMS.find(i => i.id === user.active_cosmetic_frame)?.previewValue
@@ -198,569 +197,29 @@ export default function Profile() {
                     </div>
                     <button
                         onClick={() => { setEditImageUrl(user.profile_image_url); setIsEditingImage(true); }}
-                        className="absolute inset-0 bg-black/60 rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border-4 border-transparent hover:border-lime/50"
+                        className="absolute inset-0 bg-black/60 rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                     >
                         <Camera className="text-white mb-1" size={24} />
                         <span className="text-[10px] font-semibold text-white">Edit</span>
                     </button>
                 </div>
-                <h3 className={`text-2xl font-bold flex items-center gap-2 ${user.active_cosmetic_color
-                    ? COSMETIC_ITEMS.find(i => i.id === user.active_cosmetic_color)?.previewValue
-                    : 'text-white'
-                    }`}>
-                    {user.name}
-                    {user.is_trainer && (
-                        <span className="text-xs bg-lime/20 text-lime px-2 py-0.5 rounded-full border border-lime/30 tracking-wide">TRAINER</span>
-                    )}
-                    {user.discipline && user.discipline !== 'General Fitness' && (
-                        <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full border border-purple-500/30">{user.discipline}</span>
-                    )}
-                </h3>
-                <p className="text-gray-400 mt-1 flex items-center gap-1">
-                    {homeGym?.name} • {homeGym?.location}
-                </p>
-                {/* Rank Badge */}
-                {user.big4 && (
-                    <div className="mt-2 flex items-center gap-2">
-                        <span className="text-lg">{getRankFromLifts(user.big4, user.unit_preference).icon}</span>
-                        <span className="text-sm font-bold" style={{ color: getRankFromLifts(user.big4, user.unit_preference).color }}>
-                            {getRankFromLifts(user.big4, user.unit_preference).name}
-                        </span>
-                        <span className="text-[10px] text-gray-500">{getBig4Total(user.big4)}{unitLabel} total</span>
-                    </div>
-                )}
-            </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-4 gap-2 mb-4">
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
-                    <Award size={20} className="text-lime mb-1" />
-                    <div className="text-[10px] text-gray-400">Level</div>
-                    <div className="text-xs font-bold text-white">{user.fitness_level}</div>
-                </div>
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
-                    <Flame size={20} className="text-orange-500 mb-1" />
-                    <div className="text-[10px] text-gray-400">Streak</div>
-                    <div className="text-xs font-bold text-white">{user.reliability_streak || 1}w</div>
-                </div>
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
-                    <Ruler size={20} className="text-blue-400 mb-1" />
-                    <div className="text-[10px] text-gray-400">Body</div>
-                    <div className="text-xs font-bold text-white">{user.weight_kg || '?'}kg • {user.height_cm || '?'}cm</div>
-                </div>
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
-                    <Zap size={20} className="text-yellow-400 mb-1" />
-                    <div className="text-[10px] text-gray-400">XP</div>
-                    <div className="text-xs font-bold text-yellow-400">{(user.xp || 0).toLocaleString()}</div>
-                </div>
-            </div>
-
-            {/* Big 4 PRs */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4">
-                <div className="flex justify-between items-center mb-3">
-                    <h4 className="font-semibold text-white flex items-center gap-2">
-                        <Dumbbell size={16} className="text-lime" /> Big 4 PRs
-                    </h4>
-                    <button
-                        onClick={() => {
-                            setTempLifts(user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 });
-                            setTempWeight(user.weight_kg || 0);
-                            setTempHeight(user.height_cm || 0);
-                            setIsEditingPRs(!isEditingPRs);
-                        }}
-                        className="text-gray-500 hover:text-lime transition-colors"
-                    >
-                        <Edit2 size={16} />
-                    </button>
-                </div>
-
-                {isEditingPRs ? (
-                    <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-2">
-                            <div>
-                                <label className="text-[10px] text-gray-500 mb-1 block">Weight (kg)</label>
-                                <input type="number" value={tempWeight || ''}
-                                    onChange={e => setTempWeight(Number(e.target.value) || 0)}
-                                    className="w-full bg-oled border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-lime text-center"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-[10px] text-gray-500 mb-1 block">Height (cm)</label>
-                                <input type="number" value={tempHeight || ''}
-                                    onChange={e => setTempHeight(Number(e.target.value) || 0)}
-                                    className="w-full bg-oled border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-lime text-center"
-                                />
-                            </div>
-                        </div>
-                        {(['bench', 'squat', 'deadlift', 'ohp'] as const).map(lift => (
-                            <div key={lift} className="flex items-center gap-2">
-                                <span className="text-xs text-gray-400 w-20 capitalize">{lift === 'ohp' ? 'OHP' : lift}</span>
-                                <input type="number" value={tempLifts[lift] || ''}
-                                    onChange={e => setTempLifts(prev => ({ ...prev, [lift]: Number(e.target.value) || 0 }))}
-                                    className="flex-1 bg-oled border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-lime text-center"
-                                />
-                                <span className="text-[10px] text-gray-500">{unitLabel}</span>
-                            </div>
-                        ))}
-                        <div className="flex items-center justify-between pt-1">
-                            <span className="text-xs text-gray-500">New rank: <span className="font-bold" style={{ color: getRankFromLifts(tempLifts, unitPref).color }}>{getRankFromLifts(tempLifts, unitPref).icon} {getRankFromLifts(tempLifts, unitPref).name}</span></span>
-                            <div className="flex gap-2">
-                                <button onClick={() => setIsEditingPRs(false)} className="p-2 text-gray-400 hover:text-white rounded-lg"><X size={18} /></button>
-                                <button onClick={() => {
-                                    updateUser({ big4: tempLifts, weight_kg: tempWeight, height_cm: tempHeight });
-                                    setIsEditingPRs(false);
-                                }} className="p-2 text-lime hover:bg-lime/20 rounded-lg"><Check size={18} /></button>
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-4 gap-2">
-                        {[
-                            { label: 'Bench', value: toDisplay(user.big4?.bench || 0), icon: '🪑' },
-                            { label: 'Squat', value: toDisplay(user.big4?.squat || 0), icon: '🏋️' },
-                            { label: 'Dead', value: toDisplay(user.big4?.deadlift || 0), icon: '⬆️' },
-                            { label: 'OHP', value: toDisplay(user.big4?.ohp || 0), icon: '🙌' },
-                        ].map(l => (
-                            <div key={l.label} className="bg-gray-800/50 rounded-xl p-2.5 text-center">
-                                <span className="text-sm">{l.icon}</span>
-                                <p className="text-lg font-black text-white">{l.value}</p>
-                                <p className="text-[8px] text-gray-500">{l.label} ({unitLabel})</p>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Bio */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4 group">
-                <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-semibold text-white">Bio</h4>
-                    {!isEditingBio && (
-                        <button
-                            onClick={() => { setEditBioText(user.bio); setIsEditingBio(true); }}
-                            className="text-gray-500 hover:text-lime transition-colors"
-                        >
-                            <Edit2 size={16} />
-                        </button>
-                    )}
-                </div>
-                {isEditingBio ? (
-                    <div className="space-y-3">
-                        <textarea
-                            value={editBioText}
-                            onChange={(e) => setEditBioText(e.target.value)}
-                            className="w-full bg-oled border border-gray-700 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-lime resize-none"
-                            rows={3}
-                            autoFocus
-                        />
-                        <div className="flex justify-end gap-2">
-                            <button onClick={() => setIsEditingBio(false)} className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition-colors"><X size={18} /></button>
-                            <button onClick={handleSaveBio} className="p-2 text-lime hover:bg-lime/20 rounded-lg transition-colors"><Check size={18} /></button>
-                        </div>
-                    </div>
-                ) : (
-                    <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
-                        {user.bio || "No bio added yet. Tell others about your workout style!"}
+                <div className="text-center">
+                    <h3 className="text-2xl font-black text-white flex items-center justify-center gap-2">
+                        {user.name}
+                        {user.verification_status === 'verified' && <Award size={18} className="text-lime" />}
+                    </h3>
+                    <p className="text-lime font-bold text-sm uppercase tracking-widest mt-1">
+                        Rank: {getRankFromLifts(user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 })}
                     </p>
-                )}
-            </div>
-
-            {/* Goals Section */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4">
-                <div className="flex justify-between items-center mb-3">
-                    <h4 className="font-semibold text-white flex items-center gap-2"><Target size={16} className="text-lime" /> Goals</h4>
-                    <button
-                        onClick={() => { setEditGoals(user.goals || []); setEditSubGoals(user.sub_goals || []); setIsEditingGoals(true); }}
-                        className="text-gray-500 hover:text-lime transition-colors"
-                    >
-                        <Edit2 size={16} />
-                    </button>
                 </div>
-
-                {isEditingGoals ? (
-                    <div className="space-y-4">
-                        <div>
-                            <p className="text-xs text-gray-400 mb-2">Pick up to 2 goals:</p>
-                            <div className="flex flex-wrap gap-1.5">
-                                {ALL_GOALS.map(g => (
-                                    <button
-                                        key={g}
-                                        onClick={() => toggleGoal(g)}
-                                        className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${editGoals.includes(g)
-                                            ? 'bg-lime/20 border-lime/50 text-lime'
-                                            : editGoals.length >= 2
-                                                ? 'bg-gray-900 border-gray-800 text-gray-600 cursor-not-allowed'
-                                                : 'bg-gray-900 border-gray-800 text-gray-400 hover:border-gray-600'
-                                            }`}
-                                        disabled={!editGoals.includes(g) && editGoals.length >= 2}
-                                    >
-                                        {goalEmoji[g]} {g}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div>
-                            <p className="text-xs text-gray-400 mb-2">Body parts to grow:</p>
-                            <div className="flex flex-wrap gap-1.5">
-                                {ALL_BODY_PARTS.map(bp => (
-                                    <button
-                                        key={bp}
-                                        onClick={() => toggleSubGoal(bp)}
-                                        className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${editSubGoals.includes(bp)
-                                            ? 'bg-lime/20 border-lime/50 text-lime'
-                                            : 'bg-gray-900 border-gray-800 text-gray-400 hover:border-gray-600'
-                                            }`}
-                                    >
-                                        {bp}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end gap-2 pt-2">
-                            <button onClick={() => setIsEditingGoals(false)} className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition-colors"><X size={18} /></button>
-                            <button onClick={handleSaveGoals} className="p-2 text-lime hover:bg-lime/20 rounded-lg transition-colors"><Check size={18} /></button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="space-y-2">
-                        {user.goals && user.goals.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5">
-                                {user.goals.map(g => (
-                                    <span key={g} className="text-xs font-semibold px-2 py-1 rounded-lg bg-gray-800 text-gray-300 border border-gray-700/50">
-                                        {goalEmoji[g]} {g}
-                                    </span>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-gray-500">No goals set. Tap edit to add yours!</p>
-                        )}
-                        {user.sub_goals && user.sub_goals.length > 0 && (
-                            <p className="text-xs text-gray-500 mt-1">Focus: {user.sub_goals.join(' · ')}</p>
-                        )}
-                    </div>
-                )}
+                <p className="text-gray-400 mt-1 flex items-center gap-1">
+                    {homeGym?.name || 'No gym set'}
+                </p>
             </div>
 
-            {/* Recent Workout History */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4">
-                <div className="flex justify-between items-center mb-3">
-                    <h4 className="font-semibold text-white flex items-center gap-2">
-                        <History size={16} className="text-lime" /> Recent History
-                    </h4>
-                </div>
-
-                {isLoadingLogs ? (
-                    <div className="flex justify-center py-6">
-                        <div className="w-5 h-5 border-2 border-lime/20 border-t-lime rounded-full animate-spin" />
-                    </div>
-                ) : logs.length === 0 ? (
-                    <div className="text-center py-8">
-                        <div className="w-12 h-12 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-gray-700">
-                            <Dumbbell className="text-gray-600" size={20} />
-                        </div>
-                        <p className="text-xs text-gray-500">No workouts logged yet.</p>
-                    </div>
-                ) : (
-                    <div className="space-y-2">
-                        {logs.map((log, idx) => (
-                            <motion.div
-                                key={log.id}
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: idx * 0.05 }}
-                                className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-800/50 border border-gray-800"
-                            >
-                                <div className="w-10 h-10 rounded-xl bg-lime/10 border border-lime/20 flex items-center justify-center shrink-0">
-                                    <Dumbbell size={16} className="text-lime" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-white truncate">
-                                        {/* Try to find a name, or fallback to target */}
-                                        Workout Session
-                                    </p>
-                                    <div className="flex items-center gap-2 text-[10px] text-gray-500">
-                                        <span>{log.duration_min}min</span>
-                                        <span>•</span>
-                                        <span className="text-lime">{log.exercises.length} Exercises</span>
-                                    </div>
-                                </div>
-                                <span className="text-[10px] text-gray-600 shrink-0">
-                                    {new Date(log.created_at || '').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                </span>
-                            </motion.div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Friends Section */}
-            <FriendsSection />
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4">
-                <div className="flex justify-between items-center mb-3">
-                    <h4 className="font-semibold text-white flex items-center gap-2"><CalendarDays size={16} className="text-lime" /> Availability</h4>
-                    <button
-                        onClick={() => setIsEditingAvailability(!isEditingAvailability)}
-                        className="text-gray-500 hover:text-lime transition-colors"
-                    >
-                        {isEditingAvailability ? <Check size={16} /> : <Edit2 size={16} />}
-                    </button>
-                </div>
-
-                {isEditingAvailability ? (
-                    <div className="space-y-1">
-                        <div className="grid grid-cols-[60px_repeat(3,1fr)] gap-1 text-center">
-                            <div />
-                            {ALL_TIME_BLOCKS.map(b => (
-                                <div key={b} className="text-[9px] font-bold text-gray-500 uppercase tracking-wider py-1">{b}</div>
-                            ))}
-                            {ALL_DAYS.map(day => (
-                                <>
-                                    <div key={`label-${day}`} className="text-xs font-bold text-gray-400 flex items-center">{day}</div>
-                                    {ALL_TIME_BLOCKS.map(block => (
-                                        <button
-                                            key={`${day}-${block}`}
-                                            onClick={() => toggleAvailBlock(day, block)}
-                                            className={`py-2 rounded-lg text-[10px] font-bold border transition-all active:scale-95 ${isDayBlockActive(day, block)
-                                                ? 'bg-lime/20 border-lime/40 text-lime'
-                                                : 'bg-gray-800/50 border-gray-800 text-gray-600 hover:border-gray-600'
-                                                }`}
-                                        >
-                                            {isDayBlockActive(day, block) ? '✓' : '–'}
-                                        </button>
-                                    ))}
-                                </>
-                            ))}
-                        </div>
-                        <p className="text-[10px] text-gray-600 mt-2">Tap slots to toggle when you're open to work out.</p>
-                    </div>
-                ) : (
-                    <div>
-                        {user.availability && user.availability.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5">
-                                {user.availability.map(slot => (
-                                    <div key={slot.day} className="text-xs bg-gray-800 border border-gray-700/50 rounded-lg px-2 py-1.5">
-                                        <span className="font-bold text-white">{slot.day}</span>
-                                        <span className="text-gray-400 ml-1">{slot.blocks.join(', ')}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-gray-500">No schedule set. Tap edit to add your availability!</p>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {/* Premium / Admin Actions */}
-            <div className="space-y-3 mt-6">
-                {user.is_trainer && user.verification_status === 'none' && (
-                    <div className="p-4 rounded-2xl bg-lime/10 border border-lime/20">
-                        <div className="flex items-start gap-3 mb-3">
-                            <div className="p-2.5 bg-lime/20 rounded-xl">
-                                <Award className="text-lime" size={22} />
-                            </div>
-                            <div>
-                                <h4 className="font-bold text-white">Get Verified Pro</h4>
-                                <p className="text-[10px] text-gray-400 leading-relaxed">Verified trainers unlock group workouts, client training plans, and a pro badge.</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => {
-                                const url = window.prompt('Paste a link to your Trainer Certification or License (e.g. Google Drive/Dropbox/LinkedIn):');
-                                if (url) {
-                                    updateUser({
-                                        verification_status: 'pending',
-                                        trainer_license_url: url
-                                    });
-                                    alert('Request sent! An admin will review your license soon.');
-                                }
-                            }}
-                            className="w-full py-3 bg-lime text-oled rounded-xl text-xs font-black shadow-lg shadow-lime/10 active:scale-95 transition-all"
-                        >
-                            SUBMIT FOR VERIFICATION
-                        </button>
-                    </div>
-                )}
-
-                {user.is_trainer && user.verification_status === 'pending' && (
-                    <div className="p-4 rounded-2xl bg-gray-900 border border-gray-800 flex items-center gap-3">
-                        <div className="p-2 bg-gray-800 rounded-xl">
-                            <RefreshCw className="text-gray-400 animate-spin" size={20} />
-                        </div>
-                        <div>
-                            <h4 className="text-sm font-bold text-white">Verification Pending</h4>
-                            <p className="text-[10px] text-gray-500">Manual review usually takes 24 hours.</p>
-                        </div>
-                    </div>
-                )}
-
-                {user.is_admin && (
-                    <button
-                        onClick={() => window.location.href = '/admin'}
-                        className="w-full py-4 bg-purple-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
-                    >
-                        <Settings size={20} /> OPEN ADMIN BACKEND
-                    </button>
-                )}
-
-                <button
-                    onClick={logout}
-                    className="w-full py-4 rounded-xl flex items-center justify-center gap-2 font-semibold text-red-500 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors"
-                >
-                    <LogOut size={18} /> Sign Out
-                </button>
-            </div>
-
-            {/* Settings Modal */}
-            <AnimatePresence>
-                {isSettingsOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
-                            className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-sm overflow-hidden"
-                        >
-                            <div className="flex justify-between items-center p-4 border-b border-gray-800">
-                                <h3 className="font-bold text-lg text-white">Settings</h3>
-                                <button onClick={() => setIsSettingsOpen(false)} className="text-gray-400 hover:text-white"><X size={20} /></button>
-                            </div>
-                            <div className="p-6 space-y-6">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div>
-                                        <h4 className="font-semibold text-white">Personal Trainer Mode</h4>
-                                        <p className="text-xs text-gray-400 mt-1">Show a badge on your profile and let others know you offer lessons or guidance.</p>
-                                    </div>
-                                    <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
-                                        <input type="checkbox" className="sr-only peer" checked={isTrainer} onChange={(e) => handleSaveTrainer(e.target.checked)} />
-                                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-lime"></div>
-                                    </label>
-                                </div>
-                                <div className="flex flex-col gap-2 pt-4 border-t border-gray-800">
-                                    <div>
-                                        <h4 className="font-semibold text-white">Fitness Level</h4>
-                                        <p className="text-xs text-gray-400 mt-1">Update your experience level.</p>
-                                    </div>
-                                    <select
-                                        value={fitnessLevel}
-                                        onChange={(e) => handleSaveFitnessLevel(e.target.value)}
-                                        className="w-full bg-oled border border-gray-700 text-white rounded-lg px-3 py-2 mt-2 focus:outline-none focus:border-lime"
-                                    >
-                                        <option value="Beginner">Beginner (0-1 years)</option>
-                                        <option value="Intermediate">Intermediate (1-4 years)</option>
-                                        <option value="Professional">Professional (4+ years)</option>
-                                    </select>
-                                </div>
-                                <div className="flex flex-col gap-2 pt-4 border-t border-gray-800">
-                                    <div>
-                                        <h4 className="font-semibold text-white">Weight Unit</h4>
-                                        <div className="flex gap-2 mt-2">
-                                            {(['lbs', 'kg'] as const).map(u => (
-                                                <button key={u} onClick={() => { setUnitPref(u); updateUser({ unit_preference: u }); }}
-                                                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${unitPref === u
-                                                        ? 'bg-lime text-oled' : 'bg-gray-800 text-gray-400 border border-gray-700'}`}>
-                                                    {u.toUpperCase()}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* User ID moved to main profile view */}
-                                <div className="flex flex-col gap-2 pt-4 border-t border-gray-800">
-                                    <div>
-                                        <h4 className="font-semibold text-white">App Cache</h4>
-                                        <p className="text-xs text-gray-400 mt-1">If you are still seeing old data, try clearing the app cache.</p>
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            if (confirm('This will clear temporary data and reload the app. Continue?')) {
-                                                if ('serviceWorker' in navigator) {
-                                                    navigator.serviceWorker.getRegistrations().then(registrations => {
-                                                        for (let registration of registrations) {
-                                                            registration.unregister();
-                                                        }
-                                                    });
-                                                }
-                                                const authKey = Object.keys(localStorage).find(k => k.includes('auth-token') || k.includes('supabase.auth.token'));
-                                                const authVal = authKey ? localStorage.getItem(authKey) : null;
-                                                localStorage.clear();
-                                                if (authKey && authVal) localStorage.setItem(authKey, authVal);
-                                                window.location.reload();
-                                            }
-                                        }}
-                                        className="w-full py-3 bg-gray-800 border border-gray-700 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-gray-700 active:scale-95 transition-all"
-                                    >
-                                        <RefreshCw size={16} /> Force Refresh App
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-
-            {/* Image Edit Modal */}
-            <AnimatePresence>
-                {isEditingImage && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
-                            className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-sm p-6"
-                        >
-                            <h3 className="font-bold text-lg text-white mb-4">Update Profile Picture</h3>
-                            <div className="flex justify-center mb-6">
-                                <img src={editImageUrl || 'https://i.pravatar.cc/150'} className="w-24 h-24 rounded-full border-2 border-gray-700 object-cover" />
-                            </div>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                capture="environment"
-                                onChange={handleFileSelect}
-                                className="hidden"
-                            />
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="w-full py-3 rounded-xl bg-gray-800 border border-gray-700 text-white text-sm font-medium flex items-center justify-center gap-2 hover:bg-gray-700 active:scale-[0.98] transition-all mb-3"
-                            >
-                                <Camera size={18} /> Choose from Device
-                            </button>
-                            <div className="flex gap-3">
-                                <button onClick={() => setIsEditingImage(false)} className="flex-1 py-2 rounded-lg bg-gray-800 text-white font-medium hover:bg-gray-700 transition">Cancel</button>
-                                <button onClick={handleSaveImage} disabled={!editImageUrl} className="flex-1 py-2 rounded-lg bg-lime text-oled font-bold hover:bg-lime/90 transition disabled:opacity-30">Save</button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-
-            {/* Cosmetic Shop Drawer */}
-            <AnimatePresence>
-                {isShopOpen && (
-                    <>
-                        <motion.div
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            onClick={() => setIsShopOpen(false)}
-                            className="fixed inset-0 bg-black/85 backdrop-blur-md z-[60]"
-                        />
-                        <motion.div
-                            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-                            transition={{ type: 'spring', damping: 28, stiffness: 200 }}
-                            className="fixed bottom-0 left-0 right-0 z-[60] bg-oled rounded-t-3xl h-[85vh] border-t border-gray-800"
-                        >
-                            <CosmeticShop onClose={() => setIsShopOpen(false)} />
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
-
-            {/* User ID & Status - BOTTOM OF PROFILE */}
-            <div className="mt-8 px-2 pb-8 space-y-4">
-                <div className="p-4 rounded-2xl bg-gray-900/50 border border-gray-800">
+            {/* User ID & Status - AT THE TOP FOR VISIBILITY */}
+            <div className="px-2 pb-6 space-y-4 shrink-0">
+                <div className="p-4 rounded-2xl bg-gray-900 border border-gray-800 shadow-xl">
                     <div className="flex justify-between items-center mb-3">
                         <div>
                             <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Your User ID</h4>
@@ -773,7 +232,7 @@ export default function Profile() {
                                     alert('User ID copied to clipboard!');
                                 }
                             }}
-                            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-[10px] font-bold rounded-lg border border-gray-700 active:scale-95 transition-all"
+                            className="px-3 py-1.5 bg-lime text-oled text-[10px] font-bold rounded-lg active:scale-95 transition-all shadow-lg shadow-lime/20"
                         >
                             Copy ID
                         </button>
@@ -783,16 +242,247 @@ export default function Profile() {
                     </div>
                 </div>
 
-                <div className="flex items-center justify-between px-2">
+                <div className="flex items-center justify-between px-2 pt-1">
                     <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${isSupabaseConfigured ? 'bg-lime animate-pulse' : 'bg-orange-500'}`} />
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                            {isSupabaseConfigured ? 'Live Supabase Sync' : 'Mock Data Mode'}
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            {isSupabaseConfigured ? 'Live Database Active' : 'Offline Mode'}
                         </span>
                     </div>
-                    <span className="text-[10px] text-gray-700 font-mono">v1.2.0-prod</span>
+                    <span className="text-[10px] text-gray-700 font-mono">v1.2.5-stable</span>
                 </div>
             </div>
+
+            {/* Content Body */}
+            <div className="space-y-4">
+                {/* Stats Summary */}
+                <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-gray-900/50 border border-gray-800 p-4 rounded-3xl text-center">
+                        <Flame className="text-orange-500 mx-auto mb-1" size={20} />
+                        <p className="text-[10px] text-gray-500 uppercase font-bold">Streak</p>
+                        <p className="text-xl font-black text-white">{user.reliability_streak}d</p>
+                    </div>
+                    <div className="bg-gray-900/50 border border-gray-800 p-4 rounded-3xl text-center">
+                        <Target className="text-lime mx-auto mb-1" size={20} />
+                        <p className="text-[10px] text-gray-500 uppercase font-bold">Total</p>
+                        <p className="text-xl font-black text-white">
+                            {getBig4Total(user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 })}
+                        </p>
+                    </div>
+                    <div className="bg-gray-900/50 border border-gray-800 p-4 rounded-3xl text-center">
+                        <Zap className="text-yellow-400 mx-auto mb-1" size={20} />
+                        <p className="text-[10px] text-gray-500 uppercase font-bold">XP</p>
+                        <p className="text-xl font-black text-white">{user.xp || 0}</p>
+                    </div>
+                </div>
+
+                {/* Bio Section */}
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+                    <div className="flex justify-between items-center mb-3">
+                        <h4 className="font-semibold text-white flex items-center gap-2"><Activity size={16} className="text-lime" /> About</h4>
+                        <button onClick={() => { setEditBioText(user.bio || ''); setIsEditingBio(!isEditingBio); }} className="text-gray-500 hover:text-lime">
+                            {isEditingBio ? <Check size={16} /> : <Edit2 size={16} />}
+                        </button>
+                    </div>
+                    {isEditingBio ? (
+                        <div className="space-y-3">
+                            <textarea
+                                value={editBioText}
+                                onChange={(e) => setEditBioText(e.target.value)}
+                                className="w-full bg-oled border border-gray-800 rounded-xl p-3 text-sm text-gray-300 focus:outline-none focus:border-lime"
+                                rows={3}
+                            />
+                            <button onClick={handleSaveBio} className="w-full py-2 bg-lime text-oled rounded-lg text-xs font-bold">Save</button>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-gray-400 leading-relaxed italic">"{user.bio || 'No bio yet.'}"</p>
+                    )}
+                </div>
+
+                {/* Goals Section */}
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+                    <div className="flex justify-between items-center mb-3">
+                        <h4 className="font-semibold text-white flex items-center gap-2"><Target size={16} className="text-lime" /> Focus</h4>
+                        <button onClick={() => setIsEditingGoals(!isEditingGoals)} className="text-gray-500 hover:text-lime">
+                            {isEditingGoals ? <Check size={16} /> : <Edit2 size={16} />}
+                        </button>
+                    </div>
+                    {isEditingGoals ? (
+                        <div className="space-y-4">
+                            <div className="flex flex-wrap gap-1.5">
+                                {ALL_GOALS.map(goal => (
+                                    <button
+                                        key={goal}
+                                        onClick={() => toggleGoal(goal)}
+                                        className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${editGoals.includes(goal) ? 'bg-lime/20 border-lime/50 text-lime' : 'bg-gray-900 border-gray-800 text-gray-400'}`}
+                                    >
+                                        {goalEmoji[goal]} {goal}
+                                    </button>
+                                ))}
+                            </div>
+                            <button onClick={handleSaveGoals} className="w-full py-2 bg-lime text-oled rounded-lg text-xs font-bold">Save Goals</button>
+                        </div>
+                    ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                            {user.goals?.map(g => (
+                                <span key={g} className="text-xs font-semibold px-2 py-1 rounded-lg bg-gray-800 text-gray-300 border border-gray-700/50">
+                                    {goalEmoji[g]} {g}
+                                </span>
+                            )) || <p className="text-sm text-gray-500">No goals set.</p>}
+                        </div>
+                    )}
+                </div>
+
+                {/* Friends Section Wrapper */}
+                <FriendsSection />
+
+                {/* Availability Section */}
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+                    <div className="flex justify-between items-center mb-3">
+                        <h4 className="font-semibold text-white flex items-center gap-2"><CalendarDays size={16} className="text-lime" /> Schedule</h4>
+                        <button onClick={() => setIsEditingAvailability(!isEditingAvailability)} className="text-gray-500 hover:text-lime">
+                            {isEditingAvailability ? <Check size={16} /> : <Edit2 size={16} />}
+                        </button>
+                    </div>
+                    {isEditingAvailability ? (
+                        <div className="grid grid-cols-4 gap-1">
+                            {ALL_DAYS.map(day => (
+                                <React.Fragment key={day}>
+                                    <div className="text-[10px] font-bold text-gray-500 uppercase flex items-center">{day}</div>
+                                    {ALL_TIME_BLOCKS.map(block => (
+                                        <button
+                                            key={`${day}-${block}`}
+                                            onClick={() => toggleAvailBlock(day, block)}
+                                            className={`p-1.5 rounded-lg text-[10px] border transition-all ${isDayBlockActive(day, block) ? 'bg-lime/20 border-lime/40 text-lime' : 'bg-gray-800/50 border-gray-800 text-gray-600'}`}
+                                        >
+                                            {block.charAt(0)}
+                                        </button>
+                                    ))}
+                                </React.Fragment>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                            {user.availability?.map(slot => (
+                                <div key={slot.day} className="text-[10px] bg-gray-800 border border-gray-700/50 rounded-lg px-2 py-1">
+                                    <span className="font-bold text-white">{slot.day}:</span> {slot.blocks.join(', ')}
+                                </div>
+                            )) || <p className="text-sm text-gray-500">No schedule.</p>}
+                        </div>
+                    )}
+                </div>
+
+                {/* Actions */}
+                <div className="space-y-3 pt-4">
+                    {user.is_admin && (
+                        <button
+                            onClick={() => window.location.href = '/admin'}
+                            className="w-full py-4 bg-purple-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
+                        >
+                            <Settings size={20} /> OPEN ADMIN BACKEND
+                        </button>
+                    )}
+                    <button
+                        onClick={logout}
+                        className="w-full py-4 rounded-xl flex items-center justify-center gap-2 font-semibold text-red-500 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                    >
+                        <LogOut size={18} /> Sign Out
+                    </button>
+                </div>
+            </div>
+
+            {/* Modals & Overlays */}
+            <AnimatePresence>
+                {isSettingsOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-gray-900 border border-gray-800 rounded-3xl w-full max-w-sm overflow-hidden"
+                        >
+                            <div className="flex justify-between items-center p-5 border-b border-gray-800">
+                                <h3 className="font-bold text-lg text-white">Settings</h3>
+                                <button onClick={() => setIsSettingsOpen(false)} className="text-gray-400"><X size={20} /></button>
+                            </div>
+                            <div className="p-6 space-y-6">
+                                <div className="flex items-start justify-between">
+                                    <div>
+                                        <h4 className="font-semibold text-white">Trainer Mode</h4>
+                                        <p className="text-[10px] text-gray-500 mt-1">Unlock pro features and badges.</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={isTrainer} onChange={(e) => handleSaveTrainer(e.target.checked)} />
+                                        <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-lime after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+                                    </label>
+                                </div>
+                                <div className="pt-4 border-t border-gray-800">
+                                    <h4 className="font-semibold text-white mb-2">Units</h4>
+                                    <div className="flex gap-2">
+                                        {(['lbs', 'kg'] as const).map(u => (
+                                            <button key={u} onClick={() => { setUnitPref(u); updateUser({ unit_preference: u }); }}
+                                                className={`flex-1 py-2 rounded-xl text-xs font-bold ${unitPref === u ? 'bg-lime text-oled shadow-lg' : 'bg-gray-800 text-gray-500'}`}>{u.toUpperCase()}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="pt-4 border-t border-gray-800">
+                                    <h4 className="font-semibold text-white mb-2">Sync & Cache</h4>
+                                    <button
+                                        onClick={() => {
+                                            if (confirm('Force refresh app cache?')) {
+                                                localStorage.clear();
+                                                window.location.reload();
+                                            }
+                                        }}
+                                        className="w-full py-3 bg-gray-800 border border-gray-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2"
+                                    >
+                                        <RefreshCw size={14} /> Clear Cache & Refresh
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+                {isEditingImage && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-gray-900 border border-gray-800 rounded-3xl w-full max-w-sm p-6"
+                        >
+                            <h3 className="font-bold text-lg text-white mb-4 text-center">Update Picture</h3>
+                            <div className="flex justify-center mb-6">
+                                <img src={editImageUrl || user.profile_image_url} className="w-24 h-24 rounded-full border-2 border-lime/50 object-cover shadow-2xl" />
+                            </div>
+                            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+                            <div className="space-y-3">
+                                <button onClick={() => fileInputRef.current?.click()} className="w-full py-3 bg-gray-800 border border-gray-700 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-gray-700 transition-all">
+                                    <Camera size={18} /> Take/Choose Photo
+                                </button>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setIsEditingImage(false)} className="flex-1 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 font-bold transition-all">Cancel</button>
+                                    <button onClick={handleSaveImage} className="flex-1 py-2 rounded-xl bg-lime text-oled font-bold transition-all">Save</button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+                {isShopOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            onClick={() => setIsShopOpen(false)}
+                            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[60]"
+                        />
+                        <motion.div
+                            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 200 }}
+                            className="fixed bottom-0 left-0 right-0 z-[60] bg-oled rounded-t-[2.5rem] h-[85vh] border-t border-gray-800 overflow-hidden"
+                        >
+                            <CosmeticShop onClose={() => setIsShopOpen(false)} />
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
@@ -801,49 +491,49 @@ function FriendsSection() {
     const { friends, pendingReceived, acceptFriend } = useFriends();
 
     return (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
             <h4 className="font-semibold text-white flex items-center gap-2 mb-3">
                 <Users size={16} className="text-lime" /> Friends
                 <span className="text-xs text-gray-500 font-normal ml-1">{friends.length}</span>
                 {pendingReceived.length > 0 && (
-                    <span className="text-[9px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded-full font-bold border border-red-500/20 ml-auto">
-                        {pendingReceived.length} pending
+                    <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold border border-red-500/20 ml-auto animate-pulse">
+                        {pendingReceived.length} NEW
                     </span>
                 )}
             </h4>
 
-            {/* Pending Requests */}
             {pendingReceived.length > 0 && (
                 <div className="space-y-2 mb-3">
                     {pendingReceived.map(u => (
-                        <div key={u.id} className="flex items-center gap-3 p-2 rounded-xl bg-lime/5 border border-lime/20">
-                            <img src={u.profile_image_url} alt={u.name} className="w-9 h-9 rounded-full border border-gray-700 object-cover" />
+                        <div key={u.id} className="flex items-center gap-3 p-3 rounded-2xl bg-lime/10 border border-lime/20 shadow-lg shadow-lime/5">
+                            <img src={u.profile_image_url} alt={u.name} className="w-10 h-10 rounded-full border-2 border-lime/30 object-cover" />
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-white truncate">{u.name}</p>
-                                <p className="text-[10px] text-gray-500">wants to connect</p>
+                                <p className="text-sm font-bold text-white truncate">{u.name}</p>
+                                <p className="text-[10px] text-lime/70 font-medium">pending request</p>
                             </div>
                             <button
                                 onClick={() => acceptFriend(u.id)}
-                                className="text-[10px] font-bold bg-lime text-oled px-3 py-1.5 rounded-lg active:scale-95 transition"
+                                className="text-[10px] font-black bg-lime text-oled px-4 py-2 rounded-xl active:scale-95 transition-all shadow-md shadow-lime/20"
                             >
-                                Accept
+                                ACCEPT
                             </button>
                         </div>
                     ))}
                 </div>
             )}
 
-            {/* Friends List */}
             {friends.length === 0 ? (
-                <p className="text-sm text-gray-500">No friends yet. Discover people and add them!</p>
+                <div className="text-center py-4 bg-gray-800/10 rounded-xl border border-dashed border-gray-800">
+                    <p className="text-[10px] text-gray-500 font-medium">No connections yet.</p>
+                </div>
             ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 gap-2">
                     {friends.map(f => (
-                        <div key={f.id} className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-2.5 py-2 border border-gray-800">
-                            <img src={f.profile_image_url} alt={f.name} className="w-7 h-7 rounded-full border border-gray-700 object-cover" />
+                        <div key={f.id} className="flex items-center gap-2 bg-gray-800/40 rounded-2xl p-2 border border-gray-800/60 shadow-sm">
+                            <img src={f.profile_image_url} alt={f.name} className="w-8 h-8 rounded-full border border-gray-700 object-cover" />
                             <div className="min-w-0">
-                                <p className="text-xs font-semibold text-white truncate max-w-[80px]">{f.name.split(' ')[0]}</p>
-                                <p className="text-[9px] text-gray-500">{f.fitness_level}</p>
+                                <p className="text-[10px] font-bold text-white truncate">{f.name.split(' ')[0]}</p>
+                                <p className="text-[9px] text-gray-500 truncate font-medium">{f.fitness_level}</p>
                             </div>
                         </div>
                     ))}

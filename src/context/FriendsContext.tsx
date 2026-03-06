@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react';
 import { User } from '../types/database';
-import { mockUsers } from '../lib/mock';
 import { useAuth } from './AuthContext';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useEffect } from 'react';
@@ -24,79 +23,131 @@ const FriendsContext = createContext<FriendsContextType | null>(null);
 export function FriendsProvider({ children }: { children: React.ReactNode }) {
     const { user, updateUser } = useAuth();
 
-    // Friends = accepted connections (stored as user IDs)
-    // ID Lists (Source of truth)
-    const [friendIds, setFriendIds] = useState<string[]>(() => user?.friends || []);
-    const [pendingReceivedIds, setPendingReceivedIds] = useState<string[]>([]);
-    const [pendingSentIds, setPendingSentIds] = useState<string[]>([]);
-
     // Friends lookup (Real profiles hydrated from IDs)
     const [friends, setFriends] = useState<User[]>([]);
     const [pendingReceived, setPendingReceived] = useState<User[]>([]);
+    const [pendingSentIds, setPendingSentIds] = useState<string[]>([]);
 
-    useEffect(() => {
-        const fetchProfiles = async () => {
-            const allIds = [...new Set([...friendIds, ...pendingReceivedIds])];
-            if (allIds.length === 0) {
+    const fetchFriendsData = useCallback(async () => {
+        if (!user?.id || !isSupabaseConfigured) {
+            setFriends([]);
+            setPendingReceived([]);
+            return;
+        }
+
+        try {
+            // 1. Fetch friend list from profile
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('friends')
+                .eq('id', user.id)
+                .single();
+
+            const friendIds = profile?.friends || [];
+
+            // 2. Fetch pending received requests from a friendships table (if we had one)
+            // For now, let's assume we store them in a 'friend_requests' table
+            const { data: requests } = await supabase
+                .from('friend_requests')
+                .select('sender_id')
+                .eq('receiver_id', user.id)
+                .eq('status', 'pending');
+
+            const pendingIds = requests?.map(r => r.sender_id) || [];
+
+            const allIds = [...new Set([...friendIds, ...pendingIds])];
+
+            if (allIds.length > 0) {
+                const { data: profiles } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .in('id', allIds);
+
+                if (profiles) {
+                    setFriends(friendIds.map((id: string) => profiles.find(p => p.id === id)).filter(Boolean) as User[]);
+                    setPendingReceived(pendingIds.map((id: string) => profiles.find(p => p.id === id)).filter(Boolean) as User[]);
+                }
+            } else {
                 setFriends([]);
                 setPendingReceived([]);
-                return;
             }
+        } catch (err) {
+            console.error('Error fetching friends:', err);
+        } finally {
+        }
+    }, [user?.id]);
 
-            if (!isSupabaseConfigured) {
-                setFriends(friendIds.map(id => mockUsers.find(u => u.id === id)).filter(Boolean) as User[]);
-                setPendingReceived(pendingReceivedIds.map(id => mockUsers.find(u => u.id === id)).filter(Boolean) as User[]);
-                return;
-            }
+    useEffect(() => {
+        fetchFriendsData();
 
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .in('id', allIds);
+        if (isSupabaseConfigured && user?.id) {
+            // Simple real-time subscription for friend requests
+            const channel = supabase
+                .channel('friendship_changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests' }, () => {
+                    fetchFriendsData();
+                })
+                .subscribe();
 
-            if (data && !error) {
-                setFriends(friendIds.map(id => data.find(p => p.id === id)).filter(Boolean) as User[]);
-                setPendingReceived(pendingReceivedIds.map(id => data.find(p => p.id === id)).filter(Boolean) as User[]);
-            }
-        };
+            return () => { supabase.removeChannel(channel); };
+        }
+    }, [user?.id, fetchFriendsData]);
 
-        fetchProfiles();
-    }, [friendIds, pendingReceivedIds]);
+    const sendFriendRequest = useCallback(async (userId: string) => {
+        if (!user || !isSupabaseConfigured) return;
 
-    const sendFriendRequest = useCallback((userId: string) => {
-        if (friendIds.includes(userId) || pendingSentIds.includes(userId)) return;
-        setPendingSentIds(prev => [...prev, userId]);
-    }, [friendIds, pendingSentIds]);
-
-    const acceptFriend = useCallback((userId: string) => {
-        setPendingReceivedIds(prev => prev.filter(id => id !== userId));
-        setFriendIds(prev => {
-            const updated = [...prev, userId];
-            if (user) updateUser({ friends: updated });
-            return updated;
+        const { error } = await supabase.from('friend_requests').insert({
+            sender_id: user.id,
+            receiver_id: userId,
+            status: 'pending'
         });
-    }, [user, updateUser]);
 
-    const declineFriend = useCallback((userId: string) => {
-        setPendingReceivedIds(prev => prev.filter(id => id !== userId));
-    }, []);
+        if (!error) {
+            setPendingSentIds(prev => [...prev, userId]);
+        }
+    }, [user]);
 
-    const removeFriend = useCallback((userId: string) => {
-        setFriendIds(prev => {
-            const updated = prev.filter(id => id !== userId);
-            if (user) updateUser({ friends: updated });
-            return updated;
-        });
-    }, [user, updateUser]);
+    const acceptFriend = useCallback(async (userId: string) => {
+        if (!user || !isSupabaseConfigured) return;
+
+        // 1. Update request status
+        await supabase.from('friend_requests')
+            .update({ status: 'accepted' })
+            .eq('sender_id', userId)
+            .eq('receiver_id', user.id);
+
+        // 2. Update both users' friend lists
+        const currentFriends = user.friends || [];
+        const updatedFriends = Array.from(new Set([...currentFriends, userId]));
+
+        updateUser({ friends: updatedFriends });
+        fetchFriendsData();
+    }, [user, updateUser, fetchFriendsData]);
+
+    const declineFriend = useCallback(async (userId: string) => {
+        if (!user || !isSupabaseConfigured) return;
+        await supabase.from('friend_requests')
+            .delete()
+            .eq('sender_id', userId)
+            .eq('receiver_id', user.id);
+        fetchFriendsData();
+    }, [user, fetchFriendsData]);
+
+    const removeFriend = useCallback(async (userId: string) => {
+        if (!user || !isSupabaseConfigured) return;
+        const updatedFriends = (user.friends || []).filter(id => id !== userId);
+        updateUser({ friends: updatedFriends });
+        fetchFriendsData();
+    }, [user, updateUser, fetchFriendsData]);
 
     const getFriendStatus = useCallback((userId: string): FriendStatus => {
-        if (friendIds.includes(userId)) return 'friends';
+        if (user?.friends?.includes(userId)) return 'friends';
         if (pendingSentIds.includes(userId)) return 'pending_sent';
-        if (pendingReceivedIds.includes(userId)) return 'pending_received';
+        if (pendingReceived.some(u => u.id === userId)) return 'pending_received';
         return 'none';
-    }, [friendIds, pendingSentIds, pendingReceivedIds]);
+    }, [user?.friends, pendingSentIds, pendingReceived]);
 
-    const getFriendCount = useCallback(() => friendIds.length, [friendIds]);
+    const getFriendCount = useCallback(() => user?.friends?.length || 0, [user?.friends]);
 
     return (
         <FriendsContext.Provider value={{
