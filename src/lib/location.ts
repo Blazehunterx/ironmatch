@@ -5,6 +5,8 @@ export interface GeoCoords {
     lng: number;
 }
 
+export const MAX_VERIFICATION_DISTANCE_KM = 0.2; // 200 meters
+
 /**
  * Calculate distance between two coordinates using Haversine formula
  * Returns distance in kilometers
@@ -47,4 +49,18 @@ export function getCurrentPosition(): Promise<GeoCoords> {
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
     });
+}
+/**
+ * Validates if the user is within the required radius of a gym to participate
+ * in verified activities or Gym Wars.
+ */
+export async function verifyGymPresence(gymLat: number, gymLng: number): Promise<boolean> {
+    try {
+        const userPos = await getCurrentPosition();
+        const distance = haversineDistance(userPos, { lat: gymLat, lng: gymLng });
+        return distance <= MAX_VERIFICATION_DISTANCE_KM;
+    } catch (e) {
+        console.warn('Failed to verify presence:', e);
+        return false;
+    }
 }

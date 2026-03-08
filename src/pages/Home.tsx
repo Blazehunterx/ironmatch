@@ -2,46 +2,41 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useGyms } from '../context/GymContext';
 import { supabase } from '../lib/supabase';
-import { Filter, RefreshCw, Ghost } from 'lucide-react';
+import { RefreshCw, LayoutGrid, Users, MapPin, X, Filter } from 'lucide-react';
 import RequestModal from '../components/RequestModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Goal, DayOfWeek, TimeBlock } from '../types/database';
 import ActiveToggle from '../components/ActiveToggle';
 import ProfileCard from '../components/ProfileCard';
 import ProfileDetail from '../components/ProfileDetail';
-import CollectiveMilestones from '../components/CollectiveMilestones';
+import SocialFeed from '../components/SocialFeed';
 import GymWarArena from '../components/GymWarArena';
-import { Swords, Trophy, X } from 'lucide-react';
 
 export default function Home() {
     const { user } = useAuth();
+    const { findGym, getActiveWar } = useGyms();
+
+    // State for profiles and war
+    const [allProfiles, setAllProfiles] = useState<User[]>([]);
+    const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
+    const [activeWar, setActiveWar] = useState<any>(null);
+    const [showArena, setShowArena] = useState(false);
+
+    // Modal state
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [targetUser, setTargetUser] = useState<User | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [detailUser, setDetailUser] = useState<User | null>(null);
 
     // Filter state
     const [showFilters, setShowFilters] = useState(false);
-    const [filterTrainer, setFilterTrainer] = useState(false);
-    const [filterGoal, setFilterGoal] = useState<Goal | null>(null);
-    const [filterDay, setFilterDay] = useState<DayOfWeek | null>(null);
-    const [filterTime, setFilterTime] = useState<TimeBlock | null>(null);
-    const [filterLevel, setFilterLevel] = useState<string | null>(null);
-    const [filterGym, setFilterGym] = useState<string | null>(null);
-
-    // Gym discovery from context
-    const { gyms: sortedGyms } = useGyms();
-
-    // Request Modal State
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [targetUser, setTargetUser] = useState<User | null>(null);
-
-    // Profile Detail State
-    const [detailUser, setDetailUser] = useState<User | null>(null);
-    const [isDetailOpen, setIsDetailOpen] = useState(false);
-
-    // Real Data Persistence
-    const [allProfiles, setAllProfiles] = useState<User[]>([]);
-    const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
-    const [activeWar, setActiveWar] = useState<any | null>(null);
-    const [showArena, setShowArena] = useState(false);
-    const { getActiveWar, findGym } = useGyms();
+    const [filterTrainer] = useState(false);
+    const [filterGoal] = useState<Goal | null>(null);
+    const [filterDay] = useState<DayOfWeek | null>(null);
+    const [filterTime] = useState<TimeBlock | null>(null);
+    const [filterLevel] = useState<string | null>(null);
+    const [filterGym] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'feed' | 'buddies'>('feed');
 
     const fetchProfiles = async () => {
         setIsLoadingProfiles(true);
@@ -66,40 +61,22 @@ export default function Home() {
         fetchProfiles();
     }, []);
 
-    // Exclude current user
     const allUsers = allProfiles.filter(u => u.id !== user?.id);
 
-    // Apply filters
     const filteredUsers = useMemo(() => {
         let result = allUsers;
-
-        if (filterTrainer) {
-            result = result.filter(u => u.is_trainer);
-        }
-
-        if (filterGoal) {
-            result = result.filter(u => u.goals?.includes(filterGoal));
-        }
-
-        if (filterLevel) {
-            result = result.filter(u => u.fitness_level === filterLevel);
-        }
-
-        if (filterGym) {
-            result = result.filter(u => u.home_gym === filterGym);
-        }
-
+        if (filterTrainer) result = result.filter(u => u.is_trainer);
+        if (filterGoal) result = result.filter(u => u.goals?.includes(filterGoal));
+        if (filterLevel) result = result.filter(u => u.fitness_level === filterLevel);
+        if (filterGym) result = result.filter(u => u.home_gym === filterGym);
         if (filterDay) {
             result = result.filter(u => {
                 const daySlot = u.availability?.find(a => a.day === filterDay);
                 if (!daySlot) return false;
-                if (filterTime) {
-                    return daySlot.blocks.includes(filterTime);
-                }
+                if (filterTime) return daySlot.blocks.includes(filterTime);
                 return true;
             });
         }
-
         return result;
     }, [allUsers, filterTrainer, filterGoal, filterDay, filterTime, filterLevel, filterGym]);
 
@@ -117,17 +94,15 @@ export default function Home() {
 
     return (
         <div className="px-4 pb-20 pt-6">
-            {/* Header / Welcome */}
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-black text-white tracking-tight">Active Buddies</h1>
-                    <p className="text-gray-500 text-sm font-medium">Find your next training partner</p>
+                    <h1 className="text-2xl font-black text-white tracking-tight">Social Hub</h1>
+                    <p className="text-gray-500 text-sm font-medium">Connect and track progress</p>
                 </div>
                 <div className="flex gap-2">
                     <button
                         onClick={() => setShowFilters(!showFilters)}
-                        className={`p-3 rounded-2xl border transition-all relative ${showFilters ? 'bg-lime border-lime text-oled shadow-lg' : 'bg-gray-900 border-gray-800 text-gray-400'
-                            }`}
+                        className={`p-3 rounded-2xl border transition-all relative ${showFilters ? 'bg-lime border-lime text-oled shadow-lg' : 'bg-gray-900 border-gray-800 text-gray-400'}`}
                     >
                         <Filter size={20} />
                         {activeFilterCount > 0 && !showFilters && (
@@ -145,123 +120,61 @@ export default function Home() {
                 </div>
             </div>
 
-            <div className="mb-6">
-                <ActiveToggle />
-            </div>
-
-            {activeWar && (
-                <motion.button
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    onClick={() => setShowArena(true)}
-                    className="w-full mb-8 p-4 rounded-3xl bg-gradient-to-r from-red-600 to-red-900 border border-white/10 flex items-center gap-4 relative overflow-hidden group shadow-2xl shadow-red-900/40"
+            <div className="flex bg-gray-900/50 p-1.5 rounded-2xl mb-6 border border-gray-800">
+                <button
+                    onClick={() => setActiveTab('feed')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'feed' ? 'bg-lime text-oled shadow-lg' : 'text-gray-500 hover:text-white'}`}
                 >
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform">
-                        <Swords size={80} />
-                    </div>
-                    <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl text-white shadow-xl">
-                        <Swords size={24} className="fill-current" />
-                    </div>
-                    <div className="text-left">
-                        <h4 className="text-[10px] font-black text-red-200 uppercase tracking-[0.2em] leading-none mb-1.5 flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" /> Live Gym War
-                        </h4>
-                        <p className="text-lg font-black text-white leading-tight">Arena is Open!</p>
-                        <p className="text-[11px] text-red-100/60 font-medium">Contribute volume and claim victory</p>
-                    </div>
-                    <div className="ml-auto p-2 bg-white/20 rounded-xl">
-                        <Trophy size={16} className="text-white" />
-                    </div>
-                </motion.button>
-            )}
-
-            <div className="mb-8">
-                <CollectiveMilestones milestones={[]} />
+                    <LayoutGrid size={14} /> Global Feed
+                </button>
+                <button
+                    onClick={() => setActiveTab('buddies')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'buddies' ? 'bg-lime text-oled shadow-lg' : 'text-gray-500 hover:white'}`}
+                >
+                    <Users size={14} /> Find Buddies
+                </button>
             </div>
 
-            {/* Filters Drawer */}
-            <AnimatePresence>
-                {showFilters && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mb-8 overflow-hidden"
-                    >
-                        <div className="p-5 bg-gray-900/50 border border-gray-800 rounded-3xl space-y-6">
-                            <div className="flex justify-between items-center pb-2">
-                                <h3 className="text-sm font-black uppercase tracking-widest text-gray-500">Filter Preferences</h3>
-                                <button
-                                    onClick={() => {
-                                        setFilterTrainer(false);
-                                        setFilterGoal(null);
-                                        setFilterDay(null);
-                                        setFilterTime(null);
-                                        setFilterLevel(null);
-                                        setFilterGym(null);
-                                    }}
-                                    className="text-[10px] font-black text-lime hover:underline"
-                                >
-                                    RESET ALL
-                                </button>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-600 block mb-2 uppercase tracking-tight">Home Gym</label>
-                                    <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                                        <button
-                                            onClick={() => setFilterGym(null)}
-                                            className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${!filterGym ? 'bg-lime border-lime text-oled' : 'bg-gray-900 border-gray-800 text-gray-400'}`}
-                                        >
-                                            All Gyms
-                                        </button>
-                                        {sortedGyms.slice(0, 5).map(g => (
-                                            <button
-                                                key={g.id}
-                                                onClick={() => setFilterGym(g.id)}
-                                                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${filterGym === g.id ? 'bg-lime border-lime text-oled' : 'bg-gray-900 border-gray-800 text-gray-400'}`}
-                                            >
-                                                {g.name}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Main Content */}
-            {isLoadingProfiles ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-4">
-                    <div className="w-12 h-12 border-4 border-lime/20 border-t-lime rounded-full animate-spin" />
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-600">Syncing profiles...</p>
-                </div>
-            ) : filteredUsers.length === 0 ? (
-                <div className="text-center py-20 px-8">
-                    <div className="w-16 h-16 bg-gray-900 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-gray-800">
-                        <Ghost className="text-gray-700" size={32} />
-                    </div>
-                    <h3 className="text-white font-bold mb-1">No matches found</h3>
-                    <p className="text-gray-500 text-sm">Try adjusting your filters to find more training partners.</p>
+            {activeTab === 'feed' ? (
+                <div className="space-y-6">
+                    <SocialFeed gymId={filterGym || user?.home_gym || ''} />
                 </div>
             ) : (
-                <div className="grid grid-cols-1 gap-4">
-                    {filteredUsers.map((u, i) => (
-                        <ProfileCard
-                            key={u.id}
-                            user={u}
-                            index={i}
-                            onRequest={handleRequest}
-                            onViewProfile={handleViewProfile}
-                        />
-                    ))}
-                </div>
+                <>
+                    <div className="mb-6">
+                        <ActiveToggle />
+                    </div>
+
+                    {isLoadingProfiles ? (
+                        <div className="flex flex-col items-center justify-center py-20 gap-4">
+                            <div className="w-12 h-12 border-4 border-lime/20 border-t-lime rounded-full animate-spin" />
+                            <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-600">Syncing profiles...</p>
+                        </div>
+                    ) : filteredUsers.length === 0 ? (
+                        <div className="text-center py-20 px-8 relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-lime/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="w-16 h-16 bg-gray-900 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-gray-800 relative z-10">
+                                <MapPin className="text-lime" size={32} />
+                            </div>
+                            <h3 className="text-white font-bold mb-2 relative z-10">Pioneer of {findGym(filterGym || user?.home_gym || '')?.name || 'this Gym'}</h3>
+                            <p className="text-gray-400 text-xs leading-relaxed relative z-10">You are the first to claim this territory! Invite your lifting partner to start building your squad and dominating the leaderboards.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-4">
+                            {filteredUsers.map((u, i) => (
+                                <ProfileCard
+                                    key={u.id}
+                                    user={u}
+                                    index={i}
+                                    onRequest={handleRequest}
+                                    onViewProfile={handleViewProfile}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </>
             )}
 
-            {/* Modals */}
             {targetUser && (
                 <RequestModal
                     isOpen={isModalOpen}
@@ -279,7 +192,6 @@ export default function Home() {
                 />
             )}
 
-            {/* Gym War Arena Modal */}
             <AnimatePresence>
                 {showArena && activeWar && (
                     <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-0 sm:p-4">

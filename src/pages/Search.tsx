@@ -247,25 +247,27 @@ export default function Search() {
                 </button>
             </div>
 
-            {/* Buddy Match Call to Action */}
-            <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setShowBuddyMatch(true)}
-                className="w-full mb-6 p-4 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 border-t border-white/20 flex items-center gap-4 relative overflow-hidden group shadow-2xl shadow-blue-900/40"
-            >
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform">
-                    <Users size={80} />
-                </div>
-                <div className="p-3 bg-white/10 backdrop-blur-md rounded-xl text-white shadow-xl">
-                    <Zap size={24} className="fill-current" />
-                </div>
-                <div>
-                    <h4 className="text-[10px] font-black text-blue-200 uppercase tracking-[0.2em] leading-none mb-1.5">Alpha Matching</h4>
-                    <p className="text-lg font-black text-white leading-tight">Find a Gym Buddy</p>
-                    <p className="text-[11px] text-blue-100/60 font-medium">Matches you with active users now</p>
-                </div>
-            </motion.button>
+            {/* Buddy Match Call to Action - Progressive Disclosure Level 1 */}
+            {(user?.xp || 0) >= 50 || user?.is_trainer ? (
+                <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowBuddyMatch(true)}
+                    className="w-full mb-6 p-4 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 border-t border-white/20 flex items-center gap-4 relative overflow-hidden group shadow-2xl shadow-blue-900/40"
+                >
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform">
+                        <Users size={80} />
+                    </div>
+                    <div className="p-3 bg-white/10 backdrop-blur-md rounded-xl text-white shadow-xl">
+                        <Zap size={24} className="fill-current" />
+                    </div>
+                    <div>
+                        <h4 className="text-[10px] font-black text-blue-200 uppercase tracking-[0.2em] leading-none mb-1.5">Alpha Matching</h4>
+                        <p className="text-lg font-black text-white leading-tight">Find a Gym Buddy</p>
+                        <p className="text-[11px] text-blue-100/60 font-medium">Matches you with active users now</p>
+                    </div>
+                </motion.button>
+            ) : null}
 
             {/* User Search Results */}
             <AnimatePresence>
@@ -646,18 +648,19 @@ export default function Search() {
                                     <p className="text-xs text-gray-500 font-bold">Loading community...</p>
                                 </div>
                             ) : gymPosts.length === 0 ? (
-                                <div className="text-center py-20 bg-gray-900/30 rounded-3xl border border-dashed border-gray-800 p-8">
-                                    <div className="w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-800">
-                                        <MessageCircle size={28} className="text-gray-700" />
+                                <div className="text-center py-20 bg-gray-900/30 rounded-3xl border border-dashed border-gray-800 p-8 relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-lime/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <div className="w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-800 relative z-10">
+                                        <MessageCircle size={28} className="text-lime" />
                                     </div>
-                                    <h4 className="text-white font-bold mb-2">The Shoutbox is quiet...</h4>
-                                    <p className="text-xs text-gray-500 mb-6 leading-relaxed">
-                                        Nobody has posted at <strong>{gym?.name || 'this gym'}</strong> yet. <br />
-                                        Break the ice and start the community!
+                                    <h4 className="text-white font-bold mb-2 relative z-10">Unclaimed Territory!</h4>
+                                    <p className="text-xs text-gray-400 mb-6 leading-relaxed relative z-10">
+                                        Nobody has posted at <strong>{gym?.name || 'this gym'}</strong>. <br />
+                                        Plant your flag, send the first shout, and start building your kingdom.
                                     </p>
                                     <button
                                         onClick={() => setShowNewPost(true)}
-                                        className="px-6 py-2.5 rounded-xl bg-lime text-oled text-[10px] font-black uppercase tracking-widest hover:bg-lime/90 transition shadow-lg inline-flex items-center gap-2"
+                                        className="px-6 py-2.5 rounded-xl bg-lime text-oled text-[10px] font-black uppercase tracking-widest hover:bg-lime/90 transition shadow-lg shadow-lime/20 inline-flex items-center gap-2 relative z-10"
                                     >
                                         <Send size={14} /> Send First Shout
                                     </button>

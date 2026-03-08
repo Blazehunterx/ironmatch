@@ -4,9 +4,10 @@ import { X, Check, Timer, Trophy, Dumbbell, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useGyms } from '../context/GymContext';
-import { isNearGym } from '../lib/geofencing';
+import { verifyGymPresence } from '../lib/location';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import PRCelebration from './PRCelebration';
+import { Shield } from 'lucide-react';
 
 interface ActiveWorkoutProps {
     plan: WorkoutPlan;
@@ -25,8 +26,9 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
     const [finished, setFinished] = useState(false);
     const [shared, setShared] = useState(false);
     const { user, updateUser } = useAuth();
-    const { findGym, getActiveWar, userLocation } = useGyms();
+    const { findGym, getActiveWar } = useGyms();
     const [activePR, setActivePR] = useState<{ exercise: string; newWeight: number; oldWeight: number } | null>(null);
+    const [verifyLocation, setVerifyLocation] = useState(true);
 
     // Timer
     useEffect(() => {
@@ -101,8 +103,14 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
             const gym = findGym(user.home_gym);
 
             let isVerifiedLocation = false;
-            if (gym && userLocation) {
-                isVerifiedLocation = isNearGym(userLocation.lat, userLocation.lng, gym.lat, gym.lng);
+            if (verifyLocation && gym) {
+                isVerifiedLocation = await verifyGymPresence(gym.lat, gym.lng);
+                if (!isVerifiedLocation) {
+                    alert('Anti-Cheat Active: You are not within 200m of the gym. Workout logged without verification bonus.');
+                } else {
+                    // Bonus XP for verified workouts
+                    updateUser({ xp: (user.xp || 0) + 150 });
+                }
             }
 
             const totalVolume = exercises.reduce((acc, ex) =>
@@ -281,6 +289,21 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
                         )}
                     </motion.div>
                 ))}
+
+                {/* Geofence Toggle */}
+                <div className="mt-6 p-4 bg-gray-900 border border-gray-800 rounded-2xl flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Shield className={`shrink-0 ${verifyLocation ? 'text-lime' : 'text-gray-600'}`} size={20} />
+                        <div>
+                            <h4 className="text-sm font-bold text-white">Verified Location</h4>
+                            <p className="text-[10px] text-gray-500">1.2x XP & contribute to Gym Wars</p>
+                        </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" checked={verifyLocation} onChange={(e) => setVerifyLocation(e.target.checked)} />
+                        <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-lime after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+                    </label>
+                </div>
             </div>
 
             {/* PR Celebration Overlay */}

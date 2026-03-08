@@ -128,11 +128,25 @@ export interface Post {
     gym_id: string;
     content: string;
     media_url?: string;
+    media_type?: 'image' | 'video';
+    is_auto_generated?: boolean;
     is_event?: boolean;
     event_date?: string;
     event_title?: string;
+    spots_count?: number;
     created_at: string;
 }
+
+export interface ExerciseMedia {
+    id: string;
+    exercise_name: string;
+    video_url: string;
+    thumbnail_url?: string;
+    category?: BodyPart;
+    created_at: string;
+}
+
+export type ActivityType = 'workout' | 'pr' | 'milestone' | 'match';
 
 export interface GymMessage {
     id: string;

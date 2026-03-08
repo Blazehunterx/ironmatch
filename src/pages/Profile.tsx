@@ -126,12 +126,14 @@ export default function Profile() {
             <div className="flex justify-between items-center mb-8 shrink-0">
                 <h2 className="text-3xl font-bold text-white">Profile</h2>
                 <div className="flex gap-2">
-                    <button
-                        onClick={() => setIsShopOpen(true)}
-                        className="p-2 text-yellow-400 hover:text-white rounded-full bg-yellow-400/10 border border-yellow-400/20 active:scale-95 transition-all"
-                    >
-                        <Zap size={20} className="fill-current" />
-                    </button>
+                    {((user?.xp || 0) >= 100 || user?.is_trainer) && (
+                        <button
+                            onClick={() => setIsShopOpen(true)}
+                            className="p-2 text-yellow-400 hover:text-white rounded-full bg-yellow-400/10 border border-yellow-400/20 active:scale-95 transition-all"
+                        >
+                            <Zap size={20} className="fill-current" />
+                        </button>
+                    )}
                     <button
                         onClick={() => setIsSettingsOpen(true)}
                         className="p-2 text-gray-400 hover:text-white rounded-full bg-gray-900 border border-gray-800 active:scale-95 transition-all"

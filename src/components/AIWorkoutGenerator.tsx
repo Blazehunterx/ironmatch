@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ArrowRight, Target, Clock, Dumbbell, X } from 'lucide-react';
 import { WorkoutPlan, BodyPart } from '../types/database';
+import ExerciseVideo from './ExerciseVideo';
 
 interface AIWorkoutGeneratorProps {
     onGenerate: (plan: WorkoutPlan) => void;
@@ -12,6 +13,7 @@ export default function AIWorkoutGenerator({ onGenerate, onClose }: AIWorkoutGen
     const [step, setStep] = useState(1);
     const [goal, setGoal] = useState<'strength' | 'muscle' | 'lifestyle'>('muscle');
     const [experience, setExperience] = useState<'beginner' | 'intermediate'>('beginner');
+    const [activeVideo, setActiveVideo] = useState<string | null>(null);
 
     const generatePlan = () => {
         const planId = `ai-${Date.now()}`;
@@ -167,6 +169,31 @@ export default function AIWorkoutGenerator({ onGenerate, onClose }: AIWorkoutGen
                             >
                                 Generate Plan <Sparkles size={14} />
                             </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Video Preview Overlay */}
+            <AnimatePresence>
+                {activeVideo && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl"
+                    >
+                        <div className="w-full max-w-sm">
+                            <div className="flex justify-between items-center mb-4 px-2">
+                                <h4 className="text-white font-black italic uppercase italic">Form Demonstration</h4>
+                                <button onClick={() => setActiveVideo(null)} className="p-2 bg-white/10 rounded-full text-white">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <ExerciseVideo
+                                src={activeVideo}
+                                className="aspect-[9/16] shadow-2xl shadow-lime/20 border border-white/10"
+                            />
                         </div>
                     </motion.div>
                 )}
