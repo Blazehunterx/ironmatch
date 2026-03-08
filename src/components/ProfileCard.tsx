@@ -1,6 +1,6 @@
 import { User } from '../types/database';
 import { useGyms } from '../context/GymContext';
-import { Dumbbell, MapPin, Zap, GraduationCap, Flame, ChevronRight } from 'lucide-react';
+import { Dumbbell, MapPin, Zap, GraduationCap, Flame, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface GridCardProps {
@@ -59,7 +59,12 @@ export default function GridCard({ user, index, onRequest, onViewProfile }: Grid
                 {/* Info */}
                 <div className="flex-1 min-w-0 flex flex-col justify-center">
                     <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-base font-bold text-white truncate">{user.name}</h3>
+                        <div className="flex items-center gap-1 min-w-0">
+                            <h3 className="text-base font-bold text-white truncate">{user.name}</h3>
+                            {user.verification_status === 'verified' && (
+                                <CheckCircle2 size={14} className="text-lime fill-lime/10 shrink-0" />
+                            )}
+                        </div>
                         <ChevronRight size={14} className="text-gray-600 shrink-0" />
                     </div>
 

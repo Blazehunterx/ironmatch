@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useSocialFeed } from '../hooks/useSocialFeed';
-import { Zap, MessageSquare, Share2, MoreHorizontal, Trophy } from 'lucide-react';
+import { Zap, MessageSquare, Share2, MoreHorizontal, Trophy, CheckCircle2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import ExerciseVideo from './ExerciseVideo';
 
@@ -49,7 +49,12 @@ export default function SocialFeed({ gymId }: SocialFeedProps) {
                                 <img src={post.profiles?.profile_image_url || 'https://i.pravatar.cc/100'} alt="" className="w-full h-full object-cover" />
                             </div>
                             <div>
-                                <h4 className="text-sm font-black text-white leading-none">{post.profiles?.name}</h4>
+                                <div className="flex items-center gap-1">
+                                    <h4 className="text-sm font-black text-white leading-none">{post.profiles?.name}</h4>
+                                    {post.profiles?.verification_status === 'verified' && (
+                                        <CheckCircle2 size={12} className="text-lime fill-lime/10" />
+                                    )}
+                                </div>
                                 <div className="flex items-center gap-2 mt-1">
                                     <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
                                         {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
