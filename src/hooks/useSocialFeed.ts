@@ -25,10 +25,14 @@ export function useSocialFeed(gymId: string | null) {
             const { data, error } = await query
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
+            console.log('SOCIAL_FEED_DEBUG: Fetched data length:', data?.length);
+            if (error) {
+                console.error('SOCIAL_FEED_DEBUG: Fetch error:', error);
+                throw error;
+            }
             setPosts(data || []);
         } catch (err: any) {
-            console.error('Error fetching social feed:', err);
+            console.error('SOCIAL_FEED_DEBUG: Catch block error:', err);
             setError(err.message);
         } finally {
             setLoading(false);

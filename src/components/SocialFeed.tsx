@@ -15,7 +15,7 @@ interface SocialFeedProps {
 }
 
 export default function SocialFeed({ gymId = null }: SocialFeedProps) {
-    const { posts, loading, toggleSpot, refresh } = useSocialFeed(gymId);
+    const { posts, loading, error, toggleSpot, refresh } = useSocialFeed(gymId);
     const [selectedPost, setSelectedPost] = useState<any | null>(null);
 
     if (loading && posts.length === 0) {
@@ -32,7 +32,14 @@ export default function SocialFeed({ gymId = null }: SocialFeedProps) {
         <div className="space-y-6">
             <PostCreator gymId={gymId} onPostCreated={refresh} />
 
-            {posts.length === 0 ? (
+            {error && (
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
+                    <p className="text-red-500 text-xs font-bold">Error: {error}</p>
+                    <button onClick={refresh} className="mt-2 text-[10px] text-red-500 underline uppercase font-black">Retry Connection</button>
+                </div>
+            )}
+
+            {posts.length === 0 && !error ? (
                 <div className="text-center py-20 bg-gray-900/30 rounded-3xl border border-dashed border-gray-800 p-8">
                     <div className="w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-800">
                         <Share2 size={28} className="text-gray-700" />

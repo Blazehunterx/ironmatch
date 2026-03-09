@@ -80,8 +80,8 @@ export default function PostCreator({ gymId, onPostCreated }: PostCreatorProps) 
             clearMedia();
             if (onPostCreated) onPostCreated();
         } catch (err: any) {
-            console.error('Error creating post:', err);
-            alert('Failed to post. Please try again.');
+            console.error('CRITICAL POST ERROR:', err);
+            alert(`Failed to post: ${err.message || 'Unknown error'}`);
         } finally {
             setIsPosting(false);
         }
