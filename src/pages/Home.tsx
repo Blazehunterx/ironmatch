@@ -161,24 +161,35 @@ export default function Home() {
                     {/* Recently Active (Stories) */}
                     <div className="mb-4">
                         <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-                            {/* Always show founding trainers first */}
-                            {allProfiles.filter(u => u.is_founding_trainer).map((u) => {
-                                const hasActiveStory = activeStories.some(s => s.author_id === u.id);
-                                return (
-                                    <motion.div
-                                        key={u.id}
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        onClick={() => hasActiveStory ? handleViewStory(activeStories.findIndex(s => s.author_id === u.id)) : handleViewProfile(u)}
-                                        className="flex flex-col items-center shrink-0 cursor-pointer group"
-                                    >
-                                        <div className={`w-16 h-16 rounded-full p-[2px] mb-1 ${hasActiveStory ? 'bg-gradient-to-br from-lime to-emerald-500' : 'bg-gray-800'}`}>
-                                            <img src={u.profile_image_url} alt={u.name} className="w-full h-full rounded-full border-2 border-oled object-cover bg-gray-900" />
-                                        </div>
-                                        <span className="text-[10px] text-gray-500 font-bold uppercase group-hover:text-white transition-colors truncate w-16 text-center">{u.name.split(' ')[0]}</span>
-                                    </motion.div>
-                                );
-                            })}
+                            {/* Show everyone with an active story first, then founding trainers */}
+                            {allProfiles
+                                .filter(u => u.is_founding_trainer || activeStories.some(s => s.author_id === u.id))
+                                .sort((a, b) => {
+                                    const aHasStory = activeStories.some(s => s.author_id === a.id);
+                                    const bHasStory = activeStories.some(s => s.author_id === b.id);
+                                    if (aHasStory && !bHasStory) return -1;
+                                    if (!aHasStory && bHasStory) return 1;
+                                    return 0;
+                                })
+                                .map((u) => {
+                                    const hasActiveStory = activeStories.some(s => s.author_id === u.id);
+                                    return (
+                                        <motion.div
+                                            key={u.id}
+                                            initial={{ opacity: 0, scale: 0.9 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            onClick={() => hasActiveStory ? handleViewStory(activeStories.findIndex(s => s.author_id === u.id)) : handleViewProfile(u)}
+                                            className="flex flex-col items-center shrink-0 cursor-pointer group"
+                                        >
+                                            <div className={`w-16 h-16 rounded-full p-[2px] mb-1 ${hasActiveStory ? 'bg-gradient-to-br from-lime to-emerald-500 shadow-[0_0_15px_rgba(163,230,53,0.3)]' : 'bg-gray-800'}`}>
+                                                <img src={u.profile_image_url} alt={u.name} className="w-full h-full rounded-full border-2 border-oled object-cover bg-gray-900" />
+                                            </div>
+                                            <span className={`text-[10px] font-black uppercase tracking-tighter transition-colors truncate w-16 text-center ${hasActiveStory ? 'text-lime' : 'text-gray-500'}`}>
+                                                {u.name.split(' ')[0]}
+                                            </span>
+                                        </motion.div>
+                                    );
+                                })}
                         </div>
                     </div>
 
