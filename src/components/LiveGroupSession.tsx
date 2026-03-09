@@ -24,7 +24,7 @@ export default function LiveGroupSession({ session, plan, userId, onClose }: Liv
         async function fetchParticipants() {
             const { data } = await supabase
                 .from('session_participants')
-                .select('*, profiles(name, profile_image_url)')
+                .select('*, profiles:profiles!session_participants_user_id_fkey(name, profile_image_url)')
                 .eq('session_id', session.id);
             if (data) setParticipants(data);
         }

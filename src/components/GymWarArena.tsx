@@ -23,7 +23,7 @@ export default function GymWarArena({ war, gym1, gym2 }: GymWarArenaProps) {
 
             const { data: logs } = await supabase
                 .from('activity_logs')
-                .select('*, profiles(name, profile_image_url)')
+                .select('*, profiles:profiles!activity_logs_user_id_fkey(name, profile_image_url)')
                 .in('gym_id', [gym1.id, gym2.id])
                 .gte('created_at', startTime)
                 .order('created_at', { ascending: false });

@@ -1,5 +1,5 @@
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { X, Zap, MessageSquare, Share2, Send, CheckCircle2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useState, useEffect } from 'react';
@@ -27,7 +27,7 @@ export default function PostDetail({ post, onClose, onSpot }: PostDetailProps) {
         try {
             const { data, error } = await supabase
                 .from('comments')
-                .select('*, profiles(name, profile_image_url)')
+                .select('*, profiles:profiles!comments_user_id_fkey(name, profile_image_url)')
                 .eq('post_id', post.id)
                 .order('created_at', { ascending: true });
 

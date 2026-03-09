@@ -153,7 +153,7 @@ export default function Workouts() {
         // Fetch shared plans from other verified trainers
         const { data: cData } = await supabase
             .from('workout_plans')
-            .select('*, profiles(name, profile_image_url)')
+            .select('*, profiles:profiles!workout_plans_author_id_fkey(name, profile_image_url)')
             .eq('shared', true)
             .neq('author_id', user.id);
 
