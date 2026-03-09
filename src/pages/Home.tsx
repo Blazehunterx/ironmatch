@@ -11,16 +11,21 @@ import ProfileCard from '../components/ProfileCard';
 import ProfileDetail from '../components/ProfileDetail';
 import SocialFeed from '../components/SocialFeed';
 import GymWarArena from '../components/GymWarArena';
+import StoryViewer from '../components/StoryViewer';
+import { Story } from '../types/database';
 
 export default function Home() {
     const { user } = useAuth();
     const { findGym, getActiveWar } = useGyms();
 
-    // State for profiles and war
+    // State for profiles, stories and war
     const [allProfiles, setAllProfiles] = useState<User[]>([]);
+    const [activeStories, setActiveStories] = useState<Story[]>([]);
     const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
     const [activeWar, setActiveWar] = useState<any>(null);
     const [showArena, setShowArena] = useState(false);
+    const [showStories, setShowStories] = useState(false);
+    const [startStoryIndex, setStartStoryIndex] = useState(0);
 
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -44,6 +49,17 @@ export default function Home() {
             const { data, error } = await supabase.from('profiles').select('*');
             if (!error && data) {
                 setAllProfiles(data);
+            }
+
+            // Fetch active stories
+            const { data: storyData } = await supabase
+                .from('stories')
+                .select('*, profiles(name, profile_image_url)')
+                .gt('expires_at', new Date().toISOString())
+                .order('created_at', { ascending: false });
+
+            if (storyData) {
+                setActiveStories(storyData as any);
             }
 
             if (user?.home_gym) {
@@ -92,12 +108,17 @@ export default function Home() {
         setIsDetailOpen(true);
     };
 
+    const handleViewStory = (index: number) => {
+        setStartStoryIndex(index);
+        setShowStories(true);
+    };
+
     return (
         <div className="px-4 pb-20 pt-6">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-black text-white tracking-tight">Social Hub</h1>
-                    <p className="text-gray-500 text-sm font-medium">Connect and track progress</p>
+                    <h1 className="text-2xl font-black text-white tracking-tight italic uppercase">Social Hub</h1>
+                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Connect and track progress</p>
                 </div>
                 <div className="flex gap-2">
                     <button
@@ -140,19 +161,24 @@ export default function Home() {
                     {/* Recently Active (Stories) */}
                     <div className="mb-4">
                         <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-                            {allProfiles.filter(u => u.is_founding_trainer).map((u) => (
-                                <motion.div
-                                    key={u.id}
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    className="flex flex-col items-center shrink-0 cursor-pointer group"
-                                >
-                                    <div className="w-16 h-16 rounded-full p-[2px] bg-gradient-to-br from-lime to-emerald-500 mb-1">
-                                        <img src={u.profile_image_url} alt={u.name} className="w-full h-full rounded-full border-2 border-oled object-cover" />
-                                    </div>
-                                    <span className="text-[10px] text-gray-400 group-hover:text-white transition-colors truncate w-16 text-center">{u.name.split(' ')[0]}</span>
-                                </motion.div>
-                            ))}
+                            {/* Always show founding trainers first */}
+                            {allProfiles.filter(u => u.is_founding_trainer).map((u) => {
+                                const hasActiveStory = activeStories.some(s => s.author_id === u.id);
+                                return (
+                                    <motion.div
+                                        key={u.id}
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        onClick={() => hasActiveStory ? handleViewStory(activeStories.findIndex(s => s.author_id === u.id)) : handleViewProfile(u)}
+                                        className="flex flex-col items-center shrink-0 cursor-pointer group"
+                                    >
+                                        <div className={`w-16 h-16 rounded-full p-[2px] mb-1 ${hasActiveStory ? 'bg-gradient-to-br from-lime to-emerald-500' : 'bg-gray-800'}`}>
+                                            <img src={u.profile_image_url} alt={u.name} className="w-full h-full rounded-full border-2 border-oled object-cover bg-gray-900" />
+                                        </div>
+                                        <span className="text-[10px] text-gray-500 font-bold uppercase group-hover:text-white transition-colors truncate w-16 text-center">{u.name.split(' ')[0]}</span>
+                                    </motion.div>
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -193,6 +219,16 @@ export default function Home() {
                     )}
                 </>
             )}
+
+            <AnimatePresence>
+                {showStories && activeStories.length > 0 && (
+                    <StoryViewer
+                        stories={activeStories}
+                        initialIndex={startStoryIndex}
+                        onClose={() => setShowStories(false)}
+                    />
+                )}
+            </AnimatePresence>
 
             {targetUser && (
                 <RequestModal

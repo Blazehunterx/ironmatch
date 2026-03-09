@@ -77,6 +77,20 @@ export interface Follow {
     created_at: string;
 }
 
+export interface Story {
+    id: string;
+    author_id: string;
+    media_url: string;
+    media_type: 'image' | 'video';
+    content?: string;
+    created_at: string;
+    expires_at: string;
+    profiles?: {
+        name: string;
+        profile_image_url: string;
+    };
+}
+
 export interface Match {
     id: string;
     requester_id: string;
