@@ -8,14 +8,21 @@ export function useSocialFeed(gymId: string | null) {
     const [error, setError] = useState<string | null>(null);
 
     const fetchPosts = useCallback(async () => {
-        if (!gymId) return;
         setLoading(true);
         try {
-            // Fetch posts and include author profiles and spots count
-            const { data, error } = await supabase
+            let query = supabase
                 .from('posts')
-                .select('*, profiles(name, profile_image_url)')
-                .eq('gym_id', gymId)
+                .select('*, profiles(name, profile_image_url, verification_status, is_founding_trainer)');
+
+            if (gymId) {
+                // Community Feed: Filter by specific gym
+                query = query.eq('gym_id', gymId);
+            } else {
+                // Global Feed: Show everything (Real Users + AI Influencers)
+                // We don't filter by gymId here
+            }
+
+            const { data, error } = await query
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -29,20 +36,19 @@ export function useSocialFeed(gymId: string | null) {
     }, [gymId]);
 
     const addPost = async (authorId: string, content: string, mediaUrl?: string, mediaType?: 'image' | 'video') => {
-        if (!gymId) return;
-
         try {
             const { data, error } = await supabase
                 .from('posts')
                 .insert([{
                     author_id: authorId,
-                    gym_id: gymId,
+                    gym_id: gymId || null, // Global posts have no gymId
                     content,
                     media_url: mediaUrl,
                     media_type: mediaType,
-                    spots_count: 0
+                    spots_count: 0,
+                    is_auto_generated: false
                 }])
-                .select()
+                .select('*, profiles(name, profile_image_url, verification_status, is_founding_trainer)')
                 .single();
 
             if (error) throw error;
@@ -73,8 +79,8 @@ export function useSocialFeed(gymId: string | null) {
     };
 
     useEffect(() => {
-        if (gymId) fetchPosts();
-    }, [gymId, fetchPosts]);
+        fetchPosts();
+    }, [fetchPosts]);
 
     return { posts, loading, error, addPost, toggleSpot, refresh: fetchPosts };
 }

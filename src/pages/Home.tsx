@@ -137,7 +137,26 @@ export default function Home() {
 
             {activeTab === 'feed' ? (
                 <div className="space-y-6">
-                    <SocialFeed gymId={filterGym || user?.home_gym || ''} />
+                    {/* Recently Active (Stories) */}
+                    <div className="mb-4">
+                        <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                            {allProfiles.filter(u => u.is_founding_trainer).map((u) => (
+                                <motion.div
+                                    key={u.id}
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="flex flex-col items-center shrink-0 cursor-pointer group"
+                                >
+                                    <div className="w-16 h-16 rounded-full p-[2px] bg-gradient-to-br from-lime to-emerald-500 mb-1">
+                                        <img src={u.profile_image_url} alt={u.name} className="w-full h-full rounded-full border-2 border-oled object-cover" />
+                                    </div>
+                                    <span className="text-[10px] text-gray-400 group-hover:text-white transition-colors truncate w-16 text-center">{u.name.split(' ')[0]}</span>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <SocialFeed gymId={filterGym} />
                 </div>
             ) : (
                 <>

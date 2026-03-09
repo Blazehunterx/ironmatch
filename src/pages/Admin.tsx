@@ -90,6 +90,18 @@ export default function Admin() {
         }
     };
 
+    const toggleFoundingStatus = async (userId: string, currentStatus: boolean) => {
+        const { error } = await supabase
+            .from('profiles')
+            .update({ is_founding_trainer: !currentStatus })
+            .eq('id', userId);
+
+        if (!error) {
+            // If the user's details are in a list we'd update them here
+            // For now, we'll just refresh or show a toast if we had one
+        }
+    };
+
     if (!currentUser?.is_admin && !ownedGym) {
         return (
             <div className="min-h-screen bg-oled flex flex-col items-center justify-center p-6 text-center">
@@ -235,6 +247,18 @@ export default function Admin() {
                                                     className="py-2.5 rounded-xl bg-lime text-oled text-[10px] font-black"
                                                 >APPROVE</button>
                                             </div>
+
+                                            {u.verification_status === 'verified' && (
+                                                <button
+                                                    onClick={() => toggleFoundingStatus(u.id, !!u.is_founding_trainer)}
+                                                    className={`w-full mt-3 py-2 rounded-xl text-[10px] font-black border transition-all ${u.is_founding_trainer
+                                                            ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500'
+                                                            : 'bg-gray-800 border-gray-700 text-gray-500'
+                                                        }`}
+                                                >
+                                                    {u.is_founding_trainer ? '★ FOUNDING TRAINER' : 'PROMOTE TO FOUNDING'}
+                                                </button>
+                                            )}
                                         </motion.div>
                                     ))}
                                 </AnimatePresence>

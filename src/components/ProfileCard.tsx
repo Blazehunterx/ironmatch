@@ -1,6 +1,7 @@
 import { User } from '../types/database';
 import { useGyms } from '../context/GymContext';
-import { Dumbbell, MapPin, Zap, GraduationCap, Flame, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Dumbbell, MapPin, Zap, GraduationCap, Flame, ChevronRight, CheckCircle2, Users } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 
 interface GridCardProps {
@@ -22,7 +23,9 @@ const goalEmoji: Record<string, string> = {
 };
 
 export default function GridCard({ user, index, onRequest, onViewProfile }: GridCardProps) {
+    const { user: currentUser } = useAuth();
     const { findGym } = useGyms();
+    const isFriend = currentUser?.friends?.includes(user.id);
     const gym = findGym(user.home_gym);
 
     return (
@@ -52,6 +55,12 @@ export default function GridCard({ user, index, onRequest, onViewProfile }: Grid
                     {user.is_trainer && (
                         <div className="absolute -top-1.5 -right-1.5 bg-lime text-oled text-[7px] font-black px-1 py-0.5 rounded flex items-center gap-0.5 shadow-md">
                             <GraduationCap size={8} /> PT
+                        </div>
+                    )}
+                    {user.is_founding_trainer && (
+                        <div className="absolute -bottom-2 right-1/2 translate-x-1/2 px-2 py-0.5 bg-gradient-to-r from-amber-500 via-yellow-200 to-amber-500 rounded-full border border-white/20 shadow-[0_0_10px_rgba(245,158,11,0.5)] flex items-center gap-1 animate-pulse">
+                            <Zap size={8} className="text-oled fill-oled" />
+                            <span className="text-[7px] font-black text-oled uppercase tracking-tighter">Founding</span>
                         </div>
                     )}
                 </div>
@@ -104,14 +113,20 @@ export default function GridCard({ user, index, onRequest, onViewProfile }: Grid
                 </div>
             </div>
 
-            {/* Bottom action bar */}
+            {/* Bottom action bar - Only for Friends/Buddies */}
             <div className="px-4 pb-3 pt-0">
-                <button
-                    onClick={(e) => { e.stopPropagation(); onRequest(user); }}
-                    className="w-full py-2.5 rounded-xl bg-lime/10 border border-lime/30 text-lime text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-lime/20 active:scale-[0.98] transition-all duration-200"
-                >
-                    <Dumbbell size={14} /> Request Workout
-                </button>
+                {isFriend ? (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onRequest(user); }}
+                        className="w-full py-2.5 rounded-xl bg-lime/10 border border-lime/30 text-lime text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-lime/20 active:scale-[0.98] transition-all duration-200"
+                    >
+                        <Dumbbell size={14} /> Request Workout
+                    </button>
+                ) : (
+                    <div className="w-full py-2.5 rounded-xl bg-gray-900/40 border border-gray-800/40 text-gray-500 text-[10px] font-bold flex items-center justify-center gap-2 uppercase tracking-widest">
+                        <Users size={12} className="opacity-50" /> Buddies Only
+                    </div>
+                )}
             </div>
         </motion.div>
     );

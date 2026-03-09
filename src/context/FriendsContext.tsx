@@ -45,17 +45,28 @@ export function FriendsProvider({ children }: { children: React.ReactNode }) {
 
             const friendIds = profile?.friends || [];
 
-            // 2. Fetch pending received requests from a friendships table (if we had one)
-            // For now, let's assume we store them in a 'friend_requests' table
+            // 2. Fetch pending received requests from the new friend_requests table
             const { data: requests } = await supabase
                 .from('friend_requests')
                 .select('sender_id')
                 .eq('receiver_id', user.id)
                 .eq('status', 'pending');
 
-            const pendingIds = requests?.map(r => r.sender_id) || [];
+            const pendingReceivedIds = requests?.map(r => r.sender_id) || [];
 
-            const allIds = [...new Set([...friendIds, ...pendingIds])];
+            // 3. Fetch pending sent requests
+            const { data: sentRequests } = await supabase
+                .from('friend_requests')
+                .select('receiver_id')
+                .eq('sender_id', user.id)
+                .eq('status', 'pending');
+
+            const pendingIdsFromDB = sentRequests?.map(r => r.receiver_id) || [];
+            if (pendingIdsFromDB.length > 0) {
+                setPendingSentIds(pendingIdsFromDB);
+            }
+
+            const allIds = [...new Set([...friendIds, ...pendingReceivedIds])];
 
             if (allIds.length > 0) {
                 const { data: profiles } = await supabase
@@ -65,7 +76,7 @@ export function FriendsProvider({ children }: { children: React.ReactNode }) {
 
                 if (profiles) {
                     setFriends(friendIds.map((id: string) => profiles.find(p => p.id === id)).filter(Boolean) as User[]);
-                    setPendingReceived(pendingIds.map((id: string) => profiles.find(p => p.id === id)).filter(Boolean) as User[]);
+                    setPendingReceived(pendingReceivedIds.map((id: string) => profiles.find(p => p.id === id)).filter(Boolean) as User[]);
                 }
             } else {
                 setFriends([]);
@@ -116,11 +127,17 @@ export function FriendsProvider({ children }: { children: React.ReactNode }) {
             .eq('sender_id', userId)
             .eq('receiver_id', user.id);
 
-        // 2. Update both users' friend lists
-        const currentFriends = user.friends || [];
-        const updatedFriends = Array.from(new Set([...currentFriends, userId]));
+        // 2. Explicitly link them as buddies in the profiles (cached for performance)
+        const { data: currentProfile } = await supabase.from('profiles').select('friends').eq('id', user.id).single();
+        const { data: senderProfile } = await supabase.from('profiles').select('friends').eq('id', userId).single();
 
-        updateUser({ friends: updatedFriends });
+        const newFriends = Array.from(new Set([...(currentProfile?.friends || []), userId]));
+        const senderNewFriends = Array.from(new Set([...(senderProfile?.friends || []), user.id]));
+
+        await supabase.from('profiles').update({ friends: newFriends }).eq('id', user.id);
+        await supabase.from('profiles').update({ friends: senderNewFriends }).eq('id', userId);
+
+        updateUser({ friends: newFriends });
         fetchFriendsData();
     }, [user, updateUser, fetchFriendsData]);
 

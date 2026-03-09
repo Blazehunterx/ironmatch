@@ -36,6 +36,9 @@ export default function Profile() {
     const [unitPref, setUnitPref] = useState<'lbs' | 'kg'>(user?.unit_preference || 'lbs');
     const [isShopOpen, setIsShopOpen] = useState(false);
 
+    // Big 4 editing
+    const [editBig4, setEditBig4] = useState(user?.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 });
+
     // Image
     const [isEditingImage, setIsEditingImage] = useState(false);
     const [editImageUrl, setEditImageUrl] = useState('');
@@ -386,6 +389,35 @@ export default function Profile() {
                                                 className={`flex-1 py-2 rounded-xl text-xs font-bold ${unitPref === u ? 'bg-lime text-oled shadow-lg' : 'bg-gray-800 text-gray-500'}`}>{u.toUpperCase()}</button>
                                         ))}
                                     </div>
+                                </div>
+                                <div className="pt-4 border-t border-gray-800">
+                                    <h4 className="font-semibold text-white mb-3">Your Stats (1RM)</h4>
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        {(['bench', 'squat', 'deadlift', 'ohp'] as const).map((lift) => (
+                                            <div key={lift} className="space-y-1">
+                                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{lift}</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        value={editBig4[lift] || ''}
+                                                        onChange={(e) => setEditBig4(prev => ({ ...prev, [lift]: parseInt(e.target.value) || 0 }))}
+                                                        className="w-full bg-oled border border-gray-800 rounded-xl px-3 py-2 text-sm text-lime font-bold focus:outline-none focus:border-lime/50"
+                                                        placeholder="0"
+                                                    />
+                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-600 font-bold uppercase">{unitPref}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            updateUser({ big4: editBig4 });
+                                            setIsSettingsOpen(false);
+                                        }}
+                                        className="w-full py-3 bg-lime text-oled rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-lime/20 active:scale-95 transition-all"
+                                    >
+                                        Save Big 4 Progress
+                                    </button>
                                 </div>
                                 <div className="pt-4 border-t border-gray-800">
                                     <h4 className="font-semibold text-white mb-2">Sync & Cache</h4>

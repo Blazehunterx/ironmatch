@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { User } from '../types/database';
 import { useGyms } from '../context/GymContext';
+import { useFollow } from '../hooks/useFollow';
+import { supabase } from '../lib/supabase';
 import {
     X, Dumbbell, MapPin, Zap, GraduationCap, Flame,
-    Award, CalendarDays, Target, MessageSquare, UserPlus, UserCheck, Trophy
+    Award, CalendarDays, Target, MessageSquare, UserPlus, UserCheck, Trophy, CheckCircle2, Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFriends } from '../context/FriendsContext';
@@ -23,6 +25,7 @@ const goalEmoji: Record<string, string> = {
 
 export default function ProfileDetail({ user, isOpen, onClose, onRequest }: ProfileDetailProps) {
     const { findGym } = useGyms();
+    const { getFriendStatus } = useFriends();
 
     // Background Scroll Lock
     useEffect(() => {
@@ -86,12 +89,28 @@ export default function ProfileDetail({ user, isOpen, onClose, onRequest }: Prof
 
                                 {/* Name at bottom of image */}
                                 <div className="absolute bottom-4 left-5 right-5">
-                                    <h2 className="text-3xl font-black text-white leading-none">{user.name}</h2>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <h2 className="text-3xl font-black text-white leading-none">{user.name}</h2>
+                                        <div className="flex gap-2 items-center">
+                                            {user.verification_status === 'verified' && (
+                                                <CheckCircle2 size={20} className="text-lime fill-lime/10" />
+                                            )}
+                                            {user.is_founding_trainer && (
+                                                <div className="px-2 py-0.5 bg-gradient-to-r from-amber-500 via-yellow-200 to-amber-500 rounded-full border border-white/20 shadow-lg flex items-center gap-1 animate-pulse">
+                                                    <Zap size={10} className="text-oled fill-oled" />
+                                                    <span className="text-[8px] font-black text-oled uppercase tracking-widest">Founding</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                     {gym && (
                                         <p className="text-sm text-gray-400 flex items-center gap-1 mt-2">
                                             <MapPin size={12} className="text-lime" /> {gym.name}
                                         </p>
                                     )}
+                                    <div className="flex items-center gap-4 mt-4">
+                                        <FollowStats userId={user.id} />
+                                    </div>
                                 </div>
                             </div>
 
@@ -212,18 +231,65 @@ export default function ProfileDetail({ user, isOpen, onClose, onRequest }: Prof
 
                         {/* Action Buttons - Fixed at bottom of sheet */}
                         <div className="p-6 bg-oled border-t border-gray-900 flex gap-4 shadow-[0_-20px_40px_rgba(0,0,0,0.8)] pb-safe-offset-4 z-30">
+                            <FollowAction targetUserId={user.id} />
                             <FriendButton userId={user.id} />
-                            <button
-                                onClick={() => { onClose(); onRequest(user); }}
-                                className="flex-1 py-4.5 rounded-2xl bg-lime text-oled font-black text-sm flex items-center justify-center gap-2 hover:bg-white hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_30px_-5px_rgba(50,255,50,0.4)]"
-                            >
-                                <Dumbbell size={18} /> Workout
-                            </button>
+                            {getFriendStatus(user.id) === 'friends' ? (
+                                <button
+                                    onClick={() => { onClose(); onRequest(user); }}
+                                    className="flex-1 py-4.5 rounded-2xl bg-lime text-oled font-black text-sm flex items-center justify-center gap-2 hover:bg-white hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_30px_-5px_rgba(50,255,50,0.4)]"
+                                >
+                                    <Dumbbell size={18} /> Workout
+                                </button>
+                            ) : (
+                                <div className="flex-1 py-4.5 rounded-2xl bg-gray-900/40 border border-gray-800/40 text-gray-500 font-bold text-xs flex items-center justify-center gap-2 uppercase tracking-widest cursor-default">
+                                    <Users size={16} className="opacity-50" /> Buddies
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 </>
             )}
         </AnimatePresence>
+    );
+}
+
+function FollowStats({ userId }: { userId: string }) {
+    const { followerCount, followingCount } = useFollow(userId);
+    return (
+        <div className="flex gap-4">
+            <div className="flex items-center gap-1">
+                <span className="text-sm font-black text-white">{followerCount}</span>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Followers</span>
+            </div>
+            <div className="flex items-center gap-1">
+                <span className="text-sm font-black text-white">{followingCount}</span>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Following</span>
+            </div>
+        </div>
+    );
+}
+
+function FollowAction({ targetUserId }: { targetUserId: string }) {
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id || null));
+    }, []);
+
+    const { isFollowing, toggleFollow, loading } = useFollow(targetUserId, currentUserId || undefined);
+
+    if (!currentUserId || currentUserId === targetUserId) return null;
+
+    return (
+        <button
+            onClick={toggleFollow}
+            disabled={loading}
+            className={`flex-1 py-4.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all ${isFollowing
+                ? 'bg-gray-800 text-gray-400 border border-gray-700'
+                : 'bg-white text-oled hover:bg-gray-200'
+                }`}
+        >
+            {isFollowing ? 'Following' : 'Follow'}
+        </button>
     );
 }
 

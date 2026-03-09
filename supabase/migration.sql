@@ -146,6 +146,24 @@ CREATE INDEX IF NOT EXISTS idx_profiles_home_gym ON public.profiles(home_gym);
 CREATE INDEX IF NOT EXISTS idx_posts_gym_id ON public.posts(gym_id);
 CREATE INDEX IF NOT EXISTS idx_posts_created_at ON public.posts(created_at DESC);
 
+-- ═══ FOLLOWS TABLE ═══
+CREATE TABLE IF NOT EXISTS public.follows (
+    follower_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    following_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    PRIMARY KEY (follower_id, following_id)
+);
+
+ALTER TABLE public.follows ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Follows are viewable by everyone" ON public.follows;
+DROP POLICY IF EXISTS "Users can manage own follows" ON public.follows;
+
+CREATE POLICY "Follows are viewable by everyone" ON public.follows FOR SELECT USING (true);
+CREATE POLICY "Users can manage own follows" ON public.follows FOR ALL USING (auth.uid() = follower_id);
+
+CREATE INDEX IF NOT EXISTS idx_follows_follower ON public.follows(follower_id);
+CREATE INDEX IF NOT EXISTS idx_follows_following ON public.follows(following_id);
+
 -- ═══ GYM WARS TABLE ═══
 CREATE TABLE IF NOT EXISTS public.gym_wars (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

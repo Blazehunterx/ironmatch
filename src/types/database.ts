@@ -64,7 +64,17 @@ export interface User {
     active_cosmetic_color?: string;
     is_admin?: boolean;
     verification_status?: 'none' | 'pending' | 'verified';
+    is_founding_trainer?: boolean;
     trainer_license_url?: string;
+    followers_count?: number;
+    following_count?: number;
+    is_following?: boolean;
+}
+
+export interface Follow {
+    follower_id: string;
+    following_id: string;
+    created_at: string;
 }
 
 export interface Match {
@@ -135,6 +145,11 @@ export interface Post {
     event_title?: string;
     spots_count?: number;
     created_at: string;
+    profiles?: {
+        name: string;
+        profile_image_url: string;
+        verification_status?: string;
+    };
 }
 
 export interface ExerciseMedia {
