@@ -16,6 +16,7 @@ import { COSMETIC_ITEMS } from '../lib/cosmetics';
 import CosmeticShop from '../components/CosmeticShop';
 import { isSupabaseConfigured } from '../lib/supabase';
 import React from 'react';
+import TalentDashboard from '../components/TalentDashboard';
 
 const goalEmoji: Record<string, string> = {
     'Workout Buddy': '🤝', 'Socialize': '💬', 'Get Pushed': '🔥', 'Learn': '📚',
@@ -51,6 +52,9 @@ export default function Profile() {
     const [isEditingAvailability, setIsEditingAvailability] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Navigation
+    const [activeTab, setActiveTab] = useState<'profile' | 'talent'>('profile');
 
     useEffect(() => {
         if (!user) return;
@@ -243,101 +247,125 @@ export default function Profile() {
                     </div>
                 </div>
 
-                {/* Bio Section */}
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-                    <div className="flex justify-between items-center mb-3">
-                        <h4 className="font-semibold text-white flex items-center gap-2"><Activity size={16} className="text-lime" /> About</h4>
-                        <button onClick={() => { setEditBioText(user.bio || ''); setIsEditingBio(!isEditingBio); }} className="text-gray-500 hover:text-lime">
-                            {isEditingBio ? <Check size={16} /> : <Edit2 size={16} />}
+                {/* Tab Switcher for Verified Trainers */}
+                {user.verification_status === 'verified' && user.is_trainer && (
+                    <div className="flex bg-gray-900/50 p-1 rounded-2xl border border-gray-800 mb-6">
+                        <button
+                            onClick={() => setActiveTab('profile')}
+                            className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'profile' ? 'bg-gray-800 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                        >
+                            Overview
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('talent')}
+                            className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'talent' ? 'bg-lime text-oled shadow-lg shadow-lime/20' : 'text-gray-500 hover:text-white'}`}
+                        >
+                            Talent HUB
                         </button>
                     </div>
-                    {isEditingBio ? (
-                        <div className="space-y-3">
-                            <textarea
-                                value={editBioText}
-                                onChange={(e) => setEditBioText(e.target.value)}
-                                className="w-full bg-oled border border-gray-800 rounded-xl p-3 text-sm text-gray-300 focus:outline-none focus:border-lime"
-                                rows={3}
-                            />
-                            <button onClick={handleSaveBio} className="w-full py-2 bg-lime text-oled rounded-lg text-xs font-bold">Save</button>
-                        </div>
-                    ) : (
-                        <p className="text-sm text-gray-400 leading-relaxed italic">"{user.bio || 'No bio yet.'}"</p>
-                    )}
-                </div>
+                )}
 
-                {/* Goals Section */}
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-                    <div className="flex justify-between items-center mb-3">
-                        <h4 className="font-semibold text-white flex items-center gap-2"><Target size={16} className="text-lime" /> Focus</h4>
-                        <button onClick={() => setIsEditingGoals(!isEditingGoals)} className="text-gray-500 hover:text-lime">
-                            {isEditingGoals ? <Check size={16} /> : <Edit2 size={16} />}
-                        </button>
-                    </div>
-                    {isEditingGoals ? (
-                        <div className="space-y-4">
-                            <div className="flex flex-wrap gap-1.5">
-                                {ALL_GOALS.map(goal => (
-                                    <button
-                                        key={goal}
-                                        onClick={() => toggleGoal(goal)}
-                                        className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${editGoals.includes(goal) ? 'bg-lime/20 border-lime/50 text-lime' : 'bg-gray-900 border-gray-800 text-gray-400'}`}
-                                    >
-                                        {goalEmoji[goal]} {goal}
-                                    </button>
-                                ))}
+                {activeTab === 'profile' ? (
+                    <div className="space-y-4">
+                        {/* Bio Section */}
+                        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+                            <div className="flex justify-between items-center mb-3">
+                                <h4 className="font-semibold text-white flex items-center gap-2"><Activity size={16} className="text-lime" /> About</h4>
+                                <button onClick={() => { setEditBioText(user.bio || ''); setIsEditingBio(!isEditingBio); }} className="text-gray-500 hover:text-lime">
+                                    {isEditingBio ? <Check size={16} /> : <Edit2 size={16} />}
+                                </button>
                             </div>
-                            <button onClick={handleSaveGoals} className="w-full py-2 bg-lime text-oled rounded-lg text-xs font-bold">Save Goals</button>
-                        </div>
-                    ) : (
-                        <div className="flex flex-wrap gap-1.5">
-                            {user.goals?.map(g => (
-                                <span key={g} className="text-xs font-semibold px-2 py-1 rounded-lg bg-gray-800 text-gray-300 border border-gray-700/50">
-                                    {goalEmoji[g]} {g}
-                                </span>
-                            )) || <p className="text-sm text-gray-500">No goals set.</p>}
-                        </div>
-                    )}
-                </div>
-
-                {/* Friends Section Wrapper */}
-                <FriendsSection />
-
-                {/* Availability Section */}
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-                    <div className="flex justify-between items-center mb-3">
-                        <h4 className="font-semibold text-white flex items-center gap-2"><CalendarDays size={16} className="text-lime" /> Schedule</h4>
-                        <button onClick={() => setIsEditingAvailability(!isEditingAvailability)} className="text-gray-500 hover:text-lime">
-                            {isEditingAvailability ? <Check size={16} /> : <Edit2 size={16} />}
-                        </button>
-                    </div>
-                    {isEditingAvailability ? (
-                        <div className="grid grid-cols-4 gap-1">
-                            {ALL_DAYS.map(day => (
-                                <React.Fragment key={day}>
-                                    <div className="text-[10px] font-bold text-gray-500 uppercase flex items-center">{day}</div>
-                                    {ALL_TIME_BLOCKS.map(block => (
-                                        <button
-                                            key={`${day}-${block}`}
-                                            onClick={() => toggleAvailBlock(day, block)}
-                                            className={`p-1.5 rounded-lg text-[10px] border transition-all ${isDayBlockActive(day, block) ? 'bg-lime/20 border-lime/40 text-lime' : 'bg-gray-800/50 border-gray-800 text-gray-600'}`}
-                                        >
-                                            {block.charAt(0)}
-                                        </button>
-                                    ))}
-                                </React.Fragment>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="flex flex-wrap gap-1.5">
-                            {user.availability?.map(slot => (
-                                <div key={slot.day} className="text-[10px] bg-gray-800 border border-gray-700/50 rounded-lg px-2 py-1">
-                                    <span className="font-bold text-white">{slot.day}:</span> {slot.blocks.join(', ')}
+                            {isEditingBio ? (
+                                <div className="space-y-3">
+                                    <textarea
+                                        value={editBioText}
+                                        onChange={(e) => setEditBioText(e.target.value)}
+                                        className="w-full bg-oled border border-gray-800 rounded-xl p-3 text-sm text-gray-300 focus:outline-none focus:border-lime"
+                                        rows={3}
+                                    />
+                                    <button onClick={handleSaveBio} className="w-full py-2 bg-lime text-oled rounded-lg text-xs font-bold">Save</button>
                                 </div>
-                            )) || <p className="text-sm text-gray-500">No schedule.</p>}
+                            ) : (
+                                <p className="text-sm text-gray-400 leading-relaxed italic">"{user.bio || 'No bio yet.'}"</p>
+                            )}
                         </div>
-                    )}
-                </div>
+
+                        {/* Goals Section */}
+                        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+                            <div className="flex justify-between items-center mb-3">
+                                <h4 className="font-semibold text-white flex items-center gap-2"><Target size={16} className="text-lime" /> Focus</h4>
+                                <button onClick={() => setIsEditingGoals(!isEditingGoals)} className="text-gray-500 hover:text-lime">
+                                    {isEditingGoals ? <Check size={16} /> : <Edit2 size={16} />}
+                                </button>
+                            </div>
+                            {isEditingGoals ? (
+                                <div className="space-y-4">
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {ALL_GOALS.map(goal => (
+                                            <button
+                                                key={goal}
+                                                onClick={() => toggleGoal(goal)}
+                                                className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${editGoals.includes(goal) ? 'bg-lime/20 border-lime/50 text-lime' : 'bg-gray-900 border-gray-800 text-gray-400'}`}
+                                            >
+                                                {goalEmoji[goal]} {goal}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <button onClick={handleSaveGoals} className="w-full py-2 bg-lime text-oled rounded-lg text-xs font-bold">Save Goals</button>
+                                </div>
+                            ) : (
+                                <div className="flex flex-wrap gap-1.5">
+                                    {user.goals?.map(g => (
+                                        <span key={g} className="text-xs font-semibold px-2 py-1 rounded-lg bg-gray-800 text-gray-300 border border-gray-700/50">
+                                            {goalEmoji[g]} {g}
+                                        </span>
+                                    )) || <p className="text-sm text-gray-500">No goals set.</p>}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Friends Section Wrapper */}
+                        <FriendsSection />
+
+                        {/* Availability Section */}
+                        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+                            <div className="flex justify-between items-center mb-3">
+                                <h4 className="font-semibold text-white flex items-center gap-2"><CalendarDays size={16} className="text-lime" /> Schedule</h4>
+                                <button onClick={() => setIsEditingAvailability(!isEditingAvailability)} className="text-gray-500 hover:text-lime">
+                                    {isEditingAvailability ? <Check size={16} /> : <Edit2 size={16} />}
+                                </button>
+                            </div>
+                            {isEditingAvailability ? (
+                                <div className="grid grid-cols-4 gap-1">
+                                    {ALL_DAYS.map(day => (
+                                        <React.Fragment key={day}>
+                                            <div className="text-[10px] font-bold text-gray-500 uppercase flex items-center">{day}</div>
+                                            {ALL_TIME_BLOCKS.map(block => (
+                                                <button
+                                                    key={`${day}-${block}`}
+                                                    onClick={() => toggleAvailBlock(day, block)}
+                                                    className={`p-1.5 rounded-lg text-[10px] border transition-all ${isDayBlockActive(day, block) ? 'bg-lime/20 border-lime/40 text-lime' : 'bg-gray-800/50 border-gray-800 text-gray-600'}`}
+                                                >
+                                                    {block.charAt(0)}
+                                                </button>
+                                            ))}
+                                        </React.Fragment>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-wrap gap-1.5">
+                                    {user.availability?.map(slot => (
+                                        <div key={slot.day} className="text-[10px] bg-gray-800 border border-gray-700/50 rounded-lg px-2 py-1">
+                                            <span className="font-bold text-white">{slot.day}:</span> {slot.blocks.join(', ')}
+                                        </div>
+                                    )) || <p className="text-sm text-gray-500">No schedule.</p>}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <TalentDashboard user={user} />
+                )}
 
                 {/* Actions */}
                 <div className="space-y-3 pt-4">

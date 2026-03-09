@@ -20,20 +20,21 @@ export default function Search() {
     } = useGyms();
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedGym, setSelectedGym] = useState(user?.home_gym || 'g1');
+    const [selectedGym, setSelectedGym] = useState(user?.home_gym || '');
     const [showGymPicker, setShowGymPicker] = useState(false);
     const [searchGymQuery, setSearchGymQuery] = useState('');
     const [showAddGym, setShowAddGym] = useState(false);
-    const [viewMode, setViewMode] = useState<'shouts' | 'posts'>('shouts');
+    const [viewMode, setViewMode] = useState<'shouts' | 'posts'>('posts');
     const [showBuddyMatch, setShowBuddyMatch] = useState(false);
     const [showWarModal, setShowWarModal] = useState(false);
+    const [isJoining, setIsJoining] = useState(false);
 
     // Real Data States
     const [profiles, setProfiles] = useState<User[]>([]);
     const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
 
     const fetchData = useCallback(async () => {
-        if (!isSupabaseConfigured) {
+        if (!isSupabaseConfigured || !selectedGym) {
             setProfiles(mockUsers);
             setIsLoadingProfiles(false);
             return;
@@ -54,36 +55,63 @@ export default function Search() {
         fetchData();
     }, [fetchData]);
 
+    const handleJoinGym = async (gymId: string) => {
+        if (!user || isJoining) return;
+        setIsJoining(true);
+        try {
+            const gymName = findGym(gymId)?.name || 'New Gym';
+            const { error } = await supabase
+                .from('profiles')
+                .update({ home_gym: gymId, home_gym_name: gymName })
+                .eq('id', user.id);
+
+            if (!error) {
+                // Refresh local user state if needed, or rely on AuthContext if it syncs
+                window.location.reload(); // Hard refresh to ensure all contexts sync
+            }
+        } catch (err) {
+            console.error('Error joining gym:', err);
+        } finally {
+            setIsJoining(false);
+        }
+    };
+
     const searchResults = searchQuery.length >= 2
         ? profiles.filter(u => u.name.toLowerCase().includes(searchQuery.toLowerCase()) && u.id !== user?.id)
         : [];
 
     const gym = findGym(selectedGym);
 
+    // Helper to determine if a gym is selected (either by user's home gym or currently picked)
+    const selectedByMeOrOthers = () => !!selectedGym;
+
     return (
-        <div className="flex flex-col min-h-screen pb-24">
+        <div className="flex flex-col min-h-screen pb-24 bg-oled">
             {/* Header */}
-            <div className="px-4 pt-6 pb-3">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-3xl font-bold text-white tracking-tight">Explore</h2>
+            <div className="px-6 pt-8 pb-4">
+                <div className="flex justify-between items-end mb-6">
+                    <div>
+                        <h2 className="text-3xl font-black text-white italic uppercase tracking-tighter">Explore</h2>
+                        <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">Discover your community</p>
+                    </div>
                     <button
                         onClick={fetchData}
-                        className="p-3 bg-gray-900 border border-gray-800 rounded-2xl text-gray-500 hover:text-lime transition-all active:rotate-180 duration-500"
+                        className="p-3 bg-gray-900 border border-white/5 rounded-2xl text-gray-500 hover:text-lime transition-all active:rotate-180 duration-500"
                     >
                         <RefreshCw size={20} className={isLoadingProfiles ? 'animate-spin' : ''} />
                     </button>
                 </div>
 
                 {/* Search Bar */}
-                <div className="relative mb-4">
+                <div className="relative mb-2">
                     <input
                         type="text"
                         placeholder="Search lifters at this gym..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-lime text-sm"
+                        className="w-full bg-gray-900 border border-white/5 text-white rounded-[20px] py-4 pl-12 pr-4 focus:outline-none focus:border-lime/50 transition-all text-sm font-medium"
                     />
-                    <SearchIcon size={18} className="text-gray-500 absolute left-4 top-1/2 -translate-y-1/2" />
+                    <SearchIcon size={20} className="text-gray-500 absolute left-4 top-1/2 -translate-y-1/2" />
                 </div>
             </div>
 
@@ -143,17 +171,42 @@ export default function Search() {
                 )}
             </AnimatePresence>
 
-            {/* Gym Selector */}
-            <div className="px-4 mb-4">
-                <button
-                    onClick={() => setShowGymPicker(!showGymPicker)}
-                    className="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 hover:border-gray-700 transition-colors w-full"
-                >
-                    <MapPin size={14} className="text-lime" />
-                    <span className="text-sm font-semibold text-white flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis">{gym?.name}</span>
-                    <span className="text-[10px] text-gray-500 flex items-center gap-1 shrink-0"><Users size={10} /> {gym?.member_count}</span>
-                    <ChevronDown size={14} className={`text-gray-500 transition-transform ${showGymPicker ? 'rotate-180' : ''}`} />
-                </button>
+            {/* Gym Selector & Journey CTA */}
+            <div className="px-6 mb-6">
+                {!user?.home_gym ? (
+                    <div className="mb-6 p-6 rounded-[32px] bg-gradient-to-br from-lime to-lime-600 border border-white/20 shadow-2xl shadow-lime/20 relative overflow-hidden">
+                        <div className="relative z-10">
+                            <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter leading-none mb-2">Join a Squad</h3>
+                            <p className="text-black/70 text-xs font-bold leading-tight mb-4">You haven't joined a gym yet. Select a community to track progress and join Gym Wars.</p>
+                            <button
+                                onClick={() => setShowGymPicker(true)}
+                                className="bg-black text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl"
+                            >
+                                Find My Gym
+                            </button>
+                        </div>
+                        <MapPin size={120} className="absolute -right-8 -bottom-8 text-black/10 rotate-12" />
+                    </div>
+                ) : (
+                    <button
+                        onClick={() => setShowGymPicker(!showGymPicker)}
+                        className="flex items-center gap-3 bg-gray-900 border border-white/5 rounded-[24px] px-5 py-4 hover:border-lime/30 transition-all w-full group shadow-lg"
+                    >
+                        <div className="p-2 bg-lime/10 rounded-xl group-hover:bg-lime/20 transition-colors">
+                            <MapPin size={18} className="text-lime" />
+                        </div>
+                        <div className="flex-1 text-left">
+                            <h4 className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{gym?.location || 'Nearby'}</h4>
+                            <span className="text-sm font-black text-white truncate max-w-[200px] block">{gym?.name || 'Select a Gym'}</span>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                            <span className="text-[10px] text-gray-500 font-bold flex items-center gap-1 shrink-0">
+                                <Users size={12} /> {gym?.member_count}
+                            </span>
+                            <ChevronDown size={14} className={`text-gray-500 transition-transform ${showGymPicker ? 'rotate-180' : ''}`} />
+                        </div>
+                    </button>
+                )}
 
                 {gym && !gym.owner_id && (
                     <motion.div
@@ -209,6 +262,42 @@ export default function Search() {
                                 <Trophy size={14} className="text-red-400" /> Start 1v1 War
                             </button>
                         </div>
+                    </div>
+                )}
+
+                {gym && selectedByMeOrOthers() && (
+                    <div className="mt-4">
+                        {user?.home_gym !== selectedGym ? (
+                            <motion.button
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                onClick={() => handleJoinGym(selectedGym)}
+                                disabled={isJoining}
+                                className="w-full py-4 bg-lime text-black rounded-[20px] text-xs font-black uppercase tracking-widest shadow-xl shadow-lime/20 flex items-center justify-center gap-2 active:scale-95 transition-all"
+                            >
+                                {isJoining ? <RefreshCw className="animate-spin" size={16} /> : <Zap size={16} className="fill-current" />}
+                                Join This Community
+                            </motion.button>
+                        ) : (
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setViewMode('shouts')}
+                                    className={`flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${viewMode === 'shouts'
+                                        ? 'bg-lime text-black shadow-lg shadow-lime/10'
+                                        : 'bg-gray-900 text-gray-400 border border-white/5'}`}
+                                >
+                                    Shouts
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('posts')}
+                                    className={`flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${viewMode === 'posts'
+                                        ? 'bg-lime text-black shadow-lg shadow-lime/10'
+                                        : 'bg-gray-900 text-gray-400 border border-white/5'}`}
+                                >
+                                    Feed
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

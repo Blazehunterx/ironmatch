@@ -267,3 +267,13 @@ export interface Duel {
     challenger_proof_url?: string;
     opponent_proof_url?: string;
 }
+
+export interface Bounty {
+    id: string;
+    title: string;
+    description: string;
+    reward_xp: number;
+    requirement_type: 'post_video' | 'help_newbie' | 'pr_share' | 'streak_keep';
+    status: 'available' | 'claimed' | 'completed';
+    created_at?: string;
+}
