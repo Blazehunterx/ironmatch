@@ -54,7 +54,7 @@ export default function Home() {
             // Fetch active stories
             const { data: storyData } = await supabase
                 .from('stories')
-                .select('*, profiles(name, profile_image_url)')
+                .select('*, profiles:profiles!stories_author_id_fkey(name, profile_image_url)')
                 .gt('expires_at', new Date().toISOString())
                 .order('created_at', { ascending: false });
 
