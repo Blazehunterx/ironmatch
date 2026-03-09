@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useSocialFeed } from '../hooks/useSocialFeed';
 import { useFollow } from '../hooks/useFollow';
 import { supabase } from '../lib/supabase';
@@ -8,6 +8,7 @@ import ExerciseVideo from './ExerciseVideo';
 import { useState, useEffect } from 'react';
 
 import PostCreator from './PostCreator';
+import PostDetail from './PostDetail';
 
 interface SocialFeedProps {
     gymId?: string | null;
@@ -15,6 +16,7 @@ interface SocialFeedProps {
 
 export default function SocialFeed({ gymId = null }: SocialFeedProps) {
     const { posts, loading, toggleSpot, refresh } = useSocialFeed(gymId);
+    const [selectedPost, setSelectedPost] = useState<any | null>(null);
 
     if (loading && posts.length === 0) {
         return (
@@ -44,7 +46,8 @@ export default function SocialFeed({ gymId = null }: SocialFeedProps) {
                         key={post.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-gray-900/40 border border-gray-800 rounded-[32px] overflow-hidden group hover:border-lime/20 transition-all duration-500"
+                        onClick={() => setSelectedPost(post)}
+                        className="bg-gray-900/40 border border-gray-800 rounded-[32px] overflow-hidden group hover:border-lime/20 transition-all duration-500 cursor-pointer active:scale-[0.98]"
                     >
                         {/* Author Header */}
                         <div className="p-4 flex items-center justify-between">
@@ -70,7 +73,10 @@ export default function SocialFeed({ gymId = null }: SocialFeedProps) {
                                     </div>
                                 </div>
                             </div>
-                            <button className="text-gray-600 hover:text-white transition">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); }}
+                                className="text-gray-600 hover:text-white transition"
+                            >
                                 <MoreHorizontal size={20} />
                             </button>
                         </div>
@@ -118,7 +124,7 @@ export default function SocialFeed({ gymId = null }: SocialFeedProps) {
                         <div className="p-4 flex items-center justify-between border-t border-gray-800/50 bg-gray-900/20">
                             <div className="flex items-center gap-4">
                                 <button
-                                    onClick={() => toggleSpot(post.id)}
+                                    onClick={(e) => { e.stopPropagation(); toggleSpot(post.id); }}
                                     className="flex items-center gap-2 group/spot"
                                 >
                                     <div className="p-2 rounded-xl bg-lime/10 group-hover/spot:bg-lime/20 transition-colors">
@@ -126,20 +132,36 @@ export default function SocialFeed({ gymId = null }: SocialFeedProps) {
                                     </div>
                                     <span className="text-xs font-black text-white italic">{post.spots_count || 0} SPOTS</span>
                                 </button>
-                                <button className="flex items-center gap-2 group/msg">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setSelectedPost(post); }}
+                                    className="flex items-center gap-2 group/msg"
+                                >
                                     <div className="p-2 rounded-xl bg-gray-800 group-hover/msg:bg-gray-700 transition-colors">
                                         <MessageSquare size={18} className="text-gray-400" />
                                     </div>
                                     <span className="text-xs font-black text-gray-400">CHATS</span>
                                 </button>
                             </div>
-                            <button className="p-2.5 rounded-xl bg-gray-800 text-gray-400 hover:text-white transition-all active:scale-90">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); }}
+                                className="p-2.5 rounded-xl bg-gray-800 text-gray-400 hover:text-white transition-all active:scale-90"
+                            >
                                 <Share2 size={18} />
                             </button>
                         </div>
                     </motion.div>
                 ))
             )}
+
+            <AnimatePresence>
+                {selectedPost && (
+                    <PostDetail
+                        post={selectedPost}
+                        onClose={() => setSelectedPost(null)}
+                        onSpot={toggleSpot}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }

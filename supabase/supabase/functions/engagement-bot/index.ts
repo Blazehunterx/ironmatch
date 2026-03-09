@@ -1,32 +1,57 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
 
-// Setup type definitions for built-in Supabase Runtime APIs
-import "@supabase/functions-js/edge-runtime.d.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 
-console.log("Hello from Functions!")
+const BUTTON_SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const BUTTON_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+
+const supabase = createClient(BUTTON_SUPABASE_URL, BUTTON_SERVICE_ROLE_KEY);
+
+const INFLUENCERS = [
+  { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', name: 'Sofia Rodriguez' },
+  { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', name: 'Bella Barnes' },
+  { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13', name: 'Marco Rossi' },
+  // Add other IDs here if known, or fetch them dynamically
+];
+
+const TEMPLATES = [
+  "Just finished a massive session at Iron Temple. Volume is the name of the game today! 🏋️‍♀️",
+  "Consistency over everything. Don't look at the scale, look at the effort. #IronMatch",
+  "New PR on the deadlift today! 405lbs for reps. The community here keeps me going.",
+  "Morning mobility is the secret to longevity. Don't skip your warm-ups!",
+  "Who's joining me for the weekend HIIT showdown? Let's burn some calories together.",
+  "Progress isn't linear. Some days you're the hammer, some days the nail. Stay the course."
+];
 
 Deno.serve(async (req) => {
-  const { name } = await req.json()
-  const data = {
-    message: `Hello ${name}!`,
+  try {
+    // Randomly select an influencer
+    const influencer = INFLUENCERS[Math.floor(Math.random() * INFLUENCERS.length)];
+    const content = TEMPLATES[Math.floor(Math.random() * TEMPLATES.length)];
+
+    console.log(`Generating post for ${influencer.name}...`);
+
+    const { data, error } = await supabase
+      .from('posts')
+      .insert({
+        author_id: influencer.id,
+        content: content,
+        gym_id: 'gym_1', // Default to a common gym for global visibility
+        media_type: 'image',
+        spots_count: Math.floor(Math.random() * 50) + 10,
+        created_at: new Date().toISOString()
+      })
+      .select();
+
+    if (error) throw error;
+
+    return new Response(
+      JSON.stringify({ message: "Post generated successfully", post: data[0] }),
+      { headers: { "Content-Type": "application/json" } },
+    );
+  } catch (err) {
+    return new Response(
+      JSON.stringify({ error: err.message }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
   }
-
-  return new Response(
-    JSON.stringify(data),
-    { headers: { "Content-Type": "application/json" } },
-  )
-})
-
-/* To invoke locally:
-
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
-
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/engagement-bot' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
-
-*/
+});
