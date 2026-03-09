@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, CheckCircle2 } from 'lucide-react';
 import { User } from '../types/database';
+import { useFriends } from '../context/FriendsContext';
 
 interface RequestModalProps {
     isOpen: boolean;
@@ -10,6 +11,7 @@ interface RequestModalProps {
 }
 
 export default function RequestModal({ isOpen, onClose, user }: RequestModalProps) {
+    const { sendFriendRequest } = useFriends();
     const [message, setMessage] = useState('');
     const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
     const MAX_CHARS = 300;
@@ -26,15 +28,19 @@ export default function RequestModal({ isOpen, onClose, user }: RequestModalProp
         return () => { document.body.style.overflow = 'unset'; };
     }, [isOpen, user]);
 
-    const handleSend = () => {
+    const handleSend = async () => {
+        if (!user.id) return;
         setStatus('sending');
-        setTimeout(() => {
-            // Mock network request
+        try {
+            await sendFriendRequest(user.id);
             setStatus('success');
             setTimeout(() => {
                 onClose();
             }, 1500);
-        }, 1000);
+        } catch (err) {
+            console.error('Error sending request:', err);
+            setStatus('error');
+        }
     };
 
     return (
