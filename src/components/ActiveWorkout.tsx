@@ -98,40 +98,55 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
         };
 
         // Activity Logging & Gym War Contribution
-        if (isSupabaseConfigured && user?.home_gym) {
-            const activeWar = await getActiveWar(user.home_gym);
-            const gym = findGym(user.home_gym);
-
-            let isVerifiedLocation = false;
-            if (verifyLocation && gym) {
-                isVerifiedLocation = await verifyGymPresence(gym.lat, gym.lng);
-                if (!isVerifiedLocation) {
-                    alert('Anti-Cheat Active: You are not within 200m of the gym. Workout logged without verification bonus.');
-                } else {
-                    // Bonus XP for verified workouts
-                    updateUser({ xp: (user.xp || 0) + 150 });
-                }
-            }
-
-            const totalVolume = exercises.reduce((acc, ex) =>
-                acc + (ex.completed ? (ex.sets * ex.reps * (ex.weight || 0)) : 0), 0
-            );
-
-            await supabase.from('activity_logs').insert({
+        if (isSupabaseConfigured && user) {
+            // Persist full session to workout_logs
+            const { error: logError } = await supabase.from('workout_logs').insert({
                 user_id: user.id,
-                gym_id: user.home_gym,
-                type: 'workout',
-                value: totalVolume,
-                metadata: {
-                    plan_name: plan.name,
-                    is_war_contribution: !!activeWar && isVerifiedLocation,
-                    war_id: activeWar?.id,
-                    geofenced: isVerifiedLocation
-                }
+                plan_id: plan.id,
+                exercises: exercises,
+                started_at: startTime,
+                completed_at: new Date().toISOString(),
+                duration_min: Math.round(elapsed / 60),
+                gym_id: user.home_gym || null
             });
 
-            if (activeWar && !isVerifiedLocation) {
-                console.log('Workout logged, but too far from gym to count for Gym War.');
+            if (logError) console.error('Error saving workout log:', logError);
+
+            if (user.home_gym) {
+                const activeWar = await getActiveWar(user.home_gym);
+                const gym = findGym(user.home_gym);
+
+                let isVerifiedLocation = false;
+                if (verifyLocation && gym) {
+                    isVerifiedLocation = await verifyGymPresence(gym.lat, gym.lng);
+                    if (!isVerifiedLocation) {
+                        alert('Anti-Cheat Active: You are not within 200m of the gym. Workout logged without verification bonus.');
+                    } else {
+                        // Bonus XP for verified workouts
+                        updateUser({ xp: (user.xp || 0) + 150 });
+                    }
+                }
+
+                const totalVolume = exercises.reduce((acc, ex) =>
+                    acc + (ex.completed ? (ex.sets * ex.reps * (ex.weight || 0)) : 0), 0
+                );
+
+                await supabase.from('activity_logs').insert({
+                    user_id: user.id,
+                    gym_id: user.home_gym,
+                    type: 'workout',
+                    value: totalVolume,
+                    metadata: {
+                        plan_name: plan.name,
+                        is_war_contribution: !!activeWar && isVerifiedLocation,
+                        war_id: activeWar?.id,
+                        geofenced: isVerifiedLocation
+                    }
+                });
+
+                if (activeWar && !isVerifiedLocation) {
+                    console.log('Workout logged, but too far from gym to count for Gym War.');
+                }
             }
         }
 

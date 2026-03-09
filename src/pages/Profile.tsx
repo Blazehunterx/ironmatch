@@ -58,8 +58,11 @@ export default function Profile() {
 
     useEffect(() => {
         if (!user) return;
-        // Logs were here but unused, removed to resolve TS6133
-    }, [user?.id]);
+        // Sync Big 4 state when NOT editing in settings
+        if (!isSettingsOpen) {
+            setEditBig4(user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 });
+        }
+    }, [user?.big4, isSettingsOpen]);
 
     if (!user) return null;
     const homeGym = findGym(user.home_gym);
@@ -438,9 +441,13 @@ export default function Profile() {
                                         ))}
                                     </div>
                                     <button
-                                        onClick={() => {
-                                            updateUser({ big4: editBig4 });
-                                            setIsSettingsOpen(false);
+                                        onClick={async () => {
+                                            try {
+                                                await updateUser({ big4: editBig4 });
+                                                setIsSettingsOpen(false);
+                                            } catch (err) {
+                                                alert('Failed to save stats. Please check your connection.');
+                                            }
                                         }}
                                         className="w-full py-3 bg-lime text-oled rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-lime/20 active:scale-95 transition-all"
                                     >

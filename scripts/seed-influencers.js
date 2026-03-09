@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // Environment variables should be passed via CLI/Process
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
     console.error("Missing Supabase credentials. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
@@ -23,7 +23,7 @@ const influencers = [
         is_trainer: true,
         verification_status: 'verified',
         is_founding_trainer: true,
-        profile_image_url: 'https://raw.githubusercontent.com/Stackblitz/blazing-planetary/main/public/influencers/sofia.png',
+        profile_image_url: '/influencers/sofia.png',
         home_gym: 'gym_1',
         home_gym_name: 'Iron Temple London'
     },
@@ -37,7 +37,7 @@ const influencers = [
         is_trainer: true,
         verification_status: 'verified',
         is_founding_trainer: true,
-        profile_image_url: 'https://raw.githubusercontent.com/Stackblitz/blazing-planetary/main/public/influencers/bella.png',
+        profile_image_url: '/influencers/bella.png',
         home_gym: 'gym_1',
         home_gym_name: 'Iron Temple London'
     },
@@ -51,7 +51,7 @@ const influencers = [
         is_trainer: true,
         verification_status: 'verified',
         is_founding_trainer: true,
-        profile_image_url: 'https://raw.githubusercontent.com/Stackblitz/blazing-planetary/main/public/influencers/marco.png',
+        profile_image_url: '/influencers/marco.png',
         home_gym: 'gym_2',
         home_gym_name: 'Muscle Beach Venice'
     }

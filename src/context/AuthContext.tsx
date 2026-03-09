@@ -231,6 +231,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const updateUser = async (userData: Partial<User>) => {
         if (!user) return;
         const updated = { ...user, ...userData };
+
+        // Deep merge big4 if it exists in userData
+        if (userData.big4) {
+            updated.big4 = { ...user.big4, ...userData.big4 };
+        }
+
         setUser(updated);
 
         if (isSupabaseConfigured) {
@@ -265,7 +271,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 })
                 .eq('id', user.id);
 
-            if (error) console.warn('Profile update error:', error);
+            if (error) {
+                console.warn('Profile update error:', error);
+                throw error;
+            }
         } else {
             localStorage.setItem('ironmatch_user', JSON.stringify(updated));
             const idx = mockUsers.findIndex(u => u.id === user.id);

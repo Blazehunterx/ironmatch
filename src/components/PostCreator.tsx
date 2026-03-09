@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Image, Trophy, X, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 
 interface PostCreatorProps {
     gymId?: string | null;
@@ -9,6 +10,7 @@ interface PostCreatorProps {
 }
 
 export default function PostCreator({ gymId, onPostCreated }: PostCreatorProps) {
+    const { user } = useAuth();
     const [content, setContent] = useState('');
     const [isPosting, setIsPosting] = useState(false);
     const [mediaFile, setMediaFile] = useState<File | null>(null);
@@ -89,7 +91,7 @@ export default function PostCreator({ gymId, onPostCreated }: PostCreatorProps) 
         <div className="bg-gray-900/60 border border-gray-800 rounded-[32px] p-6 mb-8">
             <div className="flex gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-gray-800 border border-gray-700 overflow-hidden shrink-0">
-                    <img src="https://i.pravatar.cc/100" alt="Profile" className="w-full h-full object-cover" />
+                    <img src={user?.profile_image_url || "https://i.pravatar.cc/100"} alt="Profile" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1">
                     <textarea
