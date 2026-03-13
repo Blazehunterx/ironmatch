@@ -352,7 +352,7 @@ export default function Search() {
                             <div className="max-h-60 overflow-y-auto">
                                 {locationStatus === 'denied' && (
                                     <div className="p-3 text-[10px] text-red-400 bg-red-500/5 border-b border-gray-800">
-                                        Location access denied. Enable it in browser settings for automatic discovery.
+                                        Location access denied. Enable it in settings for automatic discovery.
                                     </div>
                                 )}
                                 {allGyms
@@ -413,7 +413,7 @@ export default function Search() {
 
             <div className="px-4 flex-1">
                 {viewMode === 'shouts' ? (
-                    <div className="flex flex-col min-h-[500px]">
+                    <div className="flex flex-col min-h-[500px] relative">
                         <GymShoutbox gymId={selectedGym} gymName={gym?.name || 'Gym'} />
                     </div>
                 ) : (

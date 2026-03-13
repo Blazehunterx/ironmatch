@@ -193,7 +193,7 @@ export default function Home() {
                         </div>
                     </div>
 
-                    <SocialFeed gymId={filterGym} />
+                    <SocialFeed gymId={filterGym} onStoryCreated={fetchProfiles} />
                 </div>
             ) : (
                 <>

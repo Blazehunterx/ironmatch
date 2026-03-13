@@ -74,7 +74,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     const [userLocation, setUserLocation] = useState<GeoCoords | null>(null);
     const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'granted' | 'denied'>('idle');
     const [isLoadingGyms, setIsLoadingGyms] = useState(false);
-    const [searchRadius, setSearchRadius] = useState(20); // Tighter default 20km
+    const [searchRadius, setSearchRadius] = useState(50); // Increased to 50km for better discovery
 
     // Fetch custom gyms from Supabase
     const fetchDBGyms = useCallback(async () => {

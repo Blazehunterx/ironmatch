@@ -10,6 +10,14 @@ serve(async (req) => {
             return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*' } })
         }
 
+        const apexSecret = req.headers.get('Apex-Secret');
+        if (apexSecret !== 'IRONMATCH_INTERNAL_PULSE_2026') {
+            return new Response(JSON.stringify({ error: "Unauthorized Pulse" }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
         const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 

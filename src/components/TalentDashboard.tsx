@@ -2,12 +2,14 @@
 import { motion } from 'framer-motion';
 import { Zap, TrendingUp, Target, Star, ChevronRight, Info } from 'lucide-react';
 import { User, Bounty } from '../types/database';
+import ProfilePayoutSettings from './profile/ProfilePayoutSettings';
 
 interface TalentDashboardProps {
     user: User;
+    onUpdateUser: (data: Partial<User>) => Promise<void>;
 }
 
-export default function TalentDashboard({ user }: TalentDashboardProps) {
+export default function TalentDashboard({ user, onUpdateUser }: TalentDashboardProps) {
     // Mock metrics for prototype
     const metrics = {
         totalSpots: (user.followers_count || 0) * 12,
@@ -134,6 +136,14 @@ export default function TalentDashboard({ user }: TalentDashboardProps) {
                 <p className="text-[10px] text-blue-100/60 leading-relaxed italic">
                     "Consistent high-quality content in the community feed increases your Influence Score and unlocks higher-tier bounty rewards."
                 </p>
+            </div>
+
+            {/* Payout Settings Section */}
+            <div className="pt-4">
+                <div className="flex items-center gap-2 px-2 mb-4">
+                    <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Empire Payout Bureau</h4>
+                </div>
+                <ProfilePayoutSettings user={user} onSave={onUpdateUser} />
             </div>
         </div>
     );

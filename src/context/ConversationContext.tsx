@@ -167,7 +167,9 @@ export function ConversationProvider({ children, currentUserId }: { children: Re
         }));
 
         if (isSupabaseConfigured) {
+            const conversationId = [currentUserId, userId].sort().join(':');
             const { error } = await supabase.from('messages').insert({
+                conversation_id: conversationId,
                 sender_id: currentUserId,
                 receiver_id: userId,
                 content: text,

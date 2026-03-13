@@ -12,7 +12,7 @@ export function useSocialFeed(gymId: string | null) {
         try {
             let query = supabase
                 .from('posts')
-                .select('*, profiles:profiles!posts_author_id_fkey(name, profile_image_url, verification_status, is_founding_trainer)');
+                .select('*, profiles:profiles!posts_author_id_fkey(name, profile_image_url, verification_status, is_founding_trainer, big4)');
 
             if (gymId) {
                 // Community Feed: Filter by specific gym

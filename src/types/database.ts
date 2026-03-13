@@ -69,6 +69,9 @@ export interface User {
     followers_count?: number;
     following_count?: number;
     is_following?: boolean;
+    revolut_tag?: string;
+    payout_iban?: string;
+    pending_balance?: number;
 }
 
 export interface Follow {

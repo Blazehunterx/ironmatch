@@ -33,7 +33,7 @@ export function useFollow(targetUserId?: string, followerId?: string) {
                     .select('*')
                     .eq('follower_id', followerId)
                     .eq('following_id', targetUserId)
-                    .single();
+                    .maybeSingle();
 
                 setIsFollowing(!!data);
             }

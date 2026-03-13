@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">IronMatch</string>
+    <string name="title_activity_main">IronMatch</string>
+    <string name="package_name">com.ironmatch.app</string>
+    <string name="custom_url_scheme">com.ironmatch.app</string>
+</resources>

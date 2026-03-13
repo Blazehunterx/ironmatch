@@ -16,6 +16,7 @@ export default function PostCreator({ gymId, onPostCreated }: PostCreatorProps) 
     const [mediaFile, setMediaFile] = useState<File | null>(null);
     const [mediaPreview, setMediaPreview] = useState<string | null>(null);
     const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
+    const [postType, setPostType] = useState<'feed' | 'story'>('feed');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,19 +63,38 @@ export default function PostCreator({ gymId, onPostCreated }: PostCreatorProps) 
                 mediaUrl = publicUrl;
             }
 
-            const { error: postError } = await supabase
-                .from('posts')
-                .insert([{
-                    author_id: userData.user.id,
-                    gym_id: gymId || null,
-                    content: content.trim(),
-                    media_url: mediaUrl,
-                    media_type: mediaType,
-                    is_auto_generated: false,
-                    spots_count: 0
-                }]);
+            if (postType === 'story') {
+                if (!mediaUrl) throw new Error('Stories require a photo or video.');
+                
+                const expiresAt = new Date();
+                expiresAt.setHours(expiresAt.getHours() + 24);
 
-            if (postError) throw postError;
+                const { error: storyError } = await supabase
+                    .from('stories')
+                    .insert([{
+                        author_id: userData.user.id,
+                        media_url: mediaUrl,
+                        media_type: mediaType || 'image',
+                        content: content.trim(),
+                        expires_at: expiresAt.toISOString()
+                    }]);
+
+                if (storyError) throw storyError;
+            } else {
+                const { error: postError } = await supabase
+                    .from('posts')
+                    .insert([{
+                        author_id: userData.user.id,
+                        gym_id: gymId || null,
+                        content: content.trim(),
+                        media_url: mediaUrl,
+                        media_type: mediaType,
+                        is_auto_generated: false,
+                        spots_count: 0
+                    }]);
+
+                if (postError) throw postError;
+            }
 
             setContent('');
             clearMedia();
@@ -89,6 +109,21 @@ export default function PostCreator({ gymId, onPostCreated }: PostCreatorProps) 
 
     return (
         <div className="bg-gray-900/60 border border-gray-800 rounded-[32px] p-6 mb-8">
+            <div className="flex bg-black/40 p-1 rounded-2xl mb-6 w-fit border border-gray-800">
+                <button
+                    onClick={() => setPostType('feed')}
+                    className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${postType === 'feed' ? 'bg-lime text-oled shadow-lg' : 'text-gray-500'}`}
+                >
+                    Wall Post
+                </button>
+                <button
+                    onClick={() => setPostType('story')}
+                    className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${postType === 'story' ? 'bg-lime text-oled shadow-lg' : 'text-gray-500'}`}
+                >
+                    Story
+                </button>
+            </div>
+            
             <div className="flex gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-gray-800 border border-gray-700 overflow-hidden shrink-0">
                     <img src={user?.profile_image_url || "https://i.pravatar.cc/100"} alt="Profile" className="w-full h-full object-cover" />

@@ -12,11 +12,17 @@ import PostDetail from './PostDetail';
 
 interface SocialFeedProps {
     gymId?: string | null;
+    onStoryCreated?: () => void;
 }
 
-export default function SocialFeed({ gymId = null }: SocialFeedProps) {
+export default function SocialFeed({ gymId = null, onStoryCreated }: SocialFeedProps) {
     const { posts, loading, error, toggleSpot, refresh } = useSocialFeed(gymId);
     const [selectedPost, setSelectedPost] = useState<any | null>(null);
+
+    const handlePostCreated = () => {
+        refresh();
+        if (onStoryCreated) onStoryCreated();
+    };
 
     if (loading && posts.length === 0) {
         return (
@@ -30,7 +36,7 @@ export default function SocialFeed({ gymId = null }: SocialFeedProps) {
 
     return (
         <div className="space-y-6">
-            <PostCreator gymId={gymId} onPostCreated={refresh} />
+            <PostCreator gymId={gymId} onPostCreated={handlePostCreated} />
 
             {error && (
                 <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
@@ -106,20 +112,37 @@ export default function SocialFeed({ gymId = null }: SocialFeedProps) {
                                     <img src={post.media_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                                 )}
 
-                                {/* Auto-generated overlay for Workout Receipts */}
+                                { /* Auto-generated overlay for Workout Receipts */ }
                                 {post.is_auto_generated && (
                                     <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/90 to-transparent">
                                         <div className="flex items-end justify-between">
                                             <div>
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <Trophy size={16} className="text-lime" />
-                                                    <span className="text-[10px] font-black text-lime uppercase tracking-[0.2em]">Session Complete</span>
+                                                    <span className="text-[10px] font-black text-lime uppercase tracking-[0.2em]">Strength Milestone</span>
                                                 </div>
-                                                <h3 className="text-xl font-black text-white italic uppercase tracking-tighter leading-none">Iron Harvest</h3>
+                                                <div className="flex gap-4">
+                                                    {post.profiles?.big4 && (
+                                                        <>
+                                                            <div className="text-center">
+                                                                <p className="text-[8px] text-gray-500 font-bold uppercase">Bench</p>
+                                                                <p className="text-lg font-black text-white italic">{post.profiles.big4.bench}<span className="text-[8px] text-lime ml-0.5">LB</span></p>
+                                                            </div>
+                                                            <div className="text-center">
+                                                                <p className="text-[8px] text-gray-500 font-bold uppercase">Squat</p>
+                                                                <p className="text-lg font-black text-white italic">{post.profiles.big4.squat}<span className="text-[8px] text-lime ml-0.5">LB</span></p>
+                                                            </div>
+                                                            <div className="text-center">
+                                                                <p className="text-[8px] text-gray-500 font-bold uppercase">Dead</p>
+                                                                <p className="text-lg font-black text-white italic">{post.profiles.big4.deadlift}<span className="text-[8px] text-lime ml-0.5">LB</span></p>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-[10px] text-gray-400 font-bold uppercase">Volume</p>
-                                                <p className="text-2xl font-black text-white italic">4,250<span className="text-xs text-lime ml-1">LB</span></p>
+                                                <p className="text-[10px] text-gray-400 font-bold uppercase">Total Volume</p>
+                                                <p className="text-2xl font-black text-white italic">Elite<span className="text-xs text-lime ml-1">LIFT</span></p>
                                             </div>
                                         </div>
                                     </div>

@@ -1,4 +1,4 @@
-// Location utilities — free, no paid APIs needed
+import { Geolocation } from '@capacitor/geolocation';
 
 export interface GeoCoords {
     lat: number;
@@ -35,20 +35,36 @@ export function formatDistance(km: number): string {
 }
 
 /**
- * Get current user position via browser Geolocation API
+ * Get current user position via Capacitor Geolocation (Native & Browser)
+ * Includes explicit permission check to ensure native prompt on Android/iOS.
  */
-export function getCurrentPosition(): Promise<GeoCoords> {
-    return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error('Geolocation not supported'));
-            return;
+export async function getCurrentPosition(): Promise<GeoCoords> {
+    try {
+        // Check permissions first
+        const check = await Geolocation.checkPermissions();
+        
+        if (check.location === 'denied') {
+            const request = await Geolocation.requestPermissions();
+            if (request.location === 'denied') {
+                throw new Error('Location permission denied by user');
+            }
+        } else if (check.location === 'prompt' || check.location === 'prompt-with-rationale') {
+            await Geolocation.requestPermissions();
         }
-        navigator.geolocation.getCurrentPosition(
-            (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-            (err) => reject(err),
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-        );
-    });
+
+        const coordinates = await Geolocation.getCurrentPosition({
+            enableHighAccuracy: true,
+            timeout: 10000
+        });
+        
+        return {
+            lat: coordinates.coords.latitude,
+            lng: coordinates.coords.longitude
+        };
+    } catch (err) {
+        console.error('Location Error:', err);
+        throw err;
+    }
 }
 /**
  * Validates if the user is within the required radius of a gym to participate

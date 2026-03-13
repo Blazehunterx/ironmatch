@@ -8,7 +8,7 @@ interface AuthContextType {
     login: (email: string, password: string) => Promise<void>;
     logout: () => void;
     signup: (userData: Partial<User> & { password?: string }) => Promise<void>;
-    updateUser: (userData: Partial<User>) => void;
+    updateUser: (userData: Partial<User>) => Promise<void>;
     resetPasswordEmail: (email: string) => Promise<void>;
     updatePassword: (password: string) => Promise<void>;
     loading: boolean;
@@ -55,6 +55,9 @@ function profileToUser(profile: any): User {
         is_admin: profile.is_admin || false,
         verification_status: profile.verification_status || 'none',
         trainer_license_url: profile.trainer_license_url || '',
+        revolut_tag: profile.revolut_tag || '',
+        payout_iban: profile.payout_iban || '',
+        pending_balance: profile.pending_balance || 0,
     };
 }
 
@@ -240,40 +243,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(updated);
 
         if (isSupabaseConfigured) {
-            // Persist to Supabase
+            // Persist to Supabase - only send the keys present in userData
+            // This prevents massive payloads if only a small field changed
+            // and ensures large fields like profile_image_url are only sent when they actually change.
+            const payload: any = {};
+            Object.keys(userData).forEach(key => {
+                // Special handling for big4 to ensure the merged version is sent
+                if (key === 'big4') {
+                    payload[key] = updated.big4;
+                } else {
+                    payload[key] = (userData as any)[key];
+                }
+            });
+
             const { error } = await supabase
                 .from('profiles')
-                .update({
-                    name: updated.name,
-                    bio: updated.bio,
-                    fitness_level: updated.fitness_level,
-                    home_gym: updated.home_gym,
-                    home_gym_name: updated.home_gym_name,
-                    is_trainer: updated.is_trainer,
-                    profile_image_url: updated.profile_image_url,
-                    weight_kg: updated.weight_kg,
-                    height_cm: updated.height_cm,
-                    unit_preference: updated.unit_preference,
-                    discipline: updated.discipline,
-                    xp: updated.xp,
-                    reliability_streak: updated.reliability_streak,
-                    goals: updated.goals,
-                    sub_goals: updated.sub_goals,
-                    availability: updated.availability,
-                    big4: updated.big4,
-                    friends: updated.friends,
-                    is_training: updated.is_training,
-                    training_status: updated.training_status,
-                    last_active_at: updated.last_active_at,
-                    is_admin: updated.is_admin,
-                    verification_status: updated.verification_status,
-                    trainer_license_url: updated.trainer_license_url,
-                })
+                .update(payload)
                 .eq('id', user.id);
 
             if (error) {
-                console.warn('Profile update error:', error);
+                console.error('CRITICAL_UPDATE_ERROR:', error.message, error.details);
                 throw error;
+            } else {
+                console.log('SUCCESS: Profile persistence for:', Object.keys(payload).join(', '));
             }
         } else {
             localStorage.setItem('ironmatch_user', JSON.stringify(updated));
