@@ -62,6 +62,7 @@ export interface User {
     unlocked_cosmetics?: string[];
     active_cosmetic_frame?: string;
     active_cosmetic_color?: string;
+    active_graph_skin?: string;
     is_admin?: boolean;
     verification_status?: 'none' | 'pending' | 'verified';
     is_founding_trainer?: boolean;

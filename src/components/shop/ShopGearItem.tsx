@@ -12,10 +12,13 @@ interface ShopGearItemProps {
     unlocked: string[];
     profileImageUrl: string;
     onUnlock: (item: CosmeticItem) => void;
+    onSelect: (item: CosmeticItem) => void;
+    isActive: boolean;
+    isAdmin?: boolean;
 }
 
 export const ShopGearItem: React.FC<ShopGearItemProps> = ({ 
-    item, idx, userXP, userLevel, unlocked, profileImageUrl, onUnlock 
+    item, idx, userXP, userLevel, unlocked, profileImageUrl, onUnlock, onSelect, isActive, isAdmin 
 }) => {
     const isUnlocked = unlocked.includes(item.id);
     const canAfford = canUnlock(item, userXP, userLevel);
@@ -43,14 +46,19 @@ export const ShopGearItem: React.FC<ShopGearItemProps> = ({
                 </div>
             </div>
             {isUnlocked ? (
-                <span className="text-[9px] font-black text-lime uppercase tracking-widest px-3 py-1 bg-lime/10 rounded-full">Collected</span>
+                <button
+                    onClick={() => onSelect(item)}
+                    className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isActive ? 'bg-lime text-oled' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                >
+                    {isActive ? 'Active' : 'Apply'}
+                </button>
             ) : (
                 <button
                     onClick={() => onUnlock(item)}
-                    disabled={!canAfford}
-                    className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${canAfford ? 'bg-white text-oled hover:bg-lime active:scale-95' : 'bg-gray-800 text-gray-600 grayscale'}`}
+                    disabled={!isAdmin && !canAfford}
+                    className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isAdmin || canAfford ? 'bg-white text-oled hover:bg-lime active:scale-95' : 'bg-gray-800 text-gray-600 grayscale'}`}
                 >
-                    Unlock
+                    {isAdmin ? 'Free' : 'Unlock'}
                 </button>
             )}
         </motion.div>

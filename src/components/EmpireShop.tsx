@@ -15,7 +15,7 @@ interface EmpireShopProps {
 export default function EmpireShop({ onClose, initialTab = 'gear' }: EmpireShopProps) {
     const { user, updateUser } = useAuth();
     const [selectedTab, setSelectedTab] = useState<'gear' | 'marketplace'>(initialTab);
-    const [selectedGearTab, setSelectedGearTab] = useState<'frame' | 'color'>('frame');
+    const [selectedGearTab, setSelectedGearTab] = useState<'frame' | 'color' | 'graph_skin'>('frame');
     const [premiumPlans, setPremiumPlans] = useState<any[]>([]);
     const [loadingPlans, setLoadingPlans] = useState(false);
     const [checkoutItem, setCheckoutItem] = useState<any>(null);
@@ -64,13 +64,25 @@ export default function EmpireShop({ onClose, initialTab = 'gear' }: EmpireShopP
     const unlocked = user.unlocked_cosmetics || [];
 
     const handleUnlockGear = (item: CosmeticItem) => {
-        if (canUnlock(item, userXP, userLevel)) {
+        const isAdmin = user.is_admin;
+        if (isAdmin || canUnlock(item, userXP, userLevel)) {
             const newUnlocked = [...unlocked, item.id];
             updateUser({
                 unlocked_cosmetics: newUnlocked,
-                xp: userXP - item.xpRequirement
+                xp: isAdmin ? userXP : userXP - item.xpRequirement
             });
         }
+    };
+
+    const handleSelectGear = (item: CosmeticItem) => {
+        if (!unlocked.includes(item.id)) return;
+        
+        const updates: any = {};
+        if (item.type === 'frame') updates.active_cosmetic_frame = item.id;
+        if (item.type === 'color') updates.active_cosmetic_color = item.id;
+        if (item.type === 'graph_skin') updates.active_graph_skin = item.previewValue;
+        
+        updateUser(updates);
     };
 
     const filteredGear = COSMETIC_ITEMS.filter(item => item.type === selectedGearTab);
@@ -140,6 +152,12 @@ export default function EmpireShop({ onClose, initialTab = 'gear' }: EmpireShopP
                             >
                                 Name Colors
                             </button>
+                            <button
+                                onClick={() => setSelectedGearTab('graph_skin')}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${selectedGearTab === 'graph_skin' ? 'bg-gray-800 text-white shadow-md' : 'text-gray-600'}`}
+                            >
+                                Graph Skins
+                            </button>
                         </div>
 
                         <div className="grid gap-4">
@@ -153,6 +171,13 @@ export default function EmpireShop({ onClose, initialTab = 'gear' }: EmpireShopP
                                     unlocked={unlocked}
                                     profileImageUrl={user.profile_image_url}
                                     onUnlock={handleUnlockGear}
+                                    onSelect={handleSelectGear}
+                                    isAdmin={user.is_admin}
+                                    isActive={
+                                        item.type === 'frame' ? user.active_cosmetic_frame === item.id :
+                                        item.type === 'color' ? user.active_cosmetic_color === item.id :
+                                        user.active_graph_skin === item.previewValue
+                                    }
                                 />
                             ))}
                         </div>

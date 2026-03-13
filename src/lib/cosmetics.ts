@@ -1,11 +1,11 @@
 export interface CosmeticItem {
     id: string;
     name: string;
-    type: 'frame' | 'color';
+    type: 'frame' | 'color' | 'graph_skin';
     description: string;
     xpRequirement: number;
     levelRequirement?: string;
-    previewValue: string; // CSS value or gradient
+    previewValue: string; // CSS value, gradient, or theme key
 }
 
 export const COSMETIC_ITEMS: CosmeticItem[] = [
@@ -77,6 +77,88 @@ export const COSMETIC_ITEMS: CosmeticItem[] = [
         description: 'A warm gradient of orange and red.',
         xpRequirement: 2000,
         previewValue: 'bg-gradient-to-r from-orange-400 to-red-500 text-transparent bg-clip-text font-black'
+    },
+
+    // Graph Skins
+    {
+        id: 'gs1',
+        name: 'The Grand Line',
+        type: 'graph_skin',
+        description: 'One Piece theme: Deep ocean blues and Haki gold.',
+        xpRequirement: 2500,
+        previewValue: 'one_piece'
+    },
+    {
+        id: 'gs2',
+        name: 'Super Saiyan Aura',
+        type: 'graph_skin',
+        description: 'Dragon Ball theme: Electric yellow and energy flares.',
+        xpRequirement: 5000,
+        previewValue: 'dbz'
+    },
+    {
+        id: 'gs3',
+        name: 'Uchiha Legacy',
+        type: 'graph_skin',
+        description: 'Naruto theme: Sharingan crimson and shadow black.',
+        xpRequirement: 7500,
+        previewValue: 'naruto'
+    },
+    {
+        id: 'gs4',
+        name: 'Wings of Liberty',
+        type: 'graph_skin',
+        description: 'AoT theme: Military steel and forest green.',
+        xpRequirement: 10000,
+        previewValue: 'aot'
+    },
+    {
+        id: 'gs5',
+        name: 'Soul Reaper',
+        type: 'graph_skin',
+        description: 'Bleach theme: Spiritual black & white with Getsuga aura.',
+        xpRequirement: 12500,
+        previewValue: 'bleach'
+    },
+    {
+        id: 'gs6',
+        name: 'Water Breathing',
+        type: 'graph_skin',
+        description: 'Demon Slayer theme: Deep blue water and Nichirin steel.',
+        xpRequirement: 15000,
+        previewValue: 'demon_slayer'
+    },
+    {
+        id: 'gs7',
+        name: 'Infinity Limitless',
+        type: 'graph_skin',
+        description: 'JJK theme: Void purple and infinite blue.',
+        xpRequirement: 17500,
+        previewValue: 'jjk'
+    },
+    {
+        id: 'gs8',
+        name: 'One For All',
+        type: 'graph_skin',
+        description: 'MHA theme: Emerald spark and hero green.',
+        xpRequirement: 20000,
+        previewValue: 'mha'
+    },
+    {
+        id: 'gs9',
+        name: 'Hunter Nen',
+        type: 'graph_skin',
+        description: 'HxH theme: Forest green and Nen aura.',
+        xpRequirement: 22500,
+        previewValue: 'hxh'
+    },
+    {
+        id: 'gs10',
+        name: 'Shadow Monarch',
+        type: 'graph_skin',
+        description: 'Solo Leveling theme: Dark monarch purple and shadow extraction.',
+        xpRequirement: 25000,
+        previewValue: 'solo_leveling'
     }
 ];
 
