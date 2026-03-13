@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Trash2, Dumbbell } from 'lucide-react';
+import { X, Plus, Dumbbell } from 'lucide-react';
 import { BodyPart, ALL_BODY_PARTS, EXERCISE_LIBRARY, WorkoutExercise } from '../../types/database';
+import { PlanExerciseItem } from './PlanExerciseItem';
 
 interface WorkoutPlanCreatorProps {
     isOpen: boolean;
@@ -101,52 +102,13 @@ const WorkoutPlanCreator: React.FC<WorkoutPlanCreatorProps> = ({ isOpen, onClose
                                 </label>
                                 <div className="space-y-2">
                                     {planExercises.map((ex, idx) => (
-                                        <motion.div
+                                        <PlanExerciseItem
                                             key={ex.id}
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            className="bg-gray-900 border border-gray-800 rounded-xl p-3"
-                                        >
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-sm font-semibold text-white flex items-center gap-2">
-                                                    <span className="text-[10px] text-lime bg-lime/10 w-5 h-5 rounded flex items-center justify-center font-black">{idx + 1}</span>
-                                                    {ex.name}
-                                                </span>
-                                                <button onClick={() => removeExercise(ex.id)} className="text-gray-600 hover:text-red-400 transition">
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            </div>
-                                            <div className="flex gap-3">
-                                                <div className="flex-1">
-                                                    <label className="text-[9px] text-gray-600 uppercase block mb-1">Sets</label>
-                                                    <input
-                                                        type="number"
-                                                        value={ex.sets}
-                                                        onChange={(e) => updateExercise(ex.id, 'sets', parseInt(e.target.value) || 0)}
-                                                        className="w-full bg-oled border border-gray-700 text-white rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-lime"
-                                                    />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <label className="text-[9px] text-gray-600 uppercase block mb-1">Reps</label>
-                                                    <input
-                                                        type="number"
-                                                        value={ex.reps}
-                                                        onChange={(e) => updateExercise(ex.id, 'reps', parseInt(e.target.value) || 0)}
-                                                        className="w-full bg-oled border border-gray-700 text-white rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-lime"
-                                                    />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <label className="text-[9px] text-gray-600 uppercase block mb-1">Weight</label>
-                                                    <input
-                                                        type="number"
-                                                        value={ex.weight || ''}
-                                                        onChange={(e) => updateExercise(ex.id, 'weight', parseInt(e.target.value) || 0)}
-                                                        placeholder="lbs"
-                                                        className="w-full bg-oled border border-gray-700 text-white rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-lime"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </motion.div>
+                                            exercise={ex}
+                                            index={idx}
+                                            onUpdate={updateExercise}
+                                            onRemove={removeExercise}
+                                        />
                                     ))}
                                 </div>
 

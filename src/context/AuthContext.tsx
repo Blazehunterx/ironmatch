@@ -117,20 +117,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     async function fetchProfile(userId: string): Promise<User | null> {
+        console.log('FETCH_PROFILE_START:', userId);
         try {
             const { data, error } = await withTimeout(
                 supabase.from('profiles').select('*').eq('id', userId).single() as any,
                 8000,
-                'Profile fetch timeout'
+                'Profile fetch timed out (8s limit)'
             ) as any;
 
-            if (error || !data) {
-                console.warn('Profile fetch error:', error);
+            if (error) {
+                console.error('FETCH_PROFILE_DB_ERROR:', error.message, error.details);
                 return null;
             }
+            if (!data) {
+                console.warn('FETCH_PROFILE_EMPTY_RESULT');
+                return null;
+            }
+            
+            console.log('FETCH_PROFILE_SUCCESS:', data.name);
             return profileToUser(data);
-        } catch (err) {
-            console.warn('fetchProfile timeout:', err);
+        } catch (err: any) {
+            console.error('FETCH_PROFILE_EXCEPTION:', err.message);
             return null;
         }
     }
@@ -153,8 +160,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
         }
 
+        const sanitizedEmail = email.trim().toLowerCase();
+        const sanitizedPassword = password.trim();
+
         const { data, error } = await withTimeout(
-            supabase.auth.signInWithPassword({ email, password }),
+            supabase.auth.signInWithPassword({ email: sanitizedEmail, password: sanitizedPassword }),
             10000,
             'Sign-in timed out. Please check your connection and refresh.'
         ) as any;
@@ -204,13 +214,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
         }
 
+        const sanitizedEmail = (userData.email || '').trim().toLowerCase();
+        const sanitizedName = (userData.name || '').trim();
+        const sanitizedPassword = (userData.password || '').trim();
+
         // Real Supabase signup
         const { data, error } = await supabase.auth.signUp({
-            email: userData.email || '',
-            password: userData.password || '',
+            email: sanitizedEmail,
+            password: sanitizedPassword,
             options: {
                 data: {
-                    name: userData.name || '',
+                    name: sanitizedName,
                 },
             },
         });
@@ -291,8 +305,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) throw new Error(error.message);
     };
 
+    const contextValue = React.useMemo(() => ({
+        user,
+        login,
+        logout,
+        signup,
+        updateUser,
+        resetPasswordEmail,
+        updatePassword,
+        loading
+    }), [user, loading]);
+
     return (
-        <AuthContext.Provider value={{ user, login, logout, signup, updateUser, resetPasswordEmail, updatePassword, loading }}>
+        <AuthContext.Provider value={contextValue}>
             {children}
         </AuthContext.Provider>
     );

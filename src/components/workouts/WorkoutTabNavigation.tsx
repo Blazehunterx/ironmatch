@@ -1,6 +1,6 @@
 import React from 'react';
 
-type Tab = 'plans' | 'community' | 'programs' | 'marketplace' | 'templates' | 'history';
+type Tab = 'plans' | 'community' | 'programs' | 'marketplace' | 'templates' | 'history' | 'insights';
 
 interface WorkoutTabNavigationProps {
     activeTab: Tab;
@@ -14,7 +14,8 @@ const WorkoutTabNavigation: React.FC<WorkoutTabNavigationProps> = ({ activeTab, 
         { key: 'marketplace', label: '💎 Shop' },
         { key: 'programs', label: '🎓 Science' },
         { key: 'templates', label: '⭐ Starter' },
-        { key: 'history', label: '📊 History' }
+        { key: 'history', label: '📊 History' },
+        { key: 'insights', label: '📈 Insights' }
     ];
 
     return (

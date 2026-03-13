@@ -46,15 +46,21 @@ export default function Home() {
     const fetchProfiles = async () => {
         setIsLoadingProfiles(true);
         try {
-            const { data, error } = await supabase.from('profiles').select('*');
+            // 1. Fetch only essential profiles for stories bar
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, name, profile_image_url, is_founding_trainer, home_gym')
+                .or('is_founding_trainer.eq.true, verification_status.eq.verified')
+                .limit(50);
+                
             if (!error && data) {
-                setAllProfiles(data);
+                setAllProfiles(data as any[]);
             }
 
-            // Fetch active stories
+            // 2. Fetch active stories with specific selection
             const { data: storyData } = await supabase
                 .from('stories')
-                .select('*, profiles:profiles!stories_author_id_fkey(name, profile_image_url)')
+                .select('id, author_id, media_url, media_type, content, created_at, expires_at, profiles:profiles!stories_author_id_fkey(name, profile_image_url)')
                 .gt('expires_at', new Date().toISOString())
                 .order('created_at', { ascending: false });
 
@@ -67,7 +73,7 @@ export default function Home() {
                 setActiveWar(war);
             }
         } catch (err) {
-            console.error('Failed to fetch profiles:', err);
+            console.error('Failed to fetch home data:', err);
         } finally {
             setIsLoadingProfiles(false);
         }
@@ -150,7 +156,7 @@ export default function Home() {
                 </button>
                 <button
                     onClick={() => setActiveTab('buddies')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'buddies' ? 'bg-lime text-oled shadow-lg' : 'text-gray-500 hover:white'}`}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'buddies' ? 'bg-lime text-oled shadow-lg' : 'text-gray-500 hover:text-white'}`}
                 >
                     <Users size={14} /> Find Buddies
                 </button>

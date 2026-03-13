@@ -1,18 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    Plus, Users, Dumbbell, Sparkles, Clock, CheckCircle2, GraduationCap
-} from 'lucide-react';
+import { GraduationCap } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { WorkoutPlan, WorkoutLog, GroupSession } from '../types/database';
 
-interface CommunityPlan extends WorkoutPlan {
-    profiles?: {
-        name: string;
-        profile_image_url: string;
-    };
-}
 import LevelUpOverlay from '../components/LevelUpOverlay';
 import JoinSessionModal from '../components/JoinSessionModal';
 import LiveGroupSession from '../components/LiveGroupSession';
@@ -20,15 +12,23 @@ import ActiveWorkout from '../components/ActiveWorkout';
 import AIWorkoutGenerator from '../components/AIWorkoutGenerator';
 import GroupWorkoutModal from '../components/GroupWorkoutModal';
 import WorkoutTabNavigation from '../components/workouts/WorkoutTabNavigation';
+import LiftProgressChart from '../components/insights/LiftProgressChart';
 import EmpireShop from '../components/EmpireShop';
 import WorkoutPlanCreator from '../components/workouts/WorkoutPlanCreator';
-import WorkoutPlanCard from '../components/workouts/WorkoutPlanCard';
-import CommunityPlanCard from '../components/workouts/CommunityPlanCard';
 import StarterTemplateCard from '../components/workouts/StarterTemplateCard';
 import { STARTER_TEMPLATES } from '../constants/starterTemplates';
 import { SCIENCE_PACKS } from '../constants/sciencePacks';
 
-type Tab = 'plans' | 'community' | 'programs' | 'marketplace' | 'templates' | 'history';
+// Modular Components
+import WorkoutsHeader from '../components/workouts/WorkoutsHeader';
+import AICoachCTA from '../components/workouts/AICoachCTA';
+import HostSessionCTA from '../components/workouts/HostSessionCTA';
+import WorkoutPlansTab from '../components/workouts/WorkoutPlansTab';
+import CommunityPlansTab from '../components/workouts/CommunityPlansTab';
+import MarketplaceTab from '../components/workouts/MarketplaceTab';
+import HistoryTab from '../components/workouts/HistoryTab';
+
+type Tab = 'plans' | 'community' | 'programs' | 'marketplace' | 'templates' | 'history' | 'insights';
 
 export default function Workouts() {
     const { user } = useAuth();
@@ -42,12 +42,10 @@ export default function Workouts() {
     const [showJoinModal, setShowJoinModal] = useState(false);
     const [activeGroupSession, setActiveGroupSession] = useState<GroupSession | null>(null);
 
-    // Plans & logs stored in state
     const [plans, setPlans] = useState<WorkoutPlan[]>([]);
-    const [communityPlans, setCommunityPlans] = useState<CommunityPlan[]>([]);
+    const [communityPlans, setCommunityPlans] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [logs, setLogs] = useState<WorkoutLog[]>([]);
-
 
     const fetchPlans = async () => {
         if (!user) return;
@@ -209,68 +207,17 @@ export default function Workouts() {
     return (
         <div className="flex flex-col min-h-screen pb-24">
             <div className="px-4 pt-6 pb-4">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-3xl font-bold text-white">Workouts</h2>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setShowJoinModal(true)}
-                            className="p-2.5 rounded-xl bg-gray-900 border border-gray-800 text-lime hover:bg-gray-800 active:scale-95 transition-all"
-                        >
-                            <Users size={20} />
-                        </button>
-                        <button
-                            onClick={() => setShowCreator(true)}
-                            className="p-2.5 rounded-xl bg-lime text-oled hover:bg-lime/90 active:scale-95 transition-all"
-                        >
-                            <Plus size={20} />
-                        </button>
-                    </div>
-                </div>
+                <WorkoutsHeader 
+                    onJoinSession={() => setShowJoinModal(true)}
+                    onCreatePlan={() => setShowCreator(true)}
+                />
 
                 {plans.length < 3 && (
-                    <motion.button
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        onClick={() => setShowAI(true)}
-                        className="w-full mb-6 group p-5 rounded-3xl bg-gradient-to-br from-lime/20 via-lime/5 to-oled border border-lime/20 flex items-center gap-5 text-left relative overflow-hidden shadow-[0_10px_40px_-15px_rgba(0,0,0,0.5)] active:scale-[0.98] transition-all"
-                    >
-                        <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity rotate-12">
-                            <Sparkles size={120} className="text-lime" />
-                        </div>
-                        <div className="p-4 bg-lime rounded-2xl text-oled shadow-2xl group-hover:rotate-6 transition-transform relative z-10">
-                            <Sparkles size={28} />
-                        </div>
-                        <div className="relative z-10">
-                            <h4 className="text-[10px] font-black text-lime uppercase tracking-[0.2em] leading-none mb-1.5">Coach Antigravity</h4>
-                            <p className="text-lg font-black text-white leading-tight">AI Workout Builder</p>
-                            <p className="text-[11px] text-gray-500 font-medium mt-1 flex items-center gap-1.5">
-                                <span className="w-1 h-1 rounded-full bg-lime animate-pulse" /> Custom plans for beginners
-                            </p>
-                        </div>
-                    </motion.button>
+                    <AICoachCTA onClick={() => setShowAI(true)} />
                 )}
 
                 {user?.is_trainer && user?.verification_status === 'verified' && (
-                    <motion.button
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        onClick={() => setShowGroupModal(true)}
-                        className="w-full mb-6 group p-5 rounded-3xl bg-gradient-to-br from-purple-500/20 via-purple-500/5 to-oled border border-purple-500/20 flex items-center gap-5 text-left relative overflow-hidden shadow-xl active:scale-[0.98] transition-all"
-                    >
-                        <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity rotate-12">
-                            <Users size={120} className="text-purple-500" />
-                        </div>
-                        <div className="p-4 bg-purple-600 rounded-2xl text-white shadow-2xl group-hover:rotate-6 transition-transform relative z-10">
-                            <Users size={28} />
-                        </div>
-                        <div className="relative z-10">
-                            <h4 className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] leading-none mb-1.5 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" /> Live Now
-                            </h4>
-                            <p className="text-lg font-black text-white leading-tight">Host Group Workout</p>
-                            <p className="text-[11px] text-gray-500 font-medium mt-1">Lounge a live session for your clients</p>
-                        </div>
-                    </motion.button>
+                    <HostSessionCTA onClick={() => setShowGroupModal(true)} />
                 )}
 
                 <WorkoutTabNavigation activeTab={tab} onTabChange={setTab} />
@@ -291,6 +238,7 @@ export default function Workouts() {
                 </div>
             )}
 
+            {/* Modals & Overlays */}
             <WorkoutPlanCreator
                 isOpen={showCreator}
                 onClose={() => setShowCreator(false)}
@@ -341,74 +289,32 @@ export default function Workouts() {
                 onJoined={(session) => setActiveGroupSession(session)}
             />
 
+            {/* Tab Content */}
             <div className="px-4">
-                {tab === 'plans' ? (
-                    <div className="space-y-3">
-                        {plans.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center text-gray-500 py-20 gap-4">
-                                <div className="w-16 h-16 rounded-full bg-gray-900 flex items-center justify-center border border-gray-800">
-                                    <Dumbbell size={24} className="text-gray-600" />
-                                </div>
-                                <p className="text-center font-medium">No workout plans yet.</p>
-                                <button onClick={() => setShowCreator(true)} className="text-sm text-lime hover:underline">Create your first plan</button>
-                            </div>
-                        ) : (
-                            plans.map((plan, idx) => (
-                                <WorkoutPlanCard
-                                    key={plan.id}
-                                    plan={plan}
-                                    index={idx}
-                                    isTrainer={!!user?.is_trainer}
-                                    onStart={setActiveWorkout}
-                                    onDelete={deletePlan}
-                                    onToggleShare={toggleShare}
-                                />
-                            ))
-                        )}
-                    </div>
-                ) : tab === 'community' ? (
-                    <div className="space-y-3">
-                        {loading ? (
-                            <div className="flex flex-col items-center justify-center py-20 gap-3">
-                                <div className="w-10 h-10 border-2 border-lime/30 border-t-lime rounded-full animate-spin" />
-                                <p className="text-xs text-gray-500">Scanning for trainer expertise...</p>
-                            </div>
-                        ) : communityPlans.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center text-gray-500 py-20 gap-4">
-                                <div className="w-16 h-16 rounded-full bg-gray-900 flex items-center justify-center border border-gray-800">
-                                    <GraduationCap size={24} className="text-gray-600" />
-                                </div>
-                                <p className="text-center font-medium">No shared plans found.</p>
-                                <p className="text-xs text-center px-8">Follow verified trainers to see their shared workout routines here.</p>
-                            </div>
-                        ) : (
-                            communityPlans.map((plan, idx) => (
-                                <CommunityPlanCard
-                                    key={plan.id}
-                                    plan={plan}
-                                    index={idx}
-                                    onAdd={useTemplate}
-                                />
-                            ))
-                        )}
-                    </div>
-                ) : tab === 'marketplace' ? (
-                    <div className="flex flex-col items-center justify-center text-gray-500 py-32 gap-6 bg-gray-900/50 rounded-3xl border border-dashed border-gray-800">
-                        <div className="w-20 h-20 rounded-full bg-lime/10 flex items-center justify-center border border-lime/20 shadow-2xl shadow-lime/10">
-                            <Sparkles size={32} className="text-lime" />
-                        </div>
-                        <div className="text-center px-8">
-                            <h4 className="text-lg font-black text-white italic uppercase tracking-tight">The Pro Marketplace</h4>
-                            <p className="text-xs text-gray-500 mt-2 font-medium">Discover premium plans from elite trainers or monetize your own expertise.</p>
-                        </div>
-                        <button 
-                            onClick={() => setIsShopOpen(true)}
-                            className="px-8 py-4 bg-lime text-oled rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-lime/20 active:scale-95 transition-all"
-                        >
-                            Enter Empire Shop
-                        </button>
-                    </div>
-                ) : tab === 'templates' ? (
+                {tab === 'plans' && (
+                    <WorkoutPlansTab 
+                        plans={plans}
+                        isTrainer={!!user?.is_trainer}
+                        onStart={setActiveWorkout}
+                        onDelete={deletePlan}
+                        onToggleShare={toggleShare}
+                        onCreateFirst={() => setShowCreator(true)}
+                    />
+                )}
+
+                {tab === 'community' && (
+                    <CommunityPlansTab 
+                        loading={loading}
+                        communityPlans={communityPlans}
+                        onAdd={useTemplate}
+                    />
+                )}
+
+                {tab === 'marketplace' && (
+                    <MarketplaceTab onOpenShop={() => setIsShopOpen(true)} />
+                )}
+
+                {tab === 'templates' && (
                     <div className="space-y-3">
                         {STARTER_TEMPLATES.map((template, idx) => (
                             <StarterTemplateCard
@@ -419,7 +325,9 @@ export default function Workouts() {
                             />
                         ))}
                     </div>
-                ) : tab === 'programs' ? (
+                )}
+
+                {tab === 'programs' && (
                     <div className="space-y-3">
                         {SCIENCE_PACKS.map((template, idx) => (
                             <StarterTemplateCard
@@ -430,49 +338,15 @@ export default function Workouts() {
                             />
                         ))}
                     </div>
-                ) : (
-                    <div className="space-y-3">
-                        {logs.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center text-gray-500 py-20 gap-4">
-                                <div className="w-16 h-16 rounded-full bg-gray-900 flex items-center justify-center border border-gray-800">
-                                    <Clock size={24} className="text-gray-600" />
-                                </div>
-                                <p className="text-center font-medium">No workout history yet.</p>
-                                <p className="text-sm">Start a plan to log your first workout!</p>
-                            </div>
-                        ) : (
-                            logs.map((log, idx) => {
-                                const plan = plans.find(p => p.id === log.plan_id);
-                                const completedCount = log.exercises.filter(e => e.completed).length;
-                                return (
-                                    <motion.div
-                                        key={log.id}
-                                        initial={{ opacity: 0, y: 12 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: idx * 0.06 }}
-                                        className="bg-gray-900 border border-gray-800 rounded-2xl p-4"
-                                    >
-                                        <div className="flex items-center justify-between mb-2">
-                                            <h4 className="font-bold text-white text-sm">{plan?.name || 'Workout'}</h4>
-                                            <span className="text-[10px] text-gray-500">
-                                                {new Date(log.started_at).toLocaleDateString()}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-3 text-xs text-gray-400 mb-3">
-                                            <span className="flex items-center gap-1"><Clock size={11} /> {log.duration_min} min</span>
-                                            <span className="flex items-center gap-1"><CheckCircle2 size={11} className="text-lime" /> {completedCount}/{log.exercises.length}</span>
-                                            {plan && <span className="text-[10px] bg-lime/10 text-lime px-1.5 py-0.5 rounded">{plan.target}</span>}
-                                        </div>
-                                        <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-lime rounded-full transition-all"
-                                                style={{ width: `${(completedCount / log.exercises.length) * 100}%` }}
-                                            />
-                                        </div>
-                                    </motion.div>
-                                );
-                            })
-                        )}
+                )}
+
+                {tab === 'history' && (
+                    <HistoryTab logs={logs} plans={plans} />
+                )}
+
+                {tab === 'insights' && (
+                    <div className="pb-8">
+                        <LiftProgressChart userId={user?.id || ''} />
                     </div>
                 )}
 
@@ -482,6 +356,7 @@ export default function Workouts() {
                     )}
                 </AnimatePresence>
             </div>
+
             <AnimatePresence>
                 {isShopOpen && (
                     <>

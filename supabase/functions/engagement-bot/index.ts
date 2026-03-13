@@ -26,11 +26,12 @@ serve(async (req) => {
         }
 
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        const geminiKey = Deno.env.get('GEMINI_API_KEY');
 
-        // 2. Fetch Elite Influencer
+        // 2. Fetch Elite Influencer with context
         const { data: influencers, error: infError } = await supabase
             .from('profiles')
-            .select('id, name, home_gym')
+            .select('id, name, home_gym, bio, discipline')
             .eq('is_founding_trainer', true);
 
         if (infError) throw infError;
@@ -40,16 +41,42 @@ serve(async (req) => {
 
         const influencer = influencers[Math.floor(Math.random() * influencers.length)];
 
-        // 3. Post Content
-        const templates = [
-            "No secrets, just iron. 🛡️",
-            "Morning session done. Your turn. 🔥",
-            "Empty gym, full focus. #IronMatch",
-            "Late night grinds hit different. 🌙",
-            "One rep at a time. Stay consistent. 📈"
-        ];
+        // 3. Generate Content (Gemini or Fallback)
+        let content = "";
+        
+        if (geminiKey) {
+            try {
+                const prompt = `You are ${influencer.name}, a founding trainer for the IronMatch social media app (Instagram for gym). 
+                Your discipline is: ${influencer.discipline || 'General Fitness'}. 
+                Your bio says: "${influencer.bio || 'Hardcore training only.'}".
+                Write a short, high-energy, motivational social media post (max 2 sentences) about your current workout. 
+                Use relevant emojis. Do not use hashtags. Be raw and authentic.`;
 
-        const content = templates[Math.floor(Math.random() * templates.length)];
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
+
+                const data = await response.json();
+                content = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+            } catch (err) {
+                console.error("Gemini Error, falling back:", err);
+            }
+        }
+
+        if (!content) {
+            const templates = [
+                "No secrets, just iron. 🛡️",
+                "Morning session done. Your turn. 🔥",
+                "Empty gym, full focus. #IronMatch",
+                "Late night grinds hit different. 🌙",
+                "One rep at a time. Stay consistent. 📈"
+            ];
+            content = templates[Math.floor(Math.random() * templates.length)];
+        }
 
         // 4. Record Pulse
         const { error: postError } = await supabase
@@ -60,7 +87,7 @@ serve(async (req) => {
                 content: content,
                 media_type: 'image',
                 is_auto_generated: true,
-                spots_count: Math.floor(Math.random() * 50) + 10
+                spots_count: Math.floor(Math.random() * 50) + 20
             });
 
         if (postError) throw postError;
@@ -68,7 +95,8 @@ serve(async (req) => {
         return new Response(JSON.stringify({
             status: "success",
             influencer: influencer.name,
-            post: content
+            post: content,
+            ai_generated: !!geminiKey
         }), {
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
         })

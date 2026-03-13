@@ -17,6 +17,7 @@ import ProfileSchedule from '../components/profile/ProfileSchedule';
 import ProfileFriends from '../components/profile/ProfileFriends';
 import ProfileSettingsModal from '../components/profile/ProfileSettingsModal';
 import ProfileImageModal from '../components/profile/ProfileImageModal';
+import SystemStatus from '../components/SystemStatus';
 
 export default function Profile() {
     const { user, logout, updateUser } = useAuth();
@@ -108,6 +109,8 @@ export default function Profile() {
                     <button onClick={logout} className="w-full py-4 rounded-xl flex items-center justify-center gap-2 font-semibold text-red-500 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors">
                         <LogOut size={18} /> Sign Out
                     </button>
+
+                    <SystemStatus />
                 </div>
             </div>
 

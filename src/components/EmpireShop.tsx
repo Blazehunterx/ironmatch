@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { X, Sparkles, Zap, ShoppingBag, Trophy, ExternalLink, ShieldCheck } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { X, Sparkles, Zap, ShoppingBag, Trophy, ShieldCheck } from 'lucide-react';
 import { COSMETIC_ITEMS, CosmeticItem, canUnlock } from '../lib/cosmetics';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import CheckoutModal from './marketplace/CheckoutModal';
+import { ShopGearItem } from './shop/ShopGearItem';
+import { ShopPlanCard } from './shop/ShopPlanCard';
 
 interface EmpireShopProps {
     onClose: () => void;
@@ -19,13 +20,7 @@ export default function EmpireShop({ onClose, initialTab = 'gear' }: EmpireShopP
     const [loadingPlans, setLoadingPlans] = useState(false);
     const [checkoutItem, setCheckoutItem] = useState<any>(null);
 
-    useEffect(() => {
-        if (selectedTab === 'marketplace') {
-            fetchPremiumPlans();
-        }
-    }, [selectedTab]);
-
-    const fetchPremiumPlans = async () => {
+    const fetchPremiumPlans = useCallback(async () => {
         setLoadingPlans(true);
         try {
             const { data, error } = await supabase
@@ -39,7 +34,6 @@ export default function EmpireShop({ onClose, initialTab = 'gear' }: EmpireShopP
             setPremiumPlans(data || []);
         } catch (err) {
             console.error('Error fetching plans:', err);
-            // Fallback to mock if DB not ready
             setPremiumPlans([
                 {
                     id: 'p1',
@@ -55,7 +49,13 @@ export default function EmpireShop({ onClose, initialTab = 'gear' }: EmpireShopP
         } finally {
             setLoadingPlans(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        if (selectedTab === 'marketplace') {
+            fetchPremiumPlans();
+        }
+    }, [selectedTab, fetchPremiumPlans]);
 
     if (!user) return null;
 
@@ -127,7 +127,6 @@ export default function EmpireShop({ onClose, initialTab = 'gear' }: EmpireShopP
             <div className="flex-1 overflow-y-auto px-6 pt-4 pb-24">
                 {selectedTab === 'gear' ? (
                     <div className="space-y-6">
-                        {/* Gear Sub-tabs */}
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setSelectedGearTab('frame')}
@@ -144,46 +143,18 @@ export default function EmpireShop({ onClose, initialTab = 'gear' }: EmpireShopP
                         </div>
 
                         <div className="grid gap-4">
-                            {filteredGear.map((item, idx) => {
-                                const isUnlocked = unlocked.includes(item.id);
-                                const canAfford = canUnlock(item, userXP, userLevel);
-                                return (
-                                    <motion.div
-                                        key={item.id}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: idx * 0.05 }}
-                                        className="bg-gray-900 border border-gray-800 rounded-3xl p-4 flex items-center gap-5 hover:border-lime/30 transition-all group"
-                                    >
-                                        <div className="relative shrink-0">
-                                            <div className={`w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center overflow-hidden border-2 ${item.type === 'frame' ? item.previewValue : 'border-gray-700'}`}>
-                                                <img src={user.profile_image_url} alt="" className="w-full h-full object-cover" />
-                                            </div>
-                                            {!isUnlocked && <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center"><X size={20} className="text-gray-500" /></div>}
-                                        </div>
-                                        <div className="flex-1">
-                                            <h4 className={`text-sm font-black ${item.type === 'color' ? item.previewValue : 'text-white'} italic uppercase tracking-tight`}>{item.name}</h4>
-                                            <p className="text-[10px] text-gray-500 font-medium mt-0.5">{item.description}</p>
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <div className={`text-[9px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1.5 ${canAfford ? 'bg-yellow-400/10 text-yellow-400' : 'bg-red-500/10 text-red-500'}`}>
-                                                    <Zap size={10} className="fill-current" /> {item.xpRequirement} XP
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {isUnlocked ? (
-                                            <span className="text-[9px] font-black text-lime uppercase tracking-widest px-3 py-1 bg-lime/10 rounded-full">Collected</span>
-                                        ) : (
-                                            <button
-                                                onClick={() => handleUnlockGear(item)}
-                                                disabled={!canAfford}
-                                                className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${canAfford ? 'bg-white text-oled hover:bg-lime active:scale-95' : 'bg-gray-800 text-gray-600 grayscale'}`}
-                                            >
-                                                Unlock
-                                            </button>
-                                        )}
-                                    </motion.div>
-                                );
-                            })}
+                            {filteredGear.map((item, idx) => (
+                                <ShopGearItem
+                                    key={item.id}
+                                    item={item}
+                                    idx={idx}
+                                    userXP={userXP}
+                                    userLevel={userLevel}
+                                    unlocked={unlocked}
+                                    profileImageUrl={user.profile_image_url}
+                                    onUnlock={handleUnlockGear}
+                                />
+                            ))}
                         </div>
                     </div>
                 ) : (
@@ -207,45 +178,12 @@ export default function EmpireShop({ onClose, initialTab = 'gear' }: EmpireShopP
                         ) : (
                             <div className="grid gap-6">
                                 {premiumPlans.map((plan, idx) => (
-                                    <motion.div
+                                    <ShopPlanCard
                                         key={plan.id}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: idx * 0.1 }}
-                                        className="bg-gray-900 border border-gray-800 rounded-[2.5rem] overflow-hidden group hover:border-lime/20 transition-all shadow-2xl"
-                                    >
-                                        <div className="h-48 relative">
-                                            <img src={plan.image_url || 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=60'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" alt="" />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40 to-transparent" />
-                                            <div className="absolute top-5 left-5">
-                                                <span className="bg-lime text-oled px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-xl">{plan.intensity}</span>
-                                            </div>
-                                            <div className="absolute bottom-5 left-6 right-6 flex items-end justify-between">
-                                                <div>
-                                                    <p className="text-[10px] text-lime font-black uppercase tracking-[0.2em] mb-1">{plan.profiles?.name || plan.author_name}</p>
-                                                    <h4 className="text-xl font-black text-white italic uppercase leading-none">{plan.name}</h4>
-                                                </div>
-                                                <div className="text-2xl font-black text-white italic tracking-tighter">
-                                                    {plan.price_display}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="p-6">
-                                            <p className="text-xs text-gray-400 font-medium leading-relaxed mb-6">{plan.description}</p>
-                                            <button 
-                                                onClick={() => setCheckoutItem({
-                                                    id: plan.id,
-                                                    name: plan.name,
-                                                    price: plan.price_display,
-                                                    type: 'plan',
-                                                    image: plan.image_url
-                                                })}
-                                                className="w-full py-4 bg-white text-oled rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-lime transition-all active:scale-95 flex items-center justify-center gap-2"
-                                            >
-                                                Unlock Strategy <ExternalLink size={12} />
-                                            </button>
-                                        </div>
-                                    </motion.div>
+                                        plan={plan}
+                                        idx={idx}
+                                        onSelect={setCheckoutItem}
+                                    />
                                 ))}
                             </div>
                         )}
@@ -257,10 +195,7 @@ export default function EmpireShop({ onClose, initialTab = 'gear' }: EmpireShopP
                 isOpen={!!checkoutItem}
                 onClose={() => setCheckoutItem(null)}
                 item={checkoutItem}
-                onSuccess={() => {
-                    // Logic to refresh plans or update user owned items
-                    fetchPremiumPlans();
-                }}
+                onSuccess={() => fetchPremiumPlans()}
             />
         </div>
     );

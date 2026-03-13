@@ -43,7 +43,7 @@ export default function Login() {
 
                 <form onSubmit={handleSubmit} className="mt-8 space-y-6">
                     {error && (
-                        <div className="p-3 text-sm text-red-500 bg-red-500/10 rounded-lg">
+                        <div className="p-3 text-sm text-red-500 bg-red-500/10 rounded-lg border border-red-500/20">
                             {error}
                         </div>
                     )}
@@ -65,9 +65,11 @@ export default function Login() {
                             />
                         </div>
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-300">
-                                Password
-                            </label>
+                            <div className="flex items-center justify-between">
+                                <label htmlFor="password" className="block text-sm font-medium text-gray-300">
+                                    Password
+                                </label>
+                            </div>
                             <input
                                 id="password"
                                 name="password"

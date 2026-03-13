@@ -4,6 +4,7 @@ import { GymProvider } from './context/GymContext';
 import { ConversationProvider } from './context/ConversationContext';
 import { FriendsProvider } from './context/FriendsContext';
 import { ToastProvider } from './context/ToastContext';
+import { NotificationsProvider } from './context/NotificationsContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -60,11 +61,13 @@ function App() {
     return (
         <Router>
             <AuthProvider>
-                <GymProvider>
-                    <ToastProvider>
-                        <AppRoutes />
-                    </ToastProvider>
-                </GymProvider>
+                <NotificationsProvider>
+                    <GymProvider>
+                        <ToastProvider>
+                            <AppRoutes />
+                        </ToastProvider>
+                    </GymProvider>
+                </NotificationsProvider>
             </AuthProvider>
         </Router>
     );

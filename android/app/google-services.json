@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "769805831626",
+    "project_id": "ironmatch-fitness",
+    "storage_bucket": "ironmatch-fitness.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:769805831626:android:334c062e5cd78dc08fd333",
+        "android_client_info": {
+          "package_name": "com.mycompany.ironmatch"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyADL3V14QtjPI1aQNyaavXGdSFlywxLGM8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

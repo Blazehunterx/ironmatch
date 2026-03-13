@@ -6,8 +6,18 @@ export function useSocialFeed(gymId: string | null) {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [hasMore, setHasMore] = useState(true);
 
-    const fetchPosts = useCallback(async () => {
+    const fetchPosts = useCallback(async (isLoadMore = false) => {
+        if (!isLoadMore && posts.length === 0) {
+            const cached = localStorage.getItem('ironmatch_feed_cache');
+            if (cached) {
+                try {
+                    setPosts(JSON.parse(cached));
+                } catch (e) {}
+            }
+        }
+
         setLoading(true);
         try {
             let query = supabase
@@ -15,29 +25,34 @@ export function useSocialFeed(gymId: string | null) {
                 .select('*, profiles:profiles!posts_author_id_fkey(name, profile_image_url, verification_status, is_founding_trainer, big4)');
 
             if (gymId) {
-                // Community Feed: Filter by specific gym
                 query = query.eq('gym_id', gymId);
-            } else {
-                // Global Feed: Show everything (Real Users + AI Influencers)
-                // We don't filter by gymId here
             }
+
+            const from = isLoadMore ? posts.length : 0;
+            const to = from + 14;
 
             const { data, error } = await query
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .range(from, to);
 
-            console.log('SOCIAL_FEED_DEBUG: Fetched data length:', data?.length);
-            if (error) {
-                console.error('SOCIAL_FEED_DEBUG: Fetch error:', error);
-                throw error;
+            if (error) throw error;
+            
+            const newBatch = data || [];
+            
+            if (isLoadMore) {
+                setPosts(prev => [...prev, ...newBatch]);
+            } else {
+                setPosts(newBatch);
+                localStorage.setItem('ironmatch_feed_cache', JSON.stringify(newBatch));
             }
-            setPosts(data || []);
+
+            setHasMore(newBatch.length === 15);
         } catch (err: any) {
-            console.error('SOCIAL_FEED_DEBUG: Catch block error:', err);
             setError(err.message);
         } finally {
             setLoading(false);
         }
-    }, [gymId]);
+    }, [gymId, posts.length]);
 
     const addPost = async (authorId: string, content: string, mediaUrl?: string, mediaType?: 'image' | 'video') => {
         try {
@@ -45,7 +60,7 @@ export function useSocialFeed(gymId: string | null) {
                 .from('posts')
                 .insert([{
                     author_id: authorId,
-                    gym_id: gymId || null, // Global posts have no gymId
+                    gym_id: gymId || null,
                     content,
                     media_url: mediaUrl,
                     media_type: mediaType,
@@ -64,9 +79,6 @@ export function useSocialFeed(gymId: string | null) {
     };
 
     const toggleSpot = async (postId: string) => {
-        // Logic for liking/spotting a post
-        // In a real app we'd have a 'spots' junction table, 
-        // for now we'll increment the local count and update the DB
         try {
             const post = posts.find(p => p.id === postId);
             if (!post) return;
@@ -83,8 +95,8 @@ export function useSocialFeed(gymId: string | null) {
     };
 
     useEffect(() => {
-        fetchPosts();
-    }, [fetchPosts]);
+        fetchPosts(false);
+    }, [gymId]); // Removed fetchPosts from deps to avoid loop
 
-    return { posts, loading, error, addPost, toggleSpot, refresh: fetchPosts };
+    return { posts, loading, error, hasMore, addPost, toggleSpot, refresh: () => fetchPosts(false), loadMore: () => fetchPosts(true) };
 }
