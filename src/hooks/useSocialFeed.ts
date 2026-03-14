@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Post } from '../types/database';
+import { safeStorage } from '../lib/safeStorage';
 
 export function useSocialFeed(gymId: string | null) {
     const [posts, setPosts] = useState<Post[]>([]);
@@ -10,7 +11,7 @@ export function useSocialFeed(gymId: string | null) {
 
     const fetchPosts = useCallback(async (isLoadMore = false) => {
         if (!isLoadMore && posts.length === 0) {
-            const cached = localStorage.getItem('ironmatch_feed_cache');
+            const cached = safeStorage.getItem('ironmatch_feed_cache');
             if (cached) {
                 try {
                     setPosts(JSON.parse(cached));
@@ -43,7 +44,12 @@ export function useSocialFeed(gymId: string | null) {
                 setPosts(prev => [...prev, ...newBatch]);
             } else {
                 setPosts(newBatch);
-                localStorage.setItem('ironmatch_feed_cache', JSON.stringify(newBatch));
+                // Cache only the first 10 posts and strip heavy data to avoid LocalStorage quota issues
+                const cacheData = newBatch.slice(0, 10).map(post => ({
+                    ...post,
+                    content: post.content?.substring(0, 500)
+                }));
+                safeStorage.setItem('ironmatch_feed_cache', JSON.stringify(cacheData));
             }
 
             setHasMore(newBatch.length === 15);

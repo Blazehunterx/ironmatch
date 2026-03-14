@@ -1,4 +1,4 @@
-package com.ironmatch.app;
+package com.mycompany.ironmatch;
 
 import com.getcapacitor.BridgeActivity;
 

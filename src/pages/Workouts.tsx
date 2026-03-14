@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GraduationCap } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { WorkoutPlan, WorkoutLog, GroupSession } from '../types/database';
@@ -12,12 +11,10 @@ import ActiveWorkout from '../components/ActiveWorkout';
 import AIWorkoutGenerator from '../components/AIWorkoutGenerator';
 import GroupWorkoutModal from '../components/GroupWorkoutModal';
 import WorkoutTabNavigation from '../components/workouts/WorkoutTabNavigation';
-import LiftProgressChart from '../components/insights/LiftProgressChart';
 import EmpireShop from '../components/EmpireShop';
 import WorkoutPlanCreator from '../components/workouts/WorkoutPlanCreator';
 import StarterTemplateCard from '../components/workouts/StarterTemplateCard';
 import { STARTER_TEMPLATES } from '../constants/starterTemplates';
-import { SCIENCE_PACKS } from '../constants/sciencePacks';
 
 // Modular Components
 import WorkoutsHeader from '../components/workouts/WorkoutsHeader';
@@ -27,6 +24,8 @@ import WorkoutPlansTab from '../components/workouts/WorkoutPlansTab';
 import CommunityPlansTab from '../components/workouts/CommunityPlansTab';
 import MarketplaceTab from '../components/workouts/MarketplaceTab';
 import HistoryTab from '../components/workouts/HistoryTab';
+import ProgramsTab from '../components/workouts/ProgramsTab';
+import InsightsTab from '../components/workouts/InsightsTab';
 
 type Tab = 'plans' | 'community' | 'programs' | 'marketplace' | 'templates' | 'history' | 'insights';
 
@@ -223,21 +222,6 @@ export default function Workouts() {
                 <WorkoutTabNavigation activeTab={tab} onTabChange={setTab} />
             </div>
 
-            {tab === 'programs' && (
-                <div className="px-4 mb-6">
-                    <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/10 border border-blue-500/20 rounded-3xl p-6 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 rotate-12">
-                            <GraduationCap size={80} className="text-blue-400" />
-                        </div>
-                        <h4 className="text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Elite Engineering</h4>
-                        <h3 className="text-xl font-black text-white mb-2">Jeff Nippard Science Packs</h3>
-                        <p className="text-xs text-gray-400 font-medium leading-relaxed max-w-[80%]">
-                            Evidence-based hypertrophy programs designed for maximum efficiency and scientific precision.
-                        </p>
-                    </div>
-                </div>
-            )}
-
             {/* Modals & Overlays */}
             <WorkoutPlanCreator
                 isOpen={showCreator}
@@ -328,16 +312,7 @@ export default function Workouts() {
                 )}
 
                 {tab === 'programs' && (
-                    <div className="space-y-3">
-                        {SCIENCE_PACKS.map((template, idx) => (
-                            <StarterTemplateCard
-                                key={template.id}
-                                template={template as any}
-                                index={idx}
-                                onUse={useTemplate}
-                            />
-                        ))}
-                    </div>
+                    <ProgramsTab onUseTemplate={useTemplate} />
                 )}
 
                 {tab === 'history' && (
@@ -345,9 +320,7 @@ export default function Workouts() {
                 )}
 
                 {tab === 'insights' && (
-                    <div className="pb-8">
-                        <LiftProgressChart userId={user?.id || ''} />
-                    </div>
+                    <InsightsTab userId={user?.id || ''} />
                 )}
 
                 <AnimatePresence>

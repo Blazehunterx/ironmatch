@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types/database';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { mockUsers } from '../lib/mock';
+import { withTimeout, profileToUser } from '../lib/authUtils';
+import { safeStorage } from '../lib/safeStorage';
 
 interface AuthContextType {
     user: User | null;
@@ -16,51 +18,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Helper for timeout-guarded promises
-const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
-    return Promise.race([
-        promise,
-        new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
-        )
-    ]);
-};
-
-// Convert a Supabase profile row into our User type
-function profileToUser(profile: any): User {
-    return {
-        id: profile.id,
-        name: profile.name || '',
-        email: profile.email || '',
-        home_gym: profile.home_gym || '',
-        home_gym_name: profile.home_gym_name || '',
-        fitness_level: profile.fitness_level || 'Beginner',
-        reliability_streak: profile.reliability_streak || 0,
-        profile_image_url: profile.profile_image_url || `https://api.dicebear.com/7.x/initials/svg?seed=${profile.name || 'U'}`,
-        bio: profile.bio || '',
-        is_trainer: profile.is_trainer || false,
-        goals: profile.goals || [],
-        sub_goals: profile.sub_goals || [],
-        availability: profile.availability || [],
-        weight_kg: profile.weight_kg,
-        height_cm: profile.height_cm,
-        unit_preference: profile.unit_preference || 'lbs',
-        discipline: profile.discipline || 'General Fitness',
-        xp: profile.xp || 0,
-        friends: profile.friends || [],
-        big4: profile.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 },
-        is_training: profile.is_training || false,
-        training_status: profile.training_status || '',
-        last_active_at: profile.last_active_at || '',
-        is_admin: profile.is_admin || false,
-        verification_status: profile.verification_status || 'none',
-        trainer_license_url: profile.trainer_license_url || '',
-        revolut_tag: profile.revolut_tag || '',
-        payout_iban: profile.payout_iban || '',
-        pending_balance: profile.pending_balance || 0,
-    };
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
@@ -69,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (!isSupabaseConfigured) {
             // Fallback to localStorage mock
-            const storedUser = localStorage.getItem('ironmatch_user');
+            const storedUser = safeStorage.getItem('ironmatch_user');
             if (storedUser) setUser(JSON.parse(storedUser));
             setLoading(false);
             return;
@@ -102,22 +59,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log('Auth event:', event, !!session?.user);
 
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-                if (session?.user) {
-                    // Start hydration but don't block the thread
+                if (session?.user && !user) { // Only fetch if we don't already have the user hydrated
                     fetchProfile(session.user.id).then(p => {
                         if (p) setUser(p);
                     }).catch(console.error);
                 }
             } else if (event === 'SIGNED_OUT') {
                 setUser(null);
+                safeStorage.removeItem('ironmatch_user');
             }
         });
 
         return () => subscription.unsubscribe();
     }, []);
 
-    async function fetchProfile(userId: string): Promise<User | null> {
-        console.log('FETCH_PROFILE_START:', userId);
+    async function fetchProfile(userId: string, retries = 3): Promise<User | null> {
+        console.log('FETCH_PROFILE_START:', userId, 'Attempt:', 4 - retries);
         try {
             const { data, error } = await withTimeout(
                 supabase.from('profiles').select('*').eq('id', userId).single() as any,
@@ -126,18 +83,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ) as any;
 
             if (error) {
+                if (retries > 0 && (error.code === 'PGRST116' || error.message.includes('JSON object'))) {
+                    // Profile not found yet (common after signup) or transient error
+                    console.log('Profile not found yet, retrying in 1s...');
+                    await new Promise(r => setTimeout(r, 1000));
+                    return fetchProfile(userId, retries - 1);
+                }
                 console.error('FETCH_PROFILE_DB_ERROR:', error.message, error.details);
                 return null;
             }
             if (!data) {
+                if (retries > 0) {
+                    await new Promise(r => setTimeout(r, 1000));
+                    return fetchProfile(userId, retries - 1);
+                }
                 console.warn('FETCH_PROFILE_EMPTY_RESULT');
                 return null;
             }
             
             console.log('FETCH_PROFILE_SUCCESS:', data.name);
-            return profileToUser(data);
+            const hydratedUser = profileToUser(data);
+            // Optionally persist a small copy to mock storage for ultra-offline recovery
+            try {
+                safeStorage.setItem('ironmatch_user', JSON.stringify(hydratedUser));
+            } catch (e) {}
+            
+            return hydratedUser;
         } catch (err: any) {
             console.error('FETCH_PROFILE_EXCEPTION:', err.message);
+            if (retries > 0) {
+                await new Promise(r => setTimeout(r, 1000));
+                return fetchProfile(userId, retries - 1);
+            }
             return null;
         }
     }
@@ -171,11 +148,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (error) throw new Error(error.message);
         if (data.user) {
-            localStorage.setItem('ironmatch_remembered_email', email);
-            // Hydrate profile with a separate timeout so login button can finish
-            fetchProfile(data.user.id).then(p => {
-                if (p) setUser(p);
-            });
+            try {
+                safeStorage.setItem('ironmatch_remembered_email', email);
+            } catch (e) {}
+
+            // Await profile hydration to prevent ProtectedRoute redirection loops
+            const profile = await fetchProfile(data.user.id);
+            if (profile) {
+                setUser(profile);
+            } else {
+                throw new Error('Successfully logged in, but your iron empire profile could not be retrieved. Please check your connection.');
+            }
         }
     };
 
@@ -184,7 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await supabase.auth.signOut();
         }
         setUser(null);
-        localStorage.removeItem('ironmatch_user');
+        safeStorage.removeItem('ironmatch_user');
     };
 
     const signup = async (userData: Partial<User> & { password?: string }) => {
@@ -207,10 +190,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         availability: userData.availability || [],
                     };
                     mockUsers.push(newUser);
-                    setUser(newUser);
-                    localStorage.setItem('ironmatch_user', JSON.stringify(newUser));
-                    resolve();
-                }, 800);
+                        setUser(newUser);
+                        safeStorage.setItem('ironmatch_user', JSON.stringify(newUser));
+                        resolve();
+                    }, 800);
             });
         }
 
@@ -282,7 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.log('SUCCESS: Profile persistence for:', Object.keys(payload).join(', '));
             }
         } else {
-            localStorage.setItem('ironmatch_user', JSON.stringify(updated));
+            safeStorage.setItem('ironmatch_user', JSON.stringify(updated));
             const idx = mockUsers.findIndex(u => u.id === user.id);
             if (idx !== -1) mockUsers[idx] = updated;
         }

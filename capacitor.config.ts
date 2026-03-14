@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.ironmatch.app',
+  appId: 'com.mycompany.ironmatch',
   appName: 'IronMatch',
   webDir: 'dist',
   server: {
