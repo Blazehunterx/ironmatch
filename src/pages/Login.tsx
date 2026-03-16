@@ -1,15 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { safeStorage } from '../lib/safeStorage';
 import { Dumbbell, ArrowRight } from 'lucide-react';
 
 export default function Login() {
-    const [email, setEmail] = useState(() => localStorage.getItem('ironmatch_remembered_email') || '');
+    const { login, user, loading: authLoading } = useAuth();
+    const [email, setEmail] = useState(() => safeStorage.getItem('ironmatch_remembered_email') || '');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { login } = useAuth();
     const navigate = useNavigate();
+
+    // Redirect if already logged in
+    useEffect(() => {
+        if (!authLoading && user) {
+            console.log('User already authenticated, redirecting to Home');
+            navigate('/');
+        }
+    }, [user, authLoading, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -19,7 +28,14 @@ export default function Login() {
             await login(email, password);
             navigate('/');
         } catch (err: any) {
-            setError(err.message || 'Failed to sign in');
+            console.error('Login error:', err);
+            if (err.message?.toLowerCase().includes('email not confirmed')) {
+                setError('Your email is not confirmed. Please check your inbox or ask your Admin to disable Email Confirmations.');
+            } else if (err.message?.toLowerCase().includes('invalid login credentials')) {
+                setError('Invalid email or password. Please double-check your credentials.');
+            } else {
+                setError(err.message || 'Failed to sign in');
+            }
         } finally {
             setLoading(false);
         }

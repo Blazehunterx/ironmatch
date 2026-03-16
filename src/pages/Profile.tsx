@@ -135,9 +135,9 @@ export default function Profile() {
                 isOpen={isEditingImage} onClose={() => setIsEditingImage(false)}
                 editImageUrl={editImageUrl} profileImageUrl={user.profile_image_url}
                 fileInputRef={fileInputRef} onFileSelect={handleFileSelect}
-                onSave={async () => { 
+                onSave={async (croppedData) => { 
                     try {
-                        await updateUser({ profile_image_url: editImageUrl });
+                        await updateUser({ profile_image_url: croppedData });
                         setIsEditingImage(false);
                     } catch (err) {
                         alert('Failed to save profile image.');

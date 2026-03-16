@@ -34,16 +34,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Check current session with a timeout
         const initAuth = async () => {
+            // Optimistic Recovery: Try to get user from safeStorage immediately
+            try {
+                const cached = safeStorage.getItem('ironmatch_user');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    setUser(parsed);
+                    // If we have a cache, we can set loading to false earlier to show UI
+                    setLoading(false);
+                }
+            } catch (e) {}
+
             try {
                 const { data: { session } } = await withTimeout(
                     supabase.auth.getSession(),
-                    3000,
+                    5000,
                     'Auth session timeout'
                 );
 
                 if (session?.user) {
                     const profile = await fetchProfile(session.user.id);
                     if (profile) setUser(profile);
+                } else {
+                    // No session, clear any stale cached user
+                    setUser(null);
+                    safeStorage.removeItem('ironmatch_user');
                 }
             } catch (err) {
                 console.warn('Auth init timeout/error:', err);
@@ -59,14 +74,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log('Auth event:', event, !!session?.user);
 
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-                if (session?.user && !user) { // Only fetch if we don't already have the user hydrated
-                    fetchProfile(session.user.id).then(p => {
-                        if (p) setUser(p);
-                    }).catch(console.error);
+                if (session?.user) {
+                    // Only fetch if we don't have a user OR if it's a different user
+                    if (!user || user.id !== session.user.id) {
+                        const profile = await fetchProfile(session.user.id);
+                        if (profile) setUser(profile);
+                    }
                 }
             } else if (event === 'SIGNED_OUT') {
                 setUser(null);
-                safeStorage.removeItem('ironmatch_user');
+                safeStorage.clear(); // Nuclear option on sign-out to fix quota issues for next user
             }
         });
 
@@ -77,12 +94,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('FETCH_PROFILE_START:', userId, 'Attempt:', 4 - retries);
         try {
             const { data, error } = await withTimeout(
-                supabase.from('profiles').select('*').eq('id', userId).single() as any,
-                8000,
-                'Profile fetch timed out (8s limit)'
+                supabase.from('profiles').select('*').eq('id', userId).maybeSingle() as any,
+                15000,
+                'Profile fetch timed out (15s limit)'
             ) as any;
 
             if (error) {
+                // Handle specific Supabase/Abort errors
+                if (error.message?.includes('AbortError') || error.message?.includes('Lock broken')) {
+                    console.warn('Profile fetch lock conflict, retrying...');
+                    await new Promise(r => setTimeout(r, 500));
+                    return fetchProfile(userId, retries); // Don't decrement retries for sync/lock issues
+                }
+
                 if (retries > 0 && (error.code === 'PGRST116' || error.message.includes('JSON object'))) {
                     // Profile not found yet (common after signup) or transient error
                     console.log('Profile not found yet, retrying in 1s...');
@@ -94,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
             if (!data) {
                 if (retries > 0) {
-                    await new Promise(r => setTimeout(r, 1000));
+                    await new Promise(r => setTimeout(r, 1500));
                     return fetchProfile(userId, retries - 1);
                 }
                 console.warn('FETCH_PROFILE_EMPTY_RESULT');
@@ -110,9 +134,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             
             return hydratedUser;
         } catch (err: any) {
+            if (err.message?.includes('Lock broken')) {
+                await new Promise(r => setTimeout(r, 500));
+                return fetchProfile(userId, retries);
+            }
             console.error('FETCH_PROFILE_EXCEPTION:', err.message);
             if (retries > 0) {
-                await new Promise(r => setTimeout(r, 1000));
+                await new Promise(r => setTimeout(r, 1500));
                 return fetchProfile(userId, retries - 1);
             }
             return null;
@@ -127,8 +155,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     const foundUser = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
                     if (foundUser) {
                         setUser(foundUser);
-                        localStorage.setItem('ironmatch_user', JSON.stringify(foundUser));
-                        localStorage.setItem('ironmatch_remembered_email', foundUser.email);
+                        safeStorage.setItem('ironmatch_user', JSON.stringify(foundUser));
+                        safeStorage.setItem('ironmatch_remembered_email', foundUser.email);
                         resolve();
                     } else {
                         reject(new Error('User not found. Try alex@example.com'));
@@ -140,25 +168,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const sanitizedEmail = email.trim().toLowerCase();
         const sanitizedPassword = password.trim();
 
-        const { data, error } = await withTimeout(
-            supabase.auth.signInWithPassword({ email: sanitizedEmail, password: sanitizedPassword }),
-            10000,
-            'Sign-in timed out. Please check your connection and refresh.'
-        ) as any;
+        setLoading(true);
+        try {
+            const { data, error } = await withTimeout(
+                supabase.auth.signInWithPassword({ email: sanitizedEmail, password: sanitizedPassword }),
+                10000,
+                'Sign-in timed out. Please check your connection and refresh.'
+            ) as any;
 
-        if (error) throw new Error(error.message);
-        if (data.user) {
-            try {
-                safeStorage.setItem('ironmatch_remembered_email', email);
-            } catch (e) {}
+            if (error) throw new Error(error.message);
 
-            // Await profile hydration to prevent ProtectedRoute redirection loops
-            const profile = await fetchProfile(data.user.id);
-            if (profile) {
-                setUser(profile);
-            } else {
-                throw new Error('Successfully logged in, but your iron empire profile could not be retrieved. Please check your connection.');
+            if (data.user) {
+                try {
+                    safeStorage.setItem('ironmatch_remembered_email', email);
+                } catch (e) {}
+
+                // Await profile hydration BEFORE finishing loading state
+                let profile = await fetchProfile(data.user.id);
+                
+                if (!profile) {
+                    console.warn('Profile missing for authenticated user. Attempting auto-creation...');
+                    const { data: profileData, error: profileError } = await supabase
+                        .from('profiles')
+                        .upsert({
+                            id: data.user.id,
+                            name: data.user.user_metadata?.name || email.split('@')[0],
+                            email: email,
+                            fitness_level: 'Beginner',
+                            xp: 0
+                        })
+                        .select()
+                        .maybeSingle();
+
+                    if (!profileError && profileData) {
+                        console.info('Auto-created profile successfully.');
+                        profile = profileToUser(profileData);
+                    }
+                }
+
+                if (profile) {
+                    setUser(profile);
+                } else {
+                    throw new Error('Your account exists, but we couldn\'t load your Iron Empire profile. Please refresh or contact support.');
+                }
             }
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -169,6 +224,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         safeStorage.removeItem('ironmatch_user');
     };
+
+    async function uploadProfileImage(base64: string, userId: string): Promise<string> {
+        // Convert base64 to blob
+        const base64Data = base64.split(',')[1];
+        const contentType = base64.split(';')[0].split(':')[1];
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: contentType });
+
+        const fileName = `${userId}_${Date.now()}.png`;
+
+        // Upload to storage
+        const { data, error } = await supabase.storage
+            .from('avatars')
+            .upload(fileName, blob, {
+                contentType: contentType,
+                cacheControl: '3600',
+                upsert: true
+            });
+
+        if (error) throw error;
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(fileName);
+
+        return publicUrl;
+    }
 
     const signup = async (userData: Partial<User> & { password?: string }) => {
         if (!isSupabaseConfigured) {
@@ -201,30 +289,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const sanitizedName = (userData.name || '').trim();
         const sanitizedPassword = (userData.password || '').trim();
 
-        // Real Supabase signup
-        const { data, error } = await supabase.auth.signUp({
-            email: sanitizedEmail,
-            password: sanitizedPassword,
-            options: {
-                data: {
-                    name: sanitizedName,
+        setLoading(true);
+        try {
+            // Real Supabase signup
+            const { data, error } = await supabase.auth.signUp({
+                email: sanitizedEmail,
+                password: sanitizedPassword,
+                options: {
+                    data: {
+                        name: sanitizedName,
+                    },
                 },
-            },
-        });
+            });
 
-        if (error) throw new Error(error.message);
+            if (error) throw new Error(error.message);
 
-        // After signup, update the auto-created profile with the name
-        if (data.user) {
-            if (userData.email) {
-                localStorage.setItem('ironmatch_remembered_email', userData.email);
+            // After signup, ensure profile exists with the name
+            if (data.user) {
+                if (userData.email) {
+                    safeStorage.setItem('ironmatch_remembered_email', userData.email);
+                }
+                
+                const { error: upsertError } = await supabase.from('profiles').upsert({
+                    id: data.user.id,
+                    name: userData.name || '',
+                    email: sanitizedEmail,
+                    fitness_level: userData.fitness_level || 'Beginner',
+                    home_gym: userData.home_gym || '',
+                    profile_image_url: userData.profile_image_url || `https://api.dicebear.com/7.x/initials/svg?seed=${userData.name || 'U'}`
+                });
+
+                if (upsertError) console.error('SIGNUP_PROFILE_UPSERT_ERROR:', upsertError);
+
+                const profile = await fetchProfile(data.user.id);
+                if (profile) setUser(profile);
             }
-            await supabase.from('profiles').update({
-                name: userData.name || '',
-            }).eq('id', data.user.id);
-
-            const profile = await fetchProfile(data.user.id);
-            if (profile) setUser(profile);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -240,12 +341,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(updated);
 
         if (isSupabaseConfigured) {
-            // Persist to Supabase - only send the keys present in userData
-            // This prevents massive payloads if only a small field changed
-            // and ensures large fields like profile_image_url are only sent when they actually change.
             const payload: any = {};
+            
+            // If profile_image_url is base64, upload it first
+            if (userData.profile_image_url?.startsWith('data:image')) {
+                try {
+                    const publicUrl = await uploadProfileImage(userData.profile_image_url, user.id);
+                    payload.profile_image_url = publicUrl;
+                    updated.profile_image_url = publicUrl;
+                    setUser(updated); // Update again with the real URL
+                } catch (err) {
+                    console.error('IMAGE_UPLOAD_ERROR:', err);
+                    throw err;
+                }
+            }
+
             Object.keys(userData).forEach(key => {
-                // Special handling for big4 to ensure the merged version is sent
+                if (key === 'profile_image_url' && payload.profile_image_url) return; // Already handled
                 if (key === 'big4') {
                     payload[key] = updated.big4;
                 } else {

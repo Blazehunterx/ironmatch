@@ -1,6 +1,8 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Search, Zap, MapPin, Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Zap, MapPin, Check, Loader2, Navigation } from 'lucide-react';
+import { searchAddress, GeocodeResult } from '../../lib/geocoding';
+import { useGyms } from '../../context/GymContext';
 
 interface GymStepProps {
     allGyms: any[];
@@ -18,6 +20,32 @@ const GymStep: React.FC<GymStepProps> = ({
     allGyms, homeGym, searchGymQuery, isLoadingGyms, locationStatus,
     onSetHomeGym, onSearchChange, onRefresh, onAddCustom
 }) => {
+    const { searchGymsByLocation } = useGyms();
+    const [geoResults, setGeoResults] = React.useState<GeocodeResult[]>([]);
+    const [isGeoLoading, setIsGeoLoading] = React.useState(false);
+
+    React.useEffect(() => {
+        if (searchGymQuery.length < 3) {
+            setGeoResults([]);
+            return;
+        }
+
+        const handler = setTimeout(async () => {
+            setIsGeoLoading(true);
+            const res = await searchAddress(searchGymQuery);
+            setGeoResults(res);
+            setIsGeoLoading(false);
+        }, 500);
+
+        return () => clearTimeout(handler);
+    }, [searchGymQuery]);
+
+    const handleSelectGeo = async (res: GeocodeResult) => {
+        onSearchChange(''); // Clear filter to show all gyms nearby
+        setGeoResults([]);
+        await searchGymsByLocation(res.lat, res.lng);
+    };
+
     return (
         <div className="flex-1 flex flex-col">
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
@@ -27,15 +55,40 @@ const GymStep: React.FC<GymStepProps> = ({
 
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}
                 className="flex items-center gap-2 mb-4">
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 flex items-center gap-3 flex-1">
-                    <Search size={18} className="text-gray-500" />
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 flex items-center gap-3 flex-1 relative">
+                    {isGeoLoading ? <Loader2 size={18} className="text-lime animate-spin" /> : <Search size={18} className="text-gray-500" />}
                     <input
                         type="text"
-                        placeholder="Search for a gym..."
+                        placeholder="Search for a gym or city..."
                         value={searchGymQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
                         className="bg-transparent text-white text-sm w-full focus:outline-none placeholder:text-gray-600 font-bold"
                     />
+
+                    <AnimatePresence>
+                        {geoResults.length > 0 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 5 }}
+                                className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl z-50"
+                            >
+                                <div className="p-2 border-b border-gray-800 bg-gray-900/50">
+                                    <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest px-2">Locations</p>
+                                </div>
+                                {geoResults.map((r, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => handleSelectGeo(r)}
+                                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 text-left transition-colors border-b border-gray-800 last:border-0"
+                                    >
+                                        <Navigation size={12} className="text-lime shrink-0" />
+                                        <span className="text-[11px] text-gray-300 truncate">{r.name}</span>
+                                    </button>
+                                ))}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
                 <button
                     onClick={onRefresh}
@@ -62,7 +115,7 @@ const GymStep: React.FC<GymStepProps> = ({
                 ) : (
                     <>
                         {allGyms
-                            .filter(g => g.name.toLowerCase().includes(searchGymQuery.toLowerCase()))
+                            .filter(g => searchGymQuery === '' || g.name.toLowerCase().includes(searchGymQuery.toLowerCase()))
                             .slice(0, 50)
                             .map((gym) => (
                                 <button

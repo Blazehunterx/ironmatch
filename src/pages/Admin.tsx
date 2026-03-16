@@ -8,6 +8,7 @@ import { ShieldAlert, Zap, Loader2 } from 'lucide-react';
 import AdminHeader from '../components/admin/AdminHeader';
 import GymOwnerDashboard from '../components/admin/GymOwnerDashboard';
 import VerificationQueue from '../components/admin/VerificationQueue';
+import AdminUserManagement from '../components/admin/AdminUserManagement';
 
 export default function Admin() {
     const { user: currentUser, updateUser } = useAuth();
@@ -24,7 +25,8 @@ export default function Admin() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Apex-Secret': 'IRONMATCH_INTERNAL_PULSE_2026'
+                    'Apex-Secret': 'IRONMATCH_INTERNAL_PULSE_2026',
+                    'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
                 },
                 body: JSON.stringify({})
             });
@@ -58,7 +60,7 @@ export default function Admin() {
             if (currentUser?.is_admin) {
                 const { data: requests } = await supabase
                     .from('profiles')
-                    .select('*')
+                    .select('id, name, email, verification_status, trainer_license_url, profile_image_url, is_founding_trainer')
                     .eq('verification_status', 'pending');
 
                 if (requests) {
@@ -195,6 +197,10 @@ export default function Admin() {
                         onVerify={handleVerify}
                         onToggleFounding={toggleFoundingStatus}
                     />
+                )}
+
+                {currentUser?.is_admin && (
+                    <AdminUserManagement />
                 )}
             </main>
         </div>

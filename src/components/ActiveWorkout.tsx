@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useGyms } from '../context/GymContext';
 import { verifyGymPresence } from '../lib/location';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { safeStorage } from '../lib/safeStorage';
 import PRCelebration from './PRCelebration';
 
 // Modular Components
@@ -36,7 +37,7 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
 
     // Persistence: Hydrate from localStorage on mount
     useEffect(() => {
-        const saved = localStorage.getItem(`active_workout_${plan.id}`);
+        const saved = safeStorage.getItem(`active_workout_${plan.id}`);
         if (saved) {
             try {
                 const { exercises: savedEx, elapsed: savedElapsed, currentIdx: savedIdx } = JSON.parse(saved);
@@ -52,11 +53,11 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
     // Persistence: Save to localStorage on change
     useEffect(() => {
         if (finished) {
-            localStorage.removeItem(`active_workout_${plan.id}`);
+            safeStorage.removeItem(`active_workout_${plan.id}`);
             return;
         }
         const state = { exercises, elapsed, currentIdx };
-        localStorage.setItem(`active_workout_${plan.id}`, JSON.stringify(state));
+        safeStorage.setItem(`active_workout_${plan.id}`, JSON.stringify(state));
     }, [exercises, elapsed, currentIdx, finished, plan.id]);
 
     // Timer

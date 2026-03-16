@@ -1,4 +1,5 @@
 import { useState, useEffect, createContext, useContext, useCallback } from 'react';
+import { safeStorage } from '../lib/safeStorage';
 import { Gym } from '../types/database';
 import { GeoCoords, getCurrentPosition, haversineDistance } from '../lib/location';
 import { mockGyms as fallbackGyms } from '../lib/mock';
@@ -16,6 +17,7 @@ interface GymContextType {
     getDistance: (gym: Gym) => number | null;
     findGym: (id: string) => Gym | undefined;
     getActiveWar: (gymId: string) => Promise<any | null>;
+    searchGymsByLocation: (lat: number, lng: number) => Promise<void>;
 }
 
 const GymContext = createContext<GymContextType | null>(null);
@@ -79,7 +81,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     // Fetch custom gyms from Supabase
     const fetchDBGyms = useCallback(async () => {
         if (!isSupabaseConfigured) {
-            const stored = localStorage.getItem('ironmatch_custom_gyms');
+            const stored = safeStorage.getItem('ironmatch_custom_gyms');
             if (stored) setCustomGyms(JSON.parse(stored));
             return;
         }
@@ -178,7 +180,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         } else {
             const updated = [...customGyms, newGym];
             setCustomGyms(updated);
-            localStorage.setItem('ironmatch_custom_gyms', JSON.stringify(updated));
+            safeStorage.setItem('ironmatch_custom_gyms', JSON.stringify(updated));
         }
 
         return newId;
@@ -220,6 +222,15 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         return data;
     }, []);
 
+    const searchGymsByLocation = useCallback(async (lat: number, lng: number) => {
+        setIsLoadingGyms(true);
+        const center = { lat, lng };
+        const nearby = await fetchNearbyGyms(center, searchRadius * 1000);
+        const withCounts = await fetchMemberCounts(nearby);
+        setOsmGyms(withCounts);
+        setIsLoadingGyms(false);
+    }, [searchRadius, fetchMemberCounts]);
+
     return (
         <GymContext.Provider value={{
             gyms: allGyms,
@@ -233,6 +244,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
             getDistance,
             findGym,
             getActiveWar,
+            searchGymsByLocation
         }}>
             {children}
         </GymContext.Provider>

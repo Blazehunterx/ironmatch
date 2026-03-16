@@ -16,6 +16,7 @@ import GymLeaderboard from '../components/arena/GymLeaderboard';
 import DuelList from '../components/arena/DuelList';
 import QuestSection from '../components/arena/QuestSection';
 import DuelCreator from '../components/arena/DuelCreator';
+import LocationSearch from '../components/arena/LocationSearch';
 
 type Tab = ArenaTab;
 
@@ -134,6 +135,7 @@ export default function Arena() {
     return (
         <div className="flex flex-col min-h-screen pb-32">
             <ArenaHeader user={user} />
+            <LocationSearch />
 
             <ArenaTabNavigation 
                 activeTab={activeTab} 

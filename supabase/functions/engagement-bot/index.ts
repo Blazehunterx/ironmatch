@@ -3,18 +3,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 console.log("Apex Engagement Bot: Deployment Finalized");
 
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, apex-secret',
+}
+
 serve(async (req) => {
     try {
         // 1. Initial Checks
         if (req.method === 'OPTIONS') {
-            return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*' } })
+            return new Response('ok', { headers: corsHeaders })
         }
 
         const apexSecret = req.headers.get('Apex-Secret');
         if (apexSecret !== 'IRONMATCH_INTERNAL_PULSE_2026') {
             return new Response(JSON.stringify({ error: "Unauthorized Pulse" }), {
                 status: 401,
-                headers: { 'Content-Type': 'application/json' }
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
         }
 
@@ -98,14 +103,14 @@ serve(async (req) => {
             post: content,
             ai_generated: !!geminiKey
         }), {
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
 
     } catch (err: any) {
         console.error("Bot Failure:", err.message);
         return new Response(JSON.stringify({ error: err.message }), {
             status: 500,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
     }
 })
