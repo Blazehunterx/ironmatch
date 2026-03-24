@@ -49,7 +49,11 @@ export function useSocialFeed(gymId: string | null) {
                     ...post,
                     content: post.content?.substring(0, 500)
                 }));
-                safeStorage.setItem('ironmatch_feed_cache', JSON.stringify(cacheData));
+                try {
+                    safeStorage.setItem('ironmatch_feed_cache', JSON.stringify(cacheData));
+                } catch (e) {
+                    console.warn('Feed caching failed:', e);
+                }
             }
 
             setHasMore(newBatch.length === 15);

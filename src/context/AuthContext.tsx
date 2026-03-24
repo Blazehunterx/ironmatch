@@ -240,7 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const fileName = `${userId}_${Date.now()}.png`;
 
         // Upload to storage
-        const { data, error } = await supabase.storage
+        const { error } = await supabase.storage
             .from('avatars')
             .upload(fileName, blob, {
                 contentType: contentType,

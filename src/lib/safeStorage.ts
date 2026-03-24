@@ -24,44 +24,38 @@ export const safeStorage = {
         try {
             localStorage.setItem(key, value);
         } catch (e) {
-            if (e instanceof Error && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
+            if (e instanceof Error && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.message.includes('quota'))) {
                 console.warn(`[STORAGE_FULL] Attempting to save ${key} (${Math.round(value.length / 1024)} KB). Pruning...`);
                 
-                // Calculate current size of non-essential data
-                let prunedCount = 0;
+                // 1. Prune all non-essential keys first
                 NON_ESSENTIAL_KEYS.forEach(k => {
-                    if (k !== key && localStorage.getItem(k)) {
-                        localStorage.removeItem(k);
-                        prunedCount++;
-                    }
+                    localStorage.removeItem(k);
                 });
 
-                if (prunedCount > 0) {
-                    console.info(`[STORAGE_PRUNED] Removed ${prunedCount} non-essential items.`);
-                    try {
-                        localStorage.setItem(key, value);
-                        return;
-                    } catch (retryError) {
-                        console.error('[STORAGE_CRITICAL] Pruning failed to make enough space.');
-                    }
+                // 2. Try again
+                try {
+                    localStorage.setItem(key, value);
+                    console.info('[STORAGE_RECOVERED] Successfully saved after pruning non-essential items.');
+                    return;
+                } catch (retryError) {
+                    console.warn('[STORAGE_PRUNE_INSUFFICIENT] Pruning non-essential was not enough.');
                 }
 
-                // NUCLEAR OPTION: If this is an auth token or essential user data, we MUST clear everything else.
+                // 3. NUCLEAR OPTION: If this is critical (auth/user), clear EVERYTHING
                 if (key.includes('auth') || key.includes('token') || key === 'ironmatch_user') {
                     console.error('[STORAGE_NUCLEAR] Clearing ALL storage to ensure auth persistence.');
                     localStorage.clear();
                     try {
                         localStorage.setItem(key, value);
-                        console.info('[STORAGE_RECOVERED] Successfully saved critical key after nuclear clear.');
                         return;
                     } catch (finalError) {
-                        console.error('[STORAGE_DEAD] Even nuclear clear could not save key:', key);
-                        throw finalError; // Rethrow so the caller (Supabase/Auth) knows we are dead
+                        console.error('[STORAGE_DEAD] Even nuclear clear failed.');
                     }
                 }
                 
-                // For non-critical data, we just swallow the error or throw to be safe
-                throw e;
+                // For non-critical data, just ignore the error so the app doesn't crash
+                console.error(`[STORAGE_QUOTA_FAIL] Could not save ${key}. Skipping cache.`);
+                return;
             }
             throw e; // Non-quota error, throw it
         }

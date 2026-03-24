@@ -20,7 +20,7 @@ const GymStep: React.FC<GymStepProps> = ({
     allGyms, homeGym, searchGymQuery, isLoadingGyms, locationStatus,
     onSetHomeGym, onSearchChange, onRefresh, onAddCustom
 }) => {
-    const { searchGymsByLocation } = useGyms();
+    const { searchGymsByLocation, userLocation } = useGyms();
     const [geoResults, setGeoResults] = React.useState<GeocodeResult[]>([]);
     const [isGeoLoading, setIsGeoLoading] = React.useState(false);
 
@@ -32,7 +32,7 @@ const GymStep: React.FC<GymStepProps> = ({
 
         const handler = setTimeout(async () => {
             setIsGeoLoading(true);
-            const res = await searchAddress(searchGymQuery);
+            const res = await searchAddress(searchGymQuery, userLocation || undefined);
             setGeoResults(res);
             setIsGeoLoading(false);
         }, 500);
