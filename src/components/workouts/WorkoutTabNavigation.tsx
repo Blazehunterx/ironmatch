@@ -19,19 +19,23 @@ const WorkoutTabNavigation: React.FC<WorkoutTabNavigationProps> = ({ activeTab, 
     ];
 
     return (
-        <div className="flex bg-gray-900 rounded-xl p-1 border border-gray-800">
-            {tabs.map(t => (
-                <button
-                    key={t.key}
-                    onClick={() => onTabChange(t.key)}
-                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${activeTab === t.key
-                        ? 'bg-lime text-oled'
-                        : 'text-gray-500 hover:text-gray-300'
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide py-1 no-scrollbar">
+            {tabs.map(t => {
+                const isActive = activeTab === t.key;
+                return (
+                    <button
+                        key={t.key}
+                        onClick={() => onTabChange(t.key)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
+                            isActive
+                                ? 'bg-lime text-oled shadow-[0_0_12px_rgba(50,255,50,0.3)] scale-[1.02]'
+                                : 'bg-gray-900/80 border border-gray-800 text-gray-400 hover:text-white hover:border-gray-700 active:scale-95'
                         }`}
-                >
-                    {t.label}
-                </button>
-            ))}
+                    >
+                        {t.label}
+                    </button>
+                );
+            })}
         </div>
     );
 };

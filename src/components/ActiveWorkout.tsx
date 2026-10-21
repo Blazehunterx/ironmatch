@@ -168,12 +168,16 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
 
         const isMarkingComplete = !exercise.completed;
 
-        setExercises(prev => prev.map(e =>
-            e.id === id ? { ...e, completed: isMarkingComplete } : e
-        ));
+        setExercises(prev => prev.map(e => {
+            if (e.id === id) {
+                const updatedSets = e.setDetails ? e.setDetails.map(s => ({ ...s, completed: isMarkingComplete })) : undefined;
+                return { ...e, completed: isMarkingComplete, setDetails: updatedSets };
+            }
+            return e;
+        }));
 
         // PR Detection
-        if (isMarkingComplete && exercise.weight && user?.big4) {
+        if (isMarkingComplete && user?.big4) {
             const name = exercise.name.toLowerCase();
             let prKey: 'bench' | 'squat' | 'deadlift' | 'ohp' | null = null;
 
@@ -182,17 +186,26 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
             else if (name.includes('deadlift')) prKey = 'deadlift';
             else if (name.includes('overhead press') || name.includes('ohp')) prKey = 'ohp';
 
-            if (prKey && exercise.weight > (user.big4[prKey] || 0)) {
-                const oldWeight = user.big4[prKey] || 0;
-                const newWeight = exercise.weight;
+            if (prKey) {
+                let maxWeight = exercise.weight || 0;
+                if (exercise.setDetails && exercise.setDetails.length > 0) {
+                    exercise.setDetails.forEach(s => {
+                        if ((s.weight || 0) > maxWeight) maxWeight = s.weight || 0;
+                    });
+                }
 
-                setActivePR({ exercise: exercise.name, newWeight, oldWeight });
-                setPrs(prev => [...prev.filter(p => p.exercise !== exercise.name), { exercise: exercise.name, newWeight }]);
+                if (maxWeight > (user.big4[prKey] || 0)) {
+                    const oldWeight = user.big4[prKey] || 0;
+                    const newWeight = maxWeight;
 
-                updateUser({
-                    big4: { ...user.big4, [prKey]: newWeight },
-                    xp: (user.xp || 0) + 500
-                });
+                    setActivePR({ exercise: exercise.name, newWeight, oldWeight });
+                    setPrs(prev => [...prev.filter(p => p.exercise !== exercise.name), { exercise: exercise.name, newWeight }]);
+
+                    updateUser({
+                        big4: { ...user.big4, [prKey]: newWeight },
+                        xp: (user.xp || 0) + 500
+                    });
+                }
             }
         }
     };
@@ -228,10 +241,72 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
 
         const totalVolume = exercises.reduce((acc, ex) => {
             if (ex.setDetails && ex.setDetails.length > 0) {
-                return acc + ex.setDetails.reduce((sAcc, s) => sAcc + ((s.completed ?? ex.completed) ? (s.reps * (s.weight || 0)) : 0), 0);
+                return acc + ex.setDetails.reduce((sAcc, s) => sAcc + ((s.completed || ex.completed) ? (s.reps * (s.weight || 0)) : 0), 0);
             }
             return acc + (ex.completed ? (ex.sets * ex.reps * (ex.weight || 0)) : 0);
         }, 0);
+
+        // Check for new Big 4 PRs across all completed exercises and sets
+        let updatedBig4 = { ...(user?.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 }) };
+        const detectedPRs: { exercise: string; newWeight: number }[] = [...prs];
+        let bonusPRXP = 0;
+
+        exercises.forEach(ex => {
+            const name = ex.name.toLowerCase();
+            let prKey: 'bench' | 'squat' | 'deadlift' | 'ohp' | null = null;
+            if (name.includes('bench')) prKey = 'bench';
+            else if (name.includes('squat')) prKey = 'squat';
+            else if (name.includes('deadlift')) prKey = 'deadlift';
+            else if (name.includes('overhead press') || name.includes('ohp') || name.includes('military')) prKey = 'ohp';
+
+            if (prKey) {
+                let maxLift = 0;
+                if (ex.setDetails && ex.setDetails.length > 0) {
+                    ex.setDetails.forEach(s => {
+                        if ((s.completed || ex.completed) && (s.weight || 0) > maxLift) {
+                            maxLift = s.weight || 0;
+                        }
+                    });
+                } else if (ex.completed && ex.weight) {
+                    maxLift = ex.weight;
+                }
+
+                if (maxLift > (updatedBig4[prKey] || 0)) {
+                    updatedBig4[prKey] = maxLift;
+                    bonusPRXP += 250;
+                    if (!detectedPRs.some(p => p.exercise === ex.name)) {
+                        detectedPRs.push({ exercise: ex.name, newWeight: maxLift });
+                    }
+                }
+            }
+        });
+
+        if (detectedPRs.length > prs.length) {
+            setPrs(detectedPRs);
+        }
+
+        // Base XP (+100 XP) + PR bonus
+        let xpGained = 100 + bonusPRXP;
+        let isVerifiedLocation = false;
+
+        if (user) {
+            if (user.home_gym && verifyLocation) {
+                const gym = findGym(user.home_gym);
+                if (gym) {
+                    isVerifiedLocation = await verifyGymPresence(gym.lat, gym.lng);
+                    if (isVerifiedLocation) {
+                        xpGained += 150;
+                    }
+                }
+            }
+
+            const currentStreak = user.reliability_streak || 0;
+            updateUser({
+                xp: (user.xp || 0) + xpGained,
+                reliability_streak: currentStreak + 1,
+                big4: updatedBig4
+            });
+        }
 
         if (isSupabaseConfigured && user) {
             try {
@@ -247,17 +322,6 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
 
                 if (user.home_gym) {
                     const activeWar = await getActiveWar(user.home_gym);
-                    const gym = findGym(user.home_gym);
-
-                    let isVerifiedLocation = false;
-                    if (verifyLocation && gym) {
-                        isVerifiedLocation = await verifyGymPresence(gym.lat, gym.lng);
-                        if (!isVerifiedLocation) {
-                            console.warn('Anti-Cheat: You are not within 600m of the gym.');
-                        } else {
-                            updateUser({ xp: (user.xp || 0) + 150 });
-                        }
-                    }
 
                     await supabase.from('activity_logs').insert({
                         user_id: user.id,

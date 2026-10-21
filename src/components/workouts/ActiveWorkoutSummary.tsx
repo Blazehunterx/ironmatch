@@ -6,9 +6,9 @@ import {
 } from 'lucide-react';
 import { WorkoutExercise } from '../../types/database';
 import { useAuth } from '../../context/AuthContext';
-import { getRankFromLifts } from '../../lib/gamification';
 import { compressImage } from '../../lib/imageCompression';
 import { uploadToStorage } from '../../lib/storageUpload';
+import { rankFor, TierBadge } from '../profile/RankBadge';
 
 interface ActiveWorkoutSummaryProps {
     planName: string;
@@ -29,11 +29,15 @@ export default function ActiveWorkoutSummary({
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const completedExercises = exercises.filter(e => e.completed);
-    const totalVolume = exercises.reduce((acc, ex) =>
-        acc + (ex.completed ? (ex.sets * ex.reps * (ex.weight || 0)) : 0), 0
-    );
+    const totalVolume = exercises.reduce((acc, ex) => {
+        if (ex.setDetails && ex.setDetails.length > 0) {
+            return acc + ex.setDetails.reduce((sAcc, s) => sAcc + ((s.completed || ex.completed) ? (s.reps * (s.weight || 0)) : 0), 0);
+        }
+        return acc + (ex.completed ? (ex.sets * ex.reps * (ex.weight || 0)) : 0);
+    }, 0);
     const unit = user?.unit_preference || 'kg';
-    const rank = getRankFromLifts(user?.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 }, unit);
+    const totalKg = ((user?.big4?.bench || 0) + (user?.big4?.squat || 0) + (user?.big4?.deadlift || 0) + (user?.big4?.ohp || 0)) || 380;
+    const rank = rankFor(totalKg);
 
     const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -124,7 +128,7 @@ export default function ActiveWorkoutSummary({
                         <div>
                             <div className="flex items-center gap-1.5">
                                 <span className="text-xs font-black text-white">{user?.name || 'Iron Lifter'}</span>
-                                <span className="text-[10px]">{rank.icon}</span>
+                                <TierBadge tier={rank.tier} size="sm" />
                             </div>
                             <span className="text-[9px] text-lime font-bold uppercase tracking-wider block">
                                 {rank.name} Tier

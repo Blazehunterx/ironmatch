@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, Plus, Trash2, Utensils, Flame,
-    Check, BarChart2, Edit3, X, Share2, ScanLine
+    Check, BarChart2, Edit3, X, Share2, ScanLine, ChevronLeft
 } from 'lucide-react';
 import { FoodItem } from '../constants/foodDatabase';
 import {
@@ -29,6 +30,7 @@ const CATEGORIES: { id: CategoryFilter; label: string; icon: string }[] = [
 ];
 
 export default function Nutrition() {
+    const navigate = useNavigate();
     const { showToast } = useToast();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all');
@@ -120,11 +122,20 @@ export default function Nutrition() {
         <div className="p-4 space-y-6 pb-24 max-w-md mx-auto">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
-                        <span className="text-lime">RATIONS</span> & FUEL
-                    </h1>
-                    <p className="text-xs text-gray-400">Searchable food database · Bali Warung staples & macros</p>
+                <div className="flex items-center gap-2.5">
+                    <button 
+                        onClick={() => navigate('/workouts')}
+                        className="p-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white active:scale-95 transition-all"
+                        title="Back to Train"
+                    >
+                        <ChevronLeft size={18} />
+                    </button>
+                    <div>
+                        <h1 className="text-xl font-black text-white tracking-tight flex items-center gap-1.5">
+                            <span className="text-lime">RATIONS</span> & FUEL
+                        </h1>
+                        <p className="text-[10px] text-gray-400">Food database & macros</p>
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <button

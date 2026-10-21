@@ -18,6 +18,19 @@ interface ProfileSettingsModalProps {
 const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
     isOpen, onClose, isTrainer, onSaveTrainer, unitPref, onSetUnitPref, editBig4, onSetBig4, onSaveBig4
 }) => {
+    const handleSwitchUnit = (newUnit: 'lbs' | 'kg') => {
+        if (newUnit === unitPref) return;
+        const factor = newUnit === 'lbs' ? 2.20462 : 1 / 2.20462;
+        const convertedLifts = {
+            bench: editBig4.bench ? Math.round(editBig4.bench * factor) : 0,
+            squat: editBig4.squat ? Math.round(editBig4.squat * factor) : 0,
+            deadlift: editBig4.deadlift ? Math.round(editBig4.deadlift * factor) : 0,
+            ohp: editBig4.ohp ? Math.round(editBig4.ohp * factor) : 0,
+        };
+        onSetBig4(convertedLifts);
+        onSetUnitPref(newUnit);
+    };
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -45,8 +58,8 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                                 <h4 className="font-semibold text-white mb-2">Units</h4>
                                 <div className="flex gap-2">
                                     {(['lbs', 'kg'] as const).map(u => (
-                                        <button key={u} onClick={() => onSetUnitPref(u)}
-                                            className={`flex-1 py-2 rounded-xl text-xs font-bold ${unitPref === u ? 'bg-lime text-oled shadow-lg' : 'bg-gray-800 text-gray-500'}`}>{u.toUpperCase()}</button>
+                                        <button key={u} onClick={() => handleSwitchUnit(u)}
+                                            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${unitPref === u ? 'bg-lime text-oled shadow-lg' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>{u.toUpperCase()}</button>
                                     ))}
                                 </div>
                             </div>

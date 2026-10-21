@@ -1,4 +1,5 @@
-import { Plus, Users, Dumbbell } from 'lucide-react';
+import { Plus, Users, Dumbbell, Utensils } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { RankPill } from '../profile/RankBadge';
 
 interface WorkoutsHeaderProps {
@@ -23,6 +24,13 @@ export default function WorkoutsHeader({
                 <RankPill totalKg={totalKg} isPro={isPro} />
             </div>
             <div className="flex items-center gap-2">
+                <Link
+                    to="/nutrition"
+                    title="Macro & Fuel Tracker"
+                    className="p-2.5 rounded-xl bg-gray-900 border border-gray-800 text-orange-400 hover:text-orange-300 hover:border-orange-500/40 active:scale-95 transition-all"
+                >
+                    <Utensils size={18} />
+                </Link>
                 {onOpenPlateLoader && (
                     <button
                         onClick={onOpenPlateLoader}
