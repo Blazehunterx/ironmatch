@@ -13,7 +13,10 @@ export type CalibratedMuscleKey =
     | 'lats' 
     | 'quads' 
     | 'hamstrings' 
-    | 'abs';
+    | 'calves'
+    | 'forearms'
+    | 'abs'
+    | 'lowerBack';
 
 export interface MuscleExerciseOption {
     id: string;
@@ -21,7 +24,7 @@ export interface MuscleExerciseOption {
     modality: 'dumbbell' | 'barbell' | 'cable' | 'machine' | 'bodyweight';
     defaultWeightKg: number;
     defaultReps: number;
-    compoundRatio: number; // multiplier to estimate 1RM compound equivalent
+    compoundRatio: number;
     compoundTarget: 'bench' | 'squat' | 'deadlift' | 'ohp';
 }
 
@@ -47,9 +50,9 @@ export const MUSCLE_DEFINITIONS: Record<CalibratedMuscleKey, {
         icon: '🪑',
         exercises: [
             { id: 'incline-db', name: 'Incline Dumbbell Press', modality: 'dumbbell', defaultWeightKg: 16, defaultReps: 10, compoundRatio: 2.2, compoundTarget: 'bench' },
-            { id: 'bench-barbell', name: 'Flat Barbell Bench Press', modality: 'barbell', defaultWeightKg: 50, defaultReps: 8, compoundRatio: 1.0, compoundTarget: 'bench' },
+            { id: 'bench-barbell', name: 'Barbell Bench Press', modality: 'barbell', defaultWeightKg: 50, defaultReps: 8, compoundRatio: 1.0, compoundTarget: 'bench' },
             { id: 'chest-press-mach', name: 'Chest Press Machine', modality: 'machine', defaultWeightKg: 40, defaultReps: 10, compoundRatio: 0.9, compoundTarget: 'bench' },
-            { id: 'cable-fly', name: 'Cable Low-to-High Fly', modality: 'cable', defaultWeightKg: 12, defaultReps: 12, compoundRatio: 1.4, compoundTarget: 'bench' },
+            { id: 'cable-fly', name: 'Cable Fly', modality: 'cable', defaultWeightKg: 12, defaultReps: 12, compoundRatio: 1.4, compoundTarget: 'bench' },
         ]
     },
     traps: {
@@ -61,67 +64,43 @@ export const MUSCLE_DEFINITIONS: Record<CalibratedMuscleKey, {
             { id: 'db-shrug', name: 'Dumbbell Shrugs', modality: 'dumbbell', defaultWeightKg: 22, defaultReps: 12, compoundRatio: 1.8, compoundTarget: 'deadlift' },
             { id: 'barbell-shrug', name: 'Barbell Shrugs', modality: 'barbell', defaultWeightKg: 70, defaultReps: 10, compoundRatio: 0.8, compoundTarget: 'deadlift' },
             { id: 'face-pull', name: 'Cable Face Pulls', modality: 'cable', defaultWeightKg: 25, defaultReps: 15, compoundRatio: 1.2, compoundTarget: 'ohp' },
-            { id: 'farmers-walk', name: "Farmer's Dumbbell Carry", modality: 'dumbbell', defaultWeightKg: 24, defaultReps: 10, compoundRatio: 1.9, compoundTarget: 'deadlift' },
+            { id: 'farmers-walk', name: "Farmer's Walk", modality: 'dumbbell', defaultWeightKg: 24, defaultReps: 10, compoundRatio: 1.9, compoundTarget: 'deadlift' },
         ]
     },
     biceps: {
-        name: 'Biceps Brachii',
+        name: 'Biceps',
         view: 'front',
         category: 'Pull / Arms',
         icon: '💪',
         exercises: [
             { id: 'db-curl', name: 'Dumbbell Bicep Curl', modality: 'dumbbell', defaultWeightKg: 12, defaultReps: 10, compoundRatio: 1.8, compoundTarget: 'bench' },
-            { id: 'hammer-curl', name: 'Dumbbell Hammer Curl', modality: 'dumbbell', defaultWeightKg: 14, defaultReps: 10, compoundRatio: 1.6, compoundTarget: 'bench' },
+            { id: 'hammer-curl', name: 'Hammer Curl', modality: 'dumbbell', defaultWeightKg: 14, defaultReps: 10, compoundRatio: 1.6, compoundTarget: 'bench' },
             { id: 'ez-bar-curl', name: 'Barbell EZ-Bar Curl', modality: 'barbell', defaultWeightKg: 27.5, defaultReps: 8, compoundRatio: 1.1, compoundTarget: 'bench' },
-            { id: 'cable-curl', name: 'Cable Bicep Curl', modality: 'cable', defaultWeightKg: 20, defaultReps: 12, compoundRatio: 1.3, compoundTarget: 'bench' },
+            { id: 'cable-curl', name: 'Cable Curl', modality: 'cable', defaultWeightKg: 20, defaultReps: 12, compoundRatio: 1.3, compoundTarget: 'bench' },
         ]
     },
     triceps: {
-        name: 'Triceps Brachii',
+        name: 'Triceps',
         view: 'back',
         category: 'Push / Arms',
         icon: '⚡',
         exercises: [
             { id: 'rope-pushdown', name: 'Cable Rope Pushdown', modality: 'cable', defaultWeightKg: 22.5, defaultReps: 12, compoundRatio: 1.4, compoundTarget: 'ohp' },
-            { id: 'skull-crushers', name: 'EZ-Bar Skull Crushers', modality: 'barbell', defaultWeightKg: 25, defaultReps: 10, compoundRatio: 1.2, compoundTarget: 'bench' },
-            { id: 'overhead-ext', name: 'Dumbbell Overhead Extension', modality: 'dumbbell', defaultWeightKg: 16, defaultReps: 10, compoundRatio: 1.5, compoundTarget: 'ohp' },
-            { id: 'close-grip-bench', name: 'Close Grip Bench Press', modality: 'barbell', defaultWeightKg: 45, defaultReps: 8, compoundRatio: 0.95, compoundTarget: 'bench' },
-        ]
-    },
-    shoulders: {
-        name: 'Deltoids & Shoulders',
-        view: 'front',
-        category: 'Push / Upper',
-        icon: '🙌',
-        exercises: [
-            { id: 'lateral-raise', name: 'Dumbbell Lateral Raise', modality: 'dumbbell', defaultWeightKg: 8, defaultReps: 12, compoundRatio: 2.5, compoundTarget: 'ohp' },
-            { id: 'db-shoulder-press', name: 'Seated Dumbbell Shoulder Press', modality: 'dumbbell', defaultWeightKg: 16, defaultReps: 8, compoundRatio: 1.8, compoundTarget: 'ohp' },
-            { id: 'barbell-ohp', name: 'Barbell Overhead Press (OHP)', modality: 'barbell', defaultWeightKg: 35, defaultReps: 6, compoundRatio: 1.0, compoundTarget: 'ohp' },
-            { id: 'cable-lat-raise', name: 'Cable Lateral Raise', modality: 'cable', defaultWeightKg: 7.5, defaultReps: 12, compoundRatio: 2.6, compoundTarget: 'ohp' },
-        ]
-    },
-    lats: {
-        name: 'Lats & Mid-Back',
-        view: 'back',
-        category: 'Pull / Back',
-        icon: '🦇',
-        exercises: [
-            { id: 'lat-pulldown', name: 'Cable Lat Pulldown', modality: 'cable', defaultWeightKg: 50, defaultReps: 10, compoundRatio: 0.85, compoundTarget: 'deadlift' },
-            { id: 'cable-row', name: 'Seated Cable Row', modality: 'cable', defaultWeightKg: 45, defaultReps: 10, compoundRatio: 0.9, compoundTarget: 'deadlift' },
-            { id: 'one-arm-db-row', name: 'Single-Arm Dumbbell Row', modality: 'dumbbell', defaultWeightKg: 22, defaultReps: 10, compoundRatio: 1.8, compoundTarget: 'deadlift' },
-            { id: 'barbell-row', name: 'Bent-Over Barbell Row', modality: 'barbell', defaultWeightKg: 55, defaultReps: 8, compoundRatio: 0.8, compoundTarget: 'deadlift' },
+            { id: 'skull-crushers', name: 'Skull Crushers', modality: 'barbell', defaultWeightKg: 25, defaultReps: 10, compoundRatio: 1.2, compoundTarget: 'bench' },
+            { id: 'dips', name: 'Dips', modality: 'bodyweight', defaultWeightKg: 0, defaultReps: 10, compoundRatio: 1.1, compoundTarget: 'bench' },
+            { id: 'close-grip-bench', name: 'Close-Grip Bench', modality: 'barbell', defaultWeightKg: 45, defaultReps: 8, compoundRatio: 0.95, compoundTarget: 'bench' },
         ]
     },
     quads: {
-        name: 'Quadriceps & Legs',
+        name: 'Quads & Legs',
         view: 'front',
         category: 'Legs / Lower',
         icon: '🏋️',
         exercises: [
-            { id: 'leg-press', name: '45° Leg Press Machine', modality: 'machine', defaultWeightKg: 120, defaultReps: 10, compoundRatio: 0.45, compoundTarget: 'squat' },
-            { id: 'goblet-squat', name: 'Dumbbell Goblet Squat', modality: 'dumbbell', defaultWeightKg: 22, defaultReps: 10, compoundRatio: 1.9, compoundTarget: 'squat' },
-            { id: 'barbell-squat', name: 'Barbell Back Squat', modality: 'barbell', defaultWeightKg: 60, defaultReps: 8, compoundRatio: 1.0, compoundTarget: 'squat' },
-            { id: 'leg-ext', name: 'Leg Extension Machine', modality: 'machine', defaultWeightKg: 40, defaultReps: 12, compoundRatio: 0.9, compoundTarget: 'squat' },
+            { id: 'leg-press', name: 'Leg Press', modality: 'machine', defaultWeightKg: 120, defaultReps: 10, compoundRatio: 0.45, compoundTarget: 'squat' },
+            { id: 'goblet-squat', name: 'Goblet Squat', modality: 'dumbbell', defaultWeightKg: 22, defaultReps: 10, compoundRatio: 1.9, compoundTarget: 'squat' },
+            { id: 'barbell-squat', name: 'Barbell Squat', modality: 'barbell', defaultWeightKg: 60, defaultReps: 8, compoundRatio: 1.0, compoundTarget: 'squat' },
+            { id: 'leg-ext', name: 'Leg Extension', modality: 'machine', defaultWeightKg: 40, defaultReps: 12, compoundRatio: 0.9, compoundTarget: 'squat' },
         ]
     },
     hamstrings: {
@@ -130,21 +109,82 @@ export const MUSCLE_DEFINITIONS: Record<CalibratedMuscleKey, {
         category: 'Legs / Posterior',
         icon: '🍑',
         exercises: [
-            { id: 'rdl-dumbbell', name: 'Romanian Deadlift (Dumbbell/Barbell)', modality: 'dumbbell', defaultWeightKg: 45, defaultReps: 10, compoundRatio: 1.0, compoundTarget: 'deadlift' },
-            { id: 'leg-curl', name: 'Lying Leg Curl Machine', modality: 'machine', defaultWeightKg: 35, defaultReps: 10, compoundRatio: 1.1, compoundTarget: 'deadlift' },
-            { id: 'barbell-deadlift', name: 'Barbell Deadlift (Conventional)', modality: 'barbell', defaultWeightKg: 75, defaultReps: 6, compoundRatio: 1.0, compoundTarget: 'deadlift' },
-            { id: 'hip-thrust', name: 'Barbell Hip Thrust', modality: 'barbell', defaultWeightKg: 70, defaultReps: 10, compoundRatio: 0.8, compoundTarget: 'squat' },
+            { id: 'rdl-dumbbell', name: 'Romanian Deadlift (RDL)', modality: 'dumbbell', defaultWeightKg: 45, defaultReps: 10, compoundRatio: 1.0, compoundTarget: 'deadlift' },
+            { id: 'leg-curl', name: 'Leg Curl', modality: 'machine', defaultWeightKg: 35, defaultReps: 10, compoundRatio: 1.1, compoundTarget: 'deadlift' },
+            { id: 'barbell-deadlift', name: 'Barbell Deadlift', modality: 'barbell', defaultWeightKg: 75, defaultReps: 6, compoundRatio: 1.0, compoundTarget: 'deadlift' },
+            { id: 'hip-thrust', name: 'Hip Thrust', modality: 'barbell', defaultWeightKg: 70, defaultReps: 10, compoundRatio: 0.8, compoundTarget: 'squat' },
+        ]
+    },
+    shoulders: {
+        name: 'Shoulders & Delts',
+        view: 'front',
+        category: 'Push / Upper',
+        icon: '🙌',
+        exercises: [
+            { id: 'lateral-raise', name: 'Dumbbell Lateral Raise', modality: 'dumbbell', defaultWeightKg: 8, defaultReps: 12, compoundRatio: 2.5, compoundTarget: 'ohp' },
+            { id: 'db-shoulder-press', name: 'Overhead Dumbbell Press', modality: 'dumbbell', defaultWeightKg: 16, defaultReps: 8, compoundRatio: 1.8, compoundTarget: 'ohp' },
+            { id: 'barbell-ohp', name: 'Barbell Overhead Press (OHP)', modality: 'barbell', defaultWeightKg: 35, defaultReps: 6, compoundRatio: 1.0, compoundTarget: 'ohp' },
+            { id: 'cable-lat-raise', name: 'Cable Lateral Raise', modality: 'cable', defaultWeightKg: 7.5, defaultReps: 12, compoundRatio: 2.6, compoundTarget: 'ohp' },
+        ]
+    },
+    lats: {
+        name: 'Lats & Back',
+        view: 'back',
+        category: 'Pull / Back',
+        icon: '🦇',
+        exercises: [
+            { id: 'lat-pulldown', name: 'Cable Lat Pulldown', modality: 'cable', defaultWeightKg: 50, defaultReps: 10, compoundRatio: 0.85, compoundTarget: 'deadlift' },
+            { id: 'pull-ups', name: 'Pull-ups / Chin-ups', modality: 'bodyweight', defaultWeightKg: 0, defaultReps: 8, compoundRatio: 1.0, compoundTarget: 'deadlift' },
+            { id: 'cable-row', name: 'Seated Cable Row', modality: 'cable', defaultWeightKg: 45, defaultReps: 10, compoundRatio: 0.9, compoundTarget: 'deadlift' },
+            { id: 'one-arm-db-row', name: 'Single-Arm Dumbbell Row', modality: 'dumbbell', defaultWeightKg: 22, defaultReps: 10, compoundRatio: 1.8, compoundTarget: 'deadlift' },
+        ]
+    },
+    calves: {
+        name: 'Calves & Lower Legs',
+        view: 'front',
+        category: 'Legs / Calves',
+        icon: '🦵',
+        exercises: [
+            { id: 'standing-calf-raise', name: 'Standing Dumbbell Calf Raise', modality: 'dumbbell', defaultWeightKg: 20, defaultReps: 15, compoundRatio: 0.8, compoundTarget: 'squat' },
+            { id: 'seated-calf-mach', name: 'Seated Calf Raise Machine', modality: 'machine', defaultWeightKg: 35, defaultReps: 15, compoundRatio: 0.7, compoundTarget: 'squat' },
+            { id: 'leg-press-calf', name: 'Leg Press Calf Press', modality: 'machine', defaultWeightKg: 90, defaultReps: 15, compoundRatio: 0.5, compoundTarget: 'squat' },
+            { id: 'single-calf-bw', name: 'Single-Leg Bodyweight Calf Raise', modality: 'bodyweight', defaultWeightKg: 0, defaultReps: 20, compoundRatio: 0.8, compoundTarget: 'squat' },
+        ]
+    },
+    forearms: {
+        name: 'Forearms & Grip',
+        view: 'front',
+        category: 'Arms / Grip',
+        icon: '✊',
+        exercises: [
+            { id: 'wrist-curl', name: 'Dumbbell Wrist Curls', modality: 'dumbbell', defaultWeightKg: 10, defaultReps: 15, compoundRatio: 1.1, compoundTarget: 'bench' },
+            { id: 'reverse-curl', name: 'Reverse Barbell Curls', modality: 'barbell', defaultWeightKg: 20, defaultReps: 10, compoundRatio: 1.0, compoundTarget: 'bench' },
+            { id: 'dead-hang', name: 'Bar Dead Hangs (seconds)', modality: 'bodyweight', defaultWeightKg: 0, defaultReps: 45, compoundRatio: 1.0, compoundTarget: 'deadlift' },
+            { id: 'farmer-carry-grip', name: "Farmer's Grip Carry", modality: 'dumbbell', defaultWeightKg: 22, defaultReps: 10, compoundRatio: 1.4, compoundTarget: 'deadlift' },
         ]
     },
     abs: {
-        name: 'Abdominals & Core',
+        name: 'Abs & Core',
         view: 'front',
         category: 'Core',
         icon: '🧱',
         exercises: [
+            { id: 'hanging-knee', name: 'Hanging Knee / Leg Raise', modality: 'bodyweight', defaultWeightKg: 0, defaultReps: 12, compoundRatio: 1.0, compoundTarget: 'squat' },
             { id: 'cable-crunch', name: 'Cable Rope Kneeling Crunch', modality: 'cable', defaultWeightKg: 30, defaultReps: 15, compoundRatio: 0.9, compoundTarget: 'squat' },
-            { id: 'hanging-knee', name: 'Hanging Knee Raise', modality: 'bodyweight', defaultWeightKg: 0, defaultReps: 12, compoundRatio: 1.0, compoundTarget: 'squat' },
             { id: 'plank', name: 'Weighted Plank Hold', modality: 'bodyweight', defaultWeightKg: 10, defaultReps: 45, compoundRatio: 1.0, compoundTarget: 'squat' },
+            { id: 'ab-wheel', name: 'Ab Wheel Rollout', modality: 'bodyweight', defaultWeightKg: 0, defaultReps: 10, compoundRatio: 1.0, compoundTarget: 'squat' },
+        ]
+    },
+    lowerBack: {
+        name: 'Lower Back & Spine',
+        view: 'back',
+        category: 'Back / Core',
+        icon: '🛡️',
+        exercises: [
+            { id: 'back-ext', name: 'Back Extensions (Hyperextensions)', modality: 'bodyweight', defaultWeightKg: 10, defaultReps: 12, compoundRatio: 1.3, compoundTarget: 'deadlift' },
+            { id: 'good-mornings', name: 'Barbell Good Mornings', modality: 'barbell', defaultWeightKg: 40, defaultReps: 8, compoundRatio: 1.0, compoundTarget: 'deadlift' },
+            { id: 'rack-pulls', name: 'Barbell Rack Pulls', modality: 'barbell', defaultWeightKg: 80, defaultReps: 6, compoundRatio: 0.85, compoundTarget: 'deadlift' },
+            { id: 'deficit-deadlift', name: 'Deficit Deadlift', modality: 'barbell', defaultWeightKg: 65, defaultReps: 6, compoundRatio: 1.05, compoundTarget: 'deadlift' },
         ]
     }
 };
@@ -176,6 +216,16 @@ const SVG_SHAPES: Record<CalibratedMuscleKey, { front?: string[]; back?: string[
             mirror("M46,128 L64,122 C66,140 62,156 58,164 L44,162 C40,150 42,138 46,128 Z")
         ]
     },
+    forearms: {
+        front: [
+            "M44,166 L58,166 C56,180 50,196 42,204 L34,196 C38,186 42,176 44,166 Z",
+            mirror("M44,166 L58,166 C56,180 50,196 42,204 L34,196 C38,186 42,176 44,166 Z")
+        ],
+        back: [
+            "M44,166 L58,166 C56,180 50,196 42,204 L34,196 C38,186 42,176 44,166 Z",
+            mirror("M44,166 L58,166 C56,180 50,196 42,204 L34,196 C38,186 42,176 44,166 Z")
+        ]
+    },
     shoulders: {
         front: [
             "M62,92 C50,96 44,110 46,124 L66,118 C68,106 70,98 76,94 Z",
@@ -192,6 +242,11 @@ const SVG_SHAPES: Record<CalibratedMuscleKey, { front?: string[]; back?: string[
             mirror("M70,124 L98,132 L98,188 C86,186 76,172 72,156 C68,144 68,132 70,124 Z")
         ]
     },
+    lowerBack: {
+        back: [
+            "M86,188 L114,188 C116,200 114,210 100,214 C86,210 84,200 86,188 Z"
+        ]
+    },
     quads: {
         front: [
             "M74,214 L98,220 C98,250 96,282 92,300 L76,300 C68,276 66,240 74,214 Z",
@@ -204,6 +259,16 @@ const SVG_SHAPES: Record<CalibratedMuscleKey, { front?: string[]; back?: string[
             mirror("M74,196 L99,198 L99,232 C88,236 76,232 70,222 C68,210 70,202 74,196 Z"),
             "M72,238 L98,240 C98,264 96,284 92,300 L76,300 C70,282 68,258 72,238 Z",
             mirror("M72,238 L98,240 C98,264 96,284 92,300 L76,300 C70,282 68,258 72,238 Z")
+        ]
+    },
+    calves: {
+        front: [
+            "M76,312 L92,312 C94,332 92,352 88,370 L80,370 C74,352 72,332 76,312 Z",
+            mirror("M76,312 L92,312 C94,332 92,352 88,370 L80,370 C74,352 72,332 76,312 Z")
+        ],
+        back: [
+            "M76,312 L92,312 C96,330 94,352 88,370 L80,370 C72,352 72,330 76,312 Z",
+            mirror("M76,312 L92,312 C96,330 94,352 88,370 L80,370 C72,352 72,330 76,312 Z")
         ]
     },
     abs: {
@@ -229,13 +294,12 @@ export default function InteractiveBodyCalibration({
     const [view, setView] = useState<'front' | 'back'>('front');
     const [activeMuscle, setActiveMuscle] = useState<CalibratedMuscleKey | null>('chest');
     const [calibrations, setCalibrations] = useState<Partial<Record<CalibratedMuscleKey, CalibratedEntry>>>(() => {
-        // If currentLifts already has numbers, populate starter baseline
         const initial: Partial<Record<CalibratedMuscleKey, CalibratedEntry>> = {};
         if (currentLifts.bench > 0) {
-            initial.chest = { exerciseName: 'Flat Barbell Bench Press', weight: currentLifts.bench, reps: 8, e1RM: currentLifts.bench, compoundTarget: 'bench' };
+            initial.chest = { exerciseName: 'Barbell Bench Press', weight: currentLifts.bench, reps: 8, e1RM: currentLifts.bench, compoundTarget: 'bench' };
         }
         if (currentLifts.squat > 0) {
-            initial.quads = { exerciseName: 'Barbell Back Squat', weight: currentLifts.squat, reps: 6, e1RM: currentLifts.squat, compoundTarget: 'squat' };
+            initial.quads = { exerciseName: 'Barbell Squat', weight: currentLifts.squat, reps: 6, e1RM: currentLifts.squat, compoundTarget: 'squat' };
         }
         if (currentLifts.deadlift > 0) {
             initial.hamstrings = { exerciseName: 'Barbell Deadlift', weight: currentLifts.deadlift, reps: 5, e1RM: currentLifts.deadlift, compoundTarget: 'deadlift' };
@@ -246,7 +310,6 @@ export default function InteractiveBodyCalibration({
         return initial;
     });
 
-    // Modal / Drawer state for active muscle editing
     const [selectedExercise, setSelectedExercise] = useState<MuscleExerciseOption | null>(null);
     const [inputWeight, setInputWeight] = useState<number>(20);
     const [inputReps, setInputReps] = useState<number>(10);
@@ -276,7 +339,6 @@ export default function InteractiveBodyCalibration({
     const handleSaveActiveMuscle = () => {
         if (!activeMuscle || !selectedExercise) return;
 
-        // Epley 1RM formula: Weight * (1 + Reps/30)
         const calcE1RM = Math.round(inputWeight * (1 + inputReps / 30));
 
         const updated = {
@@ -291,39 +353,32 @@ export default function InteractiveBodyCalibration({
         };
 
         setCalibrations(updated);
-
-        // Derive compound Big 4 lifts
         deriveAndPropagateBig4(updated);
     };
 
     const deriveAndPropagateBig4 = (calibMap: Partial<Record<CalibratedMuscleKey, CalibratedEntry>>) => {
-        // Calculate Bench
         let bench = currentLifts.bench || 0;
         if (calibMap.chest) bench = Math.max(bench, Math.round(calibMap.chest.e1RM * 1.0));
-        else if (calibMap.biceps || calibMap.triceps) {
-            const armPower = (calibMap.biceps?.e1RM || 0) * 1.5 + (calibMap.triceps?.e1RM || 0) * 1.3;
+        else if (calibMap.biceps || calibMap.triceps || calibMap.forearms) {
+            const armPower = (calibMap.biceps?.e1RM || 0) * 1.4 + (calibMap.triceps?.e1RM || 0) * 1.2;
             if (armPower > 0) bench = Math.max(bench, Math.round(armPower));
         }
 
-        // Calculate Squat
         let squat = currentLifts.squat || 0;
         if (calibMap.quads) squat = Math.max(squat, Math.round(calibMap.quads.e1RM * 1.0));
         else if (calibMap.hamstrings) squat = Math.max(squat, Math.round(calibMap.hamstrings.e1RM * 0.85));
 
-        // Calculate Deadlift
         let deadlift = currentLifts.deadlift || 0;
         if (calibMap.hamstrings) deadlift = Math.max(deadlift, Math.round(calibMap.hamstrings.e1RM * 1.0));
-        else if (calibMap.traps || calibMap.lats) {
-            const backPower = (calibMap.traps?.e1RM || 0) * 1.2 + (calibMap.lats?.e1RM || 0) * 1.1;
+        else if (calibMap.traps || calibMap.lats || calibMap.lowerBack) {
+            const backPower = (calibMap.traps?.e1RM || 0) * 1.1 + (calibMap.lats?.e1RM || 0) * 1.0 + (calibMap.lowerBack?.e1RM || 0) * 1.1;
             if (backPower > 0) deadlift = Math.max(deadlift, Math.round(backPower));
         }
 
-        // Calculate OHP
         let ohp = currentLifts.ohp || 0;
         if (calibMap.shoulders) ohp = Math.max(ohp, Math.round(calibMap.shoulders.e1RM * 1.0));
         else if (calibMap.triceps) ohp = Math.max(ohp, Math.round(calibMap.triceps.e1RM * 0.75));
 
-        // If user entered only 1-2 lifts, provide realistic athletic proportion defaults
         if (bench > 0 && squat === 0) squat = Math.round(bench * 1.25);
         if (bench > 0 && deadlift === 0) deadlift = Math.round(bench * 1.5);
         if (bench > 0 && ohp === 0) ohp = Math.round(bench * 0.6);
@@ -351,8 +406,12 @@ export default function InteractiveBodyCalibration({
             triceps: { exerciseName: 'Cable Rope Pushdown', weight: isKg ? 17.5 : 40, reps: 12, e1RM: isKg ? 24 : 52, compoundTarget: 'ohp' },
             shoulders: { exerciseName: 'Dumbbell Lateral Raise', weight: isKg ? 7 : 15, reps: 12, e1RM: isKg ? 10 : 20, compoundTarget: 'ohp' },
             lats: { exerciseName: 'Cable Lat Pulldown', weight: isKg ? 40 : 90, reps: 10, e1RM: isKg ? 52 : 115, compoundTarget: 'deadlift' },
-            quads: { exerciseName: '45° Leg Press Machine', weight: isKg ? 90 : 200, reps: 10, e1RM: isKg ? 120 : 260, compoundTarget: 'squat' },
-            hamstrings: { exerciseName: 'Romanian Deadlift (Dumbbell/Barbell)', weight: isKg ? 35 : 80, reps: 10, e1RM: isKg ? 46 : 105, compoundTarget: 'deadlift' }
+            quads: { exerciseName: 'Leg Press', weight: isKg ? 90 : 200, reps: 10, e1RM: isKg ? 120 : 260, compoundTarget: 'squat' },
+            hamstrings: { exerciseName: 'Romanian Deadlift (RDL)', weight: isKg ? 35 : 80, reps: 10, e1RM: isKg ? 46 : 105, compoundTarget: 'deadlift' },
+            calves: { exerciseName: 'Standing Dumbbell Calf Raise', weight: isKg ? 16 : 35, reps: 15, e1RM: isKg ? 24 : 52, compoundTarget: 'squat' },
+            forearms: { exerciseName: 'Dumbbell Wrist Curls', weight: isKg ? 8 : 18, reps: 15, e1RM: isKg ? 12 : 26, compoundTarget: 'bench' },
+            abs: { exerciseName: 'Cable Rope Kneeling Crunch', weight: isKg ? 25 : 55, reps: 15, e1RM: isKg ? 37 : 80, compoundTarget: 'squat' },
+            lowerBack: { exerciseName: 'Back Extensions (Hyperextensions)', weight: isKg ? 10 : 20, reps: 12, e1RM: isKg ? 14 : 28, compoundTarget: 'deadlift' }
         };
         setCalibrations(starter);
         deriveAndPropagateBig4(starter);
@@ -376,11 +435,11 @@ export default function InteractiveBodyCalibration({
                                 {estimatedRank.name} Placement
                             </span>
                             <span className="text-[9px] bg-lime/20 text-lime font-mono px-1.5 py-0.2 rounded font-bold">
-                                {calibratedCount}/9 Lit
+                                {calibratedCount}/12 Lit
                             </span>
                         </div>
                         <p className="text-[10px] text-gray-400">
-                            Tap any muscle on the body to log your working numbers
+                            Tap any muscle on the physique to configure its lift
                         </p>
                     </div>
                 </div>
@@ -404,7 +463,7 @@ export default function InteractiveBodyCalibration({
                             view === 'front' ? 'bg-lime text-oled shadow-[0_0_15px_rgba(50,255,50,0.3)]' : 'text-gray-400 hover:text-white'
                         }`}
                     >
-                        Front Physique
+                        Front View (6 Muscles)
                     </button>
                     <button
                         type="button"
@@ -413,7 +472,7 @@ export default function InteractiveBodyCalibration({
                             view === 'back' ? 'bg-lime text-oled shadow-[0_0_15px_rgba(50,255,50,0.3)]' : 'text-gray-400 hover:text-white'
                         }`}
                     >
-                        Back Physique
+                        Back View (6 Muscles)
                     </button>
                 </div>
             </div>
@@ -440,7 +499,7 @@ export default function InteractiveBodyCalibration({
                             </filter>
                         </defs>
 
-                        {/* Base Human Silhouette */}
+                        {/* Base Human Silhouette Outline */}
                         <path
                             d={SILHOUETTE_BODY}
                             fill="#0A0F14"
@@ -497,12 +556,12 @@ export default function InteractiveBodyCalibration({
                 {/* Helper prompt overlay on body */}
                 <div className="absolute bottom-2 left-2 right-2 text-center pointer-events-none">
                     <span className="text-[9px] font-mono text-gray-500 bg-black/80 px-2 py-0.5 rounded-full border border-gray-800">
-                        {view === 'front' ? 'Tapping Chest, Biceps, Quads...' : 'Tapping Traps, Lats, Triceps...'}
+                        {view === 'front' ? 'Chest · Biceps · Quads · Shoulders · Abs · Forearms' : 'Traps · Lats · Triceps · Lower Back · Hamstrings · Calves'}
                     </span>
                 </div>
             </div>
 
-            {/* Quick Horizontal Muscle Selector Chips for Accessibility */}
+            {/* Quick Horizontal Muscle Selector Chips for All Muscle Groups */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none px-1">
                 {(Object.keys(MUSCLE_DEFINITIONS) as CalibratedMuscleKey[])
                     .filter(k => MUSCLE_DEFINITIONS[k].view === view)
