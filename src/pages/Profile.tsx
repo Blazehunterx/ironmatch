@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut, Settings, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DayOfWeek, TimeBlock } from '../types/database';
 import { isSupabaseConfigured } from '../lib/supabase';
+import { compressImage } from '../lib/imageCompression';
+import { uploadToStorage } from '../lib/storageUpload';
 import React from 'react';
 
 // Modular Components
@@ -17,6 +19,7 @@ import ProfileSchedule from '../components/profile/ProfileSchedule';
 import ProfileFriends from '../components/profile/ProfileFriends';
 import ProfileSettingsModal from '../components/profile/ProfileSettingsModal';
 import ProfileImageModal from '../components/profile/ProfileImageModal';
+import IronPassModal from '../components/monetization/IronPassModal';
 import SystemStatus from '../components/SystemStatus';
 
 export default function Profile() {
@@ -27,6 +30,7 @@ export default function Profile() {
     const [isEditingImage, setIsEditingImage] = useState(false);
     const [isShopOpen, setIsShopOpen] = useState(false);
     const [shopInitialTab, setShopInitialTab] = useState<'gear' | 'marketplace'>('gear');
+    const [isProModalOpen, setIsProModalOpen] = useState(false);
 
     // Temp state for editing
     const [editBig4, setEditBig4] = useState(user?.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 });
@@ -60,12 +64,17 @@ export default function Profile() {
         updateUser({ availability: updated });
     };
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => setEditImageUrl(ev.target?.result as string);
-        reader.readAsDataURL(file);
+        try {
+            const compressed = await compressImage(file, 1080, 0.75);
+            setEditImageUrl(compressed);
+        } catch {
+            const reader = new FileReader();
+            reader.onload = (ev) => setEditImageUrl(ev.target?.result as string);
+            reader.readAsDataURL(file);
+        }
     };
 
     return (
@@ -80,7 +89,39 @@ export default function Profile() {
             />
 
             <div className="space-y-4">
-                <ProfileStats user={user} />
+                {/* IronPass Pro Banner */}
+                <div 
+                    onClick={() => setIsProModalOpen(true)}
+                    className={`p-4 rounded-2xl border cursor-pointer transition active:scale-[0.99] flex items-center justify-between gap-3 ${
+                        user.is_pro 
+                            ? 'bg-gradient-to-r from-lime/10 to-emerald-500/10 border-lime/40 shadow-[0_0_20px_rgba(50,255,50,0.15)]' 
+                            : 'bg-white/[0.03] border-lime/30 hover:border-lime/60'
+                    }`}
+                >
+                    <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${user.is_pro ? 'bg-lime text-black font-black' : 'bg-lime/10 text-lime border border-lime/30'}`}>
+                            <Crown size={20} />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-1.5">
+                                <h4 className="text-xs font-black uppercase text-white tracking-wider">
+                                    {user.is_pro ? 'IronPass Pro Active' : 'Upgrade To IronPass Pro'}
+                                </h4>
+                                {user.is_pro && (
+                                    <span className="px-1.5 py-0.5 rounded-full bg-lime text-black text-[9px] font-black uppercase">PRO</span>
+                                )}
+                            </div>
+                            <p className="text-[11px] text-gray-400">
+                                {user.is_pro ? 'Unlimited AI periodization & 1RM radar enabled' : 'Unlock AI periodization, 1RM radar & verified spotlight'}
+                            </p>
+                        </div>
+                    </div>
+                    <button className="px-3 py-1.5 rounded-xl bg-lime text-black text-[10px] font-black uppercase tracking-wider hover:bg-lime/90 transition shadow-sm">
+                        {user.is_pro ? 'Manage' : 'Upgrade'}
+                    </button>
+                </div>
+
+                <ProfileStats user={user} onEditLifts={() => setIsSettingsOpen(true)} />
 
                 {user.verification_status === 'verified' && user.is_trainer && (
                     <div className="flex bg-gray-900/50 p-1 rounded-2xl border border-gray-800 mb-6">
@@ -137,7 +178,8 @@ export default function Profile() {
                 fileInputRef={fileInputRef} onFileSelect={handleFileSelect}
                 onSave={async (croppedData) => { 
                     try {
-                        await updateUser({ profile_image_url: croppedData });
+                        const cdnUrl = await uploadToStorage(croppedData, 'avatars', user.id);
+                        await updateUser({ profile_image_url: cdnUrl || croppedData });
                         setIsEditingImage(false);
                     } catch (err) {
                         alert('Failed to save profile image.');
@@ -155,6 +197,11 @@ export default function Profile() {
                     </>
                 )}
             </AnimatePresence>
+
+            <IronPassModal 
+                isOpen={isProModalOpen} 
+                onClose={() => setIsProModalOpen(false)} 
+            />
         </div>
     );
 }

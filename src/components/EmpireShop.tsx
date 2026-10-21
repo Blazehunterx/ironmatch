@@ -207,6 +207,7 @@ export default function EmpireShop({ onClose, initialTab = 'gear' }: EmpireShopP
                                         key={plan.id}
                                         plan={plan}
                                         idx={idx}
+                                        isUnlocked={unlocked.includes(plan.id) || unlocked.includes(`plan-${plan.id}`)}
                                         onSelect={setCheckoutItem}
                                     />
                                 ))}

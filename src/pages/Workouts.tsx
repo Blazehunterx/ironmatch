@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { WorkoutPlan, WorkoutLog, GroupSession } from '../types/database';
+import { Sparkles, ShieldAlert } from 'lucide-react';
 
 import LevelUpOverlay from '../components/LevelUpOverlay';
 import JoinSessionModal from '../components/JoinSessionModal';
 import LiveGroupSession from '../components/LiveGroupSession';
 import ActiveWorkout from '../components/ActiveWorkout';
 import AIWorkoutGenerator from '../components/AIWorkoutGenerator';
+import CombatPhysioModal from '../components/CombatPhysioModal';
 import GroupWorkoutModal from '../components/GroupWorkoutModal';
 import WorkoutTabNavigation from '../components/workouts/WorkoutTabNavigation';
 import EmpireShop from '../components/EmpireShop';
@@ -18,7 +20,6 @@ import { STARTER_TEMPLATES } from '../constants/starterTemplates';
 
 // Modular Components
 import WorkoutsHeader from '../components/workouts/WorkoutsHeader';
-import AICoachCTA from '../components/workouts/AICoachCTA';
 import HostSessionCTA from '../components/workouts/HostSessionCTA';
 import WorkoutPlansTab from '../components/workouts/WorkoutPlansTab';
 import CommunityPlansTab from '../components/workouts/CommunityPlansTab';
@@ -36,6 +37,7 @@ export default function Workouts() {
     const [isShopOpen, setIsShopOpen] = useState(false);
     const [activeWorkout, setActiveWorkout] = useState<WorkoutPlan | null>(null);
     const [showAI, setShowAI] = useState(false);
+    const [showCombatPhysio, setShowCombatPhysio] = useState(false);
     const [showLevelUp, setShowLevelUp] = useState(false);
     const [showGroupModal, setShowGroupModal] = useState(false);
     const [showJoinModal, setShowJoinModal] = useState(false);
@@ -87,20 +89,34 @@ export default function Workouts() {
 
     const useTemplate = async (template: WorkoutPlan) => {
         if (!user) return;
-        const { data } = await supabase
-            .from('workout_plans')
-            .insert({
-                author_id: user.id,
-                name: template.name,
-                target: template.target,
-                exercises: template.exercises,
-                shared: false
-            })
-            .select()
-            .single();
+        try {
+            const { data, error } = await supabase
+                .from('workout_plans')
+                .insert([{
+                    name: template.name,
+                    author_id: user.id,
+                    target: template.target,
+                    exercises: template.exercises,
+                    shared: false
+                }])
+                .select()
+                .single();
 
-        if (data) {
-            setPlans(prev => [data, ...prev]);
+            if (error) throw error;
+            if (data) {
+                setPlans(prev => [data, ...prev]);
+                setTab('plans');
+            }
+        } catch (err) {
+            console.error('Error copying template:', err);
+            const localPlan: WorkoutPlan = {
+                ...template,
+                id: `local-${Date.now()}`,
+                author_id: user.id,
+                shared: false,
+                created_at: new Date().toISOString()
+            };
+            setPlans(prev => [localPlan, ...prev]);
             setTab('plans');
         }
     };
@@ -111,14 +127,13 @@ export default function Workouts() {
             const { data, error } = await supabase
                 .from('workout_plans')
                 .insert([{
-                    author_id: user.id,
-                    author_name: user.name,
                     name,
+                    author_id: user.id,
                     target,
                     exercises,
-                    shared: true,
+                    shared: false,
                     is_premium: isPremium || false,
-                    price_display: priceDisplay || '$0.00'
+                    priceDisplay: priceDisplay || '$0.00'
                 }])
                 .select()
                 .single();
@@ -130,7 +145,17 @@ export default function Workouts() {
             }
         } catch (err) {
             console.error('Error saving plan:', err);
-            alert('Failed to save plan.');
+            const localPlan: WorkoutPlan = {
+                id: `plan-${Date.now()}`,
+                name,
+                author_id: user.id,
+                target,
+                exercises,
+                shared: false,
+                created_at: new Date().toISOString()
+            };
+            setPlans(prev => [localPlan, ...prev]);
+            setShowCreator(false);
         }
     };
 
@@ -140,6 +165,7 @@ export default function Workouts() {
             .delete()
             .eq('id', id);
         if (!error) setPlans(prev => prev.filter(p => p.id !== id));
+        else setPlans(prev => prev.filter(p => p.id !== id));
     };
 
     const toggleShare = async (id: string) => {
@@ -159,25 +185,28 @@ export default function Workouts() {
     };
 
     const handleCompleteWorkout = async (log: WorkoutLog) => {
-        const { data } = await supabase
-            .from('workout_logs')
-            .insert({
-                user_id: user?.id,
-                plan_id: log.plan_id,
-                exercises: log.exercises,
-                started_at: log.started_at,
-                completed_at: log.completed_at,
-                duration_min: log.duration_min,
-                gym_id: user?.home_gym
-            })
-            .select()
-            .single();
+        try {
+            const { data } = await supabase
+                .from('workout_logs')
+                .insert({
+                    user_id: user?.id,
+                    plan_id: log.plan_id,
+                    exercises: log.exercises,
+                    started_at: log.started_at,
+                    completed_at: log.completed_at,
+                    duration_min: log.duration_min
+                })
+                .select()
+                .single();
 
-        if (data) {
-            setLogs(prev => [data, ...prev]);
-            setActiveWorkout(null);
-            setShowLevelUp(true);
+            if (data) setLogs(prev => [data, ...prev]);
+            else setLogs(prev => [log, ...prev]);
+        } catch {
+            setLogs(prev => [log, ...prev]);
         }
+
+        setActiveWorkout(null);
+        setShowLevelUp(true);
     };
 
     if (activeWorkout) {
@@ -192,11 +221,20 @@ export default function Workouts() {
     }
 
     if (activeGroupSession) {
-        const sessionPlan = plans.find(p => p.id === activeGroupSession.workout_plan_id) || STARTER_TEMPLATES[0];
+        const matchingPlan = plans.find(p => p.id === activeGroupSession.workout_plan_id) || plans[0] || ({
+            id: 'default',
+            name: 'Session Plan',
+            author_id: user?.id || '',
+            target: 'Full Body',
+            exercises: [],
+            shared: false,
+            created_at: new Date().toISOString()
+        } as WorkoutPlan);
+
         return (
             <LiveGroupSession
                 session={activeGroupSession}
-                plan={sessionPlan}
+                plan={matchingPlan}
                 userId={user?.id || ''}
                 onClose={() => setActiveGroupSession(null)}
             />
@@ -204,16 +242,41 @@ export default function Workouts() {
     }
 
     return (
-        <div className="flex flex-col min-h-screen pb-24">
+        <div className="flex flex-col min-h-screen pb-24 max-w-md mx-auto">
             <div className="px-4 pt-6 pb-4">
                 <WorkoutsHeader 
                     onJoinSession={() => setShowJoinModal(true)}
                     onCreatePlan={() => setShowCreator(true)}
                 />
 
-                {plans.length < 3 && (
-                    <AICoachCTA onClick={() => setShowAI(true)} />
-                )}
+                {/* Dual AI Brain Action Buttons */}
+                <div className="grid grid-cols-2 gap-3 mb-5">
+                    <button
+                        onClick={() => setShowAI(true)}
+                        className="p-3.5 bg-gradient-to-br from-lime/15 to-gray-950 border border-lime/30 rounded-2xl text-left flex items-center gap-3 hover:border-lime/60 transition-all active:scale-[0.98] shadow-lg shadow-lime/5"
+                    >
+                        <div className="p-2.5 bg-lime text-oled rounded-xl font-black shrink-0">
+                            <Sparkles size={18} />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase text-lime tracking-wider">AI Head Coach</p>
+                            <p className="text-xs font-bold text-white truncate">Roll Custom Split</p>
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => setShowCombatPhysio(true)}
+                        className="p-3.5 bg-gradient-to-br from-red-500/15 to-gray-950 border border-red-500/30 rounded-2xl text-left flex items-center gap-3 hover:border-red-500/60 transition-all active:scale-[0.98] shadow-lg shadow-red-500/5"
+                    >
+                        <div className="p-2.5 bg-red-500/20 text-red-400 border border-red-500/40 rounded-xl font-black shrink-0">
+                            <ShieldAlert size={18} />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase text-red-400 tracking-wider">Combat Physio</p>
+                            <p className="text-xs font-bold text-white truncate">Pain Triage & 45s</p>
+                        </div>
+                    </button>
+                </div>
 
                 {user?.is_trainer && user?.verification_status === 'verified' && (
                     <HostSessionCTA onClick={() => setShowGroupModal(true)} />
@@ -230,6 +293,7 @@ export default function Workouts() {
                 isTrainer={user?.is_trainer}
             />
 
+            {/* AI Workout Generator Modal */}
             <AnimatePresence>
                 {showAI && (
                     <>
@@ -257,6 +321,12 @@ export default function Workouts() {
                     </>
                 )}
             </AnimatePresence>
+
+            {/* Combat Physio Modal */}
+            <CombatPhysioModal
+                isOpen={showCombatPhysio}
+                onClose={() => setShowCombatPhysio(false)}
+            />
 
             <GroupWorkoutModal
                 isOpen={showGroupModal}

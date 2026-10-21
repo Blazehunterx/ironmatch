@@ -18,12 +18,12 @@ export interface Rank {
 
 export const RANKS: Rank[] = [
     { name: 'Freshman', tier: 'below', icon: '🌱', color: '#6B7280', minTotal: 0, description: 'Just getting started' },
-    { name: 'Grinder', tier: 'below', icon: '⚙️', color: '#9CA3AF', minTotal: 400, description: 'Building the foundation' },
-    { name: 'Contender', tier: 'below', icon: '🥊', color: '#3B82F6', minTotal: 600, description: 'Ready to compete' },
-    { name: 'Athlete', tier: 'average', icon: '🏋️', color: '#10B981', minTotal: 800, description: 'Solid all-around lifter' },
-    { name: 'Beast', tier: 'above', icon: '🔥', color: '#F59E0B', minTotal: 1000, description: 'Stronger than most' },
-    { name: 'Elite', tier: 'above', icon: '💎', color: '#8B5CF6', minTotal: 1200, description: 'Top-tier strength' },
-    { name: 'Legend', tier: 'above', icon: '👑', color: '#EF4444', minTotal: 1500, description: 'Peak human performance' },
+    { name: 'Grinder', tier: 'below', icon: '⚙️', color: '#9CA3AF', minTotal: 440, description: 'Building the foundation' },
+    { name: 'Contender', tier: 'below', icon: '🥊', color: '#3B82F6', minTotal: 770, description: 'Ready to compete' },
+    { name: 'Athlete', tier: 'average', icon: '🏋️', color: '#10B981', minTotal: 1045, description: 'Solid all-around lifter' },
+    { name: 'Beast', tier: 'above', icon: '🔥', color: '#F59E0B', minTotal: 1320, description: 'Stronger than most' },
+    { name: 'Elite', tier: 'above', icon: '💎', color: '#8B5CF6', minTotal: 1595, description: 'Top-tier strength' },
+    { name: 'Legend', tier: 'above', icon: '👑', color: '#EF4444', minTotal: 1870, description: 'Peak human performance' },
 ];
 
 export interface Big4Lifts {

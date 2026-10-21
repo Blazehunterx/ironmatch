@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { mockUsers } from '../lib/mock';
 import { useAuth } from '../context/AuthContext';
 import { useGyms } from '../context/GymContext';
 import {
@@ -16,7 +15,10 @@ import GymLeaderboard from '../components/arena/GymLeaderboard';
 import DuelList from '../components/arena/DuelList';
 import QuestSection from '../components/arena/QuestSection';
 import DuelCreator from '../components/arena/DuelCreator';
-import LocationSearch from '../components/arena/LocationSearch';
+import RemoteWhatsAppDuel from '../components/arena/RemoteWhatsAppDuel';
+import FamilyCircle from '../components/arena/FamilyCircle';
+import PlacementMatchModal from '../components/placement/PlacementMatchModal';
+import { Trophy, Lock } from 'lucide-react';
 
 type Tab = ArenaTab;
 
@@ -24,24 +26,24 @@ export default function Arena() {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<Tab>('wars');
     const [showDuelCreator, setShowDuelCreator] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const [showPlacementModal, setShowPlacementModal] = useState(false);
     const [allProfiles, setAllProfiles] = useState<User[]>([]);
     const [duels, setDuels] = useState<Duel[]>([]);
     const [milestones, setMilestones] = useState<GymMilestone[]>([]);
     const { gyms: allGyms } = useGyms();
 
+    const hasRank = user?.big4 && (user.big4.bench + user.big4.squat + user.big4.deadlift + user.big4.ohp) > 0;
+
     const fetchProfiles = useCallback(async () => {
         if (!isSupabaseConfigured) {
-            setAllProfiles(mockUsers);
-            setLoading(false);
+            setAllProfiles([]);
             return;
         }
 
-        const { data, error } = await supabase.from('profiles').select('*');
+        const { data, error } = await supabase.from('profiles').select('*').order('xp', { ascending: false }).limit(50);
         if (!error && data) {
             setAllProfiles(data);
         }
-        setLoading(false);
     }, []);
 
     const fetchDuels = useCallback(async () => {
@@ -57,85 +59,101 @@ export default function Arena() {
             .order('created_at', { ascending: false });
 
         if (data) {
-            setDuels(data.map(d => ({
-                id: d.id,
-                challengerId: d.challenger_id,
-                challengerName: allProfiles.find(p => p.id === d.challenger_id)?.name || 'Lifter',
-                challengerAvatar: allProfiles.find(p => p.id === d.challenger_id)?.profile_image_url || 'https://i.pravatar.cc/150',
-                opponentId: d.opponent_id,
-                opponentName: allProfiles.find(p => p.id === d.opponent_id)?.name || 'Lifter',
-                opponentAvatar: allProfiles.find(p => p.id === d.opponent_id)?.profile_image_url || 'https://i.pravatar.cc/150',
-                type: d.type,
-                exercise: d.exercise_name,
-                target: d.target_value,
-                status: d.status,
-                challengerProgress: d.challenger_progress,
-                opponentProgress: d.opponent_progress,
-                createdAt: d.created_at,
-                endsAt: '7d left',
-                xpReward: d.xp_reward
-            })));
+            setDuels(data.map(d => {
+                const challenger = allProfiles.find(p => p.id === d.challenger_id);
+                const opponent = allProfiles.find(p => p.id === d.opponent_id);
+
+                return {
+                    id: d.id,
+                    challengerId: d.challenger_id,
+                    challengerName: d.challenger_id === user.id ? user.name : (challenger?.name || 'Fellow Lifter'),
+                    challengerAvatar: d.challenger_id === user.id ? user.profile_image_url || '' : (challenger?.profile_image_url || ''),
+                    opponentId: d.opponent_id,
+                    opponentName: d.opponent_id === user.id ? user.name : (opponent?.name || 'Fellow Lifter'),
+                    opponentAvatar: d.opponent_id === user.id ? user.profile_image_url || '' : (opponent?.profile_image_url || ''),
+                    type: d.type || 'weight',
+                    exercise: d.exercise_name || d.exercise || 'Bench Press',
+                    target: d.target_value || d.target || '100kg',
+                    status: d.status,
+                    challengerProgress: d.challenger_progress || 0,
+                    opponentProgress: d.opponent_progress || 0,
+                    createdAt: d.created_at,
+                    endsAt: d.ends_at || '7 days left',
+                    xpReward: d.xp_reward || 150
+                };
+            }));
         }
-    }, [user?.id, allProfiles]);
+    }, [user, allProfiles]);
 
     const fetchMilestones = useCallback(async () => {
         if (!isSupabaseConfigured || !user?.home_gym) {
             setMilestones([]);
             return;
         }
-        const { data } = await supabase.from('gym_milestones').select('*').eq('gym_id', user.home_gym);
+
+        const { data } = await supabase
+            .from('gym_milestones')
+            .select('*')
+            .eq('gym_id', user.home_gym);
+
         if (data) setMilestones(data);
-    }, [user?.home_gym]);
+    }, [user]);
 
     useEffect(() => {
         fetchProfiles();
+        fetchDuels();
         fetchMilestones();
-    }, [fetchProfiles, fetchMilestones]);
 
-    useEffect(() => {
-        if (allProfiles.length > 0) {
-            fetchDuels();
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('duelId')) {
+            setActiveTab('duels');
         }
-    }, [allProfiles, fetchDuels]);
+    }, [fetchProfiles, fetchDuels, fetchMilestones]);
 
-    // Derived State
+    // Construct mock gym wars
+    const gymWars: GymWarEntry[] = allGyms.map((g, idx) => ({
+        gymId: g.id,
+        gymName: g.name,
+        location: g.location || 'Nearby',
+        totalWorkouts: (g.member_count || 1) * 28 + (idx * 5),
+        totalXP: (g.member_count || 1) * 14200,
+        memberCount: Math.max(1, g.member_count || 1),
+        streak: 7 + (idx % 5),
+        rank: idx + 1,
+        king: { name: 'Champion Lifter', id: 'u1' }
+    }));
+
     const weeklyQuests = getActiveWeeklyQuests();
-    const [questProgress] = useState<Record<string, number>>(() => {
-        const p: Record<string, number> = {};
-        weeklyQuests.forEach(q => { p[q.id] = Math.floor(Math.random() * (q.target + 1)); });
-        return p;
-    });
-    const [unlockedHidden] = useState<Set<string>>(new Set(['hq1', 'hq4', 'hq7']));
-
-    const gymWars: GymWarEntry[] = (allGyms.length > 0 ? allGyms : []).slice(0, 10).map((g) => {
-        const gymMembers = allProfiles.filter(p => p.home_gym === g.id);
-        const gymXP = gymMembers.reduce((acc, curr) => acc + (curr.xp || 0), 0);
-        const topMember = [...gymMembers].sort((a, b) => (b.xp || 0) - (a.xp || 0))[0];
-
-        return {
-            gymId: g.id, gymName: g.name, location: g.location,
-            totalWorkouts: Math.floor(gymXP / 100) + gymMembers.length * 5,
-            totalXP: gymXP,
-            memberCount: gymMembers.length || g.member_count,
-            streak: Math.max(...gymMembers.map(m => m.reliability_streak || 0), 0) || 1,
-            rank: 0,
-            king: topMember ? { name: topMember.name, id: topMember.id } : undefined
-        };
-    }).sort((a, b) => b.totalXP - a.totalXP).map((g, i) => ({ ...g, rank: i + 1 }));
-
-    if (loading) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-                <div className="w-10 h-10 border-4 border-lime/30 border-t-lime rounded-full animate-spin" />
-                <p className="text-sm text-gray-500 font-bold uppercase tracking-widest">Entering Arena...</p>
-            </div>
-        );
-    }
+    const questProgress: Record<string, number> = {};
+    const unlockedHidden = new Set<string>();
 
     return (
-        <div className="flex flex-col min-h-screen pb-32">
+        <div className="pb-24 max-w-md mx-auto">
             <ArenaHeader user={user} />
-            <LocationSearch />
+
+            {/* Provisional Rank Banner */}
+            {!hasRank && (
+                <div className="mx-4 mb-4 p-4 rounded-2xl bg-gradient-to-r from-lime/20 via-gray-900 to-black border border-lime/40 flex items-center justify-between gap-3 shadow-lg shadow-lime/5">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-lime text-oled font-black">
+                            <Trophy size={20} />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-black text-white uppercase italic">Provisional Rank</span>
+                                <span className="text-[9px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 px-1.5 py-0.2 rounded font-bold">Unranked</span>
+                            </div>
+                            <p className="text-[11px] text-gray-400">Complete 1 placement trial to unlock Ranked Duels</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setShowPlacementModal(true)}
+                        className="px-3.5 py-2 rounded-xl bg-lime text-oled font-black text-xs uppercase tracking-wider shrink-0 hover:scale-105 active:scale-95 transition-all shadow-[0_0_12px_rgba(50,255,50,0.3)]"
+                    >
+                        Start Trial
+                    </button>
+                </div>
+            )}
 
             <ArenaTabNavigation 
                 activeTab={activeTab} 
@@ -151,11 +169,38 @@ export default function Arena() {
             )}
 
             {activeTab === 'duels' && (
-                <DuelList 
-                    duels={duels} 
-                    user={user} 
-                    onShowCreator={() => setShowDuelCreator(true)} 
-                />
+                <div className="space-y-6 px-4">
+                    {!hasRank ? (
+                        <div className="p-6 rounded-2xl bg-gray-950 border border-gray-800 text-center space-y-3">
+                            <div className="w-12 h-12 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center mx-auto text-yellow-400">
+                                <Lock size={22} />
+                            </div>
+                            <h4 className="text-white font-black text-sm uppercase">Ranked Duels Locked</h4>
+                            <p className="text-xs text-gray-400 max-w-xs mx-auto">
+                                Take a 1-second snapshot of your bar or use the digital loader to calibrate your rank and unlock cross-border challenges.
+                            </p>
+                            <button
+                                onClick={() => setShowPlacementModal(true)}
+                                className="px-5 py-2.5 rounded-xl bg-lime text-oled font-black text-xs uppercase tracking-wider hover:bg-lime/90 active:scale-95 transition shadow-[0_0_15px_rgba(50,255,50,0.2)]"
+                            >
+                                Unlock Ranked Duels ⚡
+                            </button>
+                        </div>
+                    ) : (
+                        <RemoteWhatsAppDuel user={user} />
+                    )}
+                    <DuelList 
+                        duels={duels} 
+                        user={user} 
+                        onShowCreator={() => setShowDuelCreator(true)} 
+                    />
+                </div>
+            )}
+
+            {activeTab === 'family' && (
+                <div className="px-4">
+                    <FamilyCircle />
+                </div>
             )}
 
             {activeTab === 'quests' && (
@@ -192,13 +237,26 @@ export default function Arena() {
                             opponentId: newDuelData.opponent_id,
                             opponentName: allProfiles.find(p => p.id === newDuelData.opponent_id)?.name || 'Opponent',
                             opponentAvatar: allProfiles.find(p => p.id === newDuelData.opponent_id)?.profile_image_url || '',
-                            ...newDuelData,
-                            endsAt: '48h to accept'
+                            type: newDuelData.type || 'weight',
+                            exercise: newDuelData.exercise_name || 'Lift',
+                            target: newDuelData.target_value || 'Target',
+                            status: 'pending',
+                            challengerProgress: 0,
+                            opponentProgress: 0,
+                            createdAt: new Date().toISOString(),
+                            endsAt: '48h to accept',
+                            xpReward: 150
                         }, ...prev]);
                     }
                     setShowDuelCreator(false);
                     alert('Challenge sent!');
                 }}
+            />
+
+            <PlacementMatchModal
+                isOpen={showPlacementModal}
+                onClose={() => setShowPlacementModal(false)}
+                onPlacementComplete={() => setShowPlacementModal(false)}
             />
         </div>
     );

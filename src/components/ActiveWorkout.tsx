@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { WorkoutPlan, WorkoutExercise, WorkoutLog } from '../types/database';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useGyms } from '../context/GymContext';
 import { verifyGymPresence } from '../lib/location';
@@ -9,10 +10,13 @@ import { safeStorage } from '../lib/safeStorage';
 import PRCelebration from './PRCelebration';
 
 // Modular Components
-import ActiveWorkoutHeader from './workouts/ActiveWorkoutHeader';
+import ActiveWorkoutHeader, { DifficultyDial } from './workouts/ActiveWorkoutHeader';
 import ActiveWorkoutExerciseList from './workouts/ActiveWorkoutExerciseList';
 import ActiveWorkoutSummary from './workouts/ActiveWorkoutSummary';
 import GeofenceToggle from './workouts/GeofenceToggle';
+import ExerciseSwapModal from './workouts/ExerciseSwapModal';
+import PlateCalculatorModal from './workouts/PlateCalculatorModal';
+import RestTimerOverlay from './workouts/RestTimerOverlay';
 
 interface ActiveWorkoutProps {
     plan: WorkoutPlan;
@@ -22,33 +26,64 @@ interface ActiveWorkoutProps {
 }
 
 export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: ActiveWorkoutProps) {
+    // Preserve base weights for dynamic difficulty scaling
+    const [baseExercises] = useState<WorkoutExercise[]>(
+        plan.exercises.map(e => ({ ...e, completed: false }))
+    );
     const [exercises, setExercises] = useState<WorkoutExercise[]>(
         plan.exercises.map(e => ({ ...e, completed: false }))
     );
+    const [difficulty, setDifficulty] = useState<DifficultyDial>('target');
     const [currentIdx, setCurrentIdx] = useState(0);
     const [elapsed, setElapsed] = useState(0);
     const [startTime] = useState(new Date().toISOString());
     const [finished, setFinished] = useState(false);
-    const [shared, setShared] = useState(false);
+    const [lastCompletedLog, setLastCompletedLog] = useState<WorkoutLog | null>(null);
     const { user, updateUser } = useAuth();
     const { findGym, getActiveWar } = useGyms();
     const [activePR, setActivePR] = useState<{ exercise: string; newWeight: number; oldWeight: number } | null>(null);
+    const [prs, setPrs] = useState<{ exercise: string; newWeight: number }[]>([]);
     const [verifyLocation, setVerifyLocation] = useState(true);
+    const [swapModalExercise, setSwapModalExercise] = useState<WorkoutExercise | null>(null);
+    const [showPlateCalculator, setShowPlateCalculator] = useState(false);
+    const [plateCalcWeight, setPlateCalcWeight] = useState(100);
+    const [showRestTimer, setShowRestTimer] = useState(false);
+    const [restDuration, setRestDuration] = useState(90);
+    const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+
+    const handleConfirmDiscard = () => {
+        safeStorage.removeItem(`active_workout_${plan.id}`);
+        setShowDiscardConfirm(false);
+        onCancel();
+    };
 
     // Persistence: Hydrate from localStorage on mount
     useEffect(() => {
         const saved = safeStorage.getItem(`active_workout_${plan.id}`);
         if (saved) {
             try {
-                const { exercises: savedEx, elapsed: savedElapsed, currentIdx: savedIdx } = JSON.parse(saved);
-                setExercises(savedEx);
-                setElapsed(savedElapsed);
-                setCurrentIdx(savedIdx);
+                const { exercises: savedEx, elapsed: savedElapsed, currentIdx: savedIdx, difficulty: savedDiff } = JSON.parse(saved);
+                if (savedEx) setExercises(savedEx);
+                if (savedElapsed) setElapsed(savedElapsed);
+                if (savedIdx !== undefined) setCurrentIdx(savedIdx);
+                if (savedDiff) setDifficulty(savedDiff);
             } catch (e) {
                 console.error('Failed to hydrate workout:', e);
             }
         }
     }, [plan.id]);
+
+    // Handle Difficulty Dial Changes
+    const handleDifficultyChange = (newDiff: DifficultyDial) => {
+        setDifficulty(newDiff);
+        const mult = newDiff === 'deload' ? 0.90 : newDiff === 'beast' ? 1.05 : 1.00;
+        setExercises(prev => prev.map((ex, i) => {
+            const baseW = baseExercises[i]?.weight || ex.weight || 0;
+            if (!baseW) return ex;
+            const scaled = Math.max(2.5, Math.round((baseW * mult) / 2.5) * 2.5);
+            return { ...ex, weight: scaled };
+        }));
+    };
 
     // Persistence: Save to localStorage on change
     useEffect(() => {
@@ -56,9 +91,9 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
             safeStorage.removeItem(`active_workout_${plan.id}`);
             return;
         }
-        const state = { exercises, elapsed, currentIdx };
+        const state = { exercises, elapsed, currentIdx, difficulty };
         safeStorage.setItem(`active_workout_${plan.id}`, JSON.stringify(state));
-    }, [exercises, elapsed, currentIdx, finished, plan.id]);
+    }, [exercises, elapsed, currentIdx, difficulty, finished, plan.id]);
 
     // Timer
     useEffect(() => {
@@ -98,6 +133,7 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
                 const newWeight = exercise.weight;
 
                 setActivePR({ exercise: exercise.name, newWeight, oldWeight });
+                setPrs(prev => [...prev.filter(p => p.exercise !== exercise.name), { exercise: exercise.name, newWeight }]);
 
                 updateUser({
                     big4: { ...user.big4, [prKey]: newWeight },
@@ -107,11 +143,22 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
         }
     };
 
-    const completeAll = exercises.every(e => e.completed);
+    const handleSelectSwap = (newEx: { name: string; notes?: string }) => {
+        if (!swapModalExercise) return;
+        setExercises(prev => prev.map(e =>
+            e.id === swapModalExercise.id ? { ...e, name: newEx.name, notes: newEx.notes } : e
+        ));
+        setSwapModalExercise(null);
+    };
+
+    const handleUpdateExercise = (updated: WorkoutExercise) => {
+        setExercises(prev => prev.map(e => e.id === updated.id ? updated : e));
+    };
+
+    const completeAll = exercises.some(e => e.completed);
     const completedCount = exercises.filter(e => e.completed).length;
 
     const handleFinish = async () => {
-        setFinished(true);
         const log: WorkoutLog = {
             id: `wl-${Date.now()}`,
             plan_id: plan.id,
@@ -119,95 +166,182 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
             exercises,
             started_at: startTime,
             completed_at: new Date().toISOString(),
-            duration_min: Math.round(elapsed / 60)
+            duration_min: Math.max(1, Math.round(elapsed / 60))
         };
 
+        setLastCompletedLog(log);
+        setFinished(true);
+
+        const totalVolume = exercises.reduce((acc, ex) => {
+            if (ex.setDetails && ex.setDetails.length > 0) {
+                return acc + ex.setDetails.reduce((sAcc, s) => sAcc + ((s.completed ?? ex.completed) ? (s.reps * (s.weight || 0)) : 0), 0);
+            }
+            return acc + (ex.completed ? (ex.sets * ex.reps * (ex.weight || 0)) : 0);
+        }, 0);
+
         if (isSupabaseConfigured && user) {
-            await supabase.from('workout_logs').insert({
-                user_id: user.id,
-                plan_id: plan.id,
-                exercises: exercises,
-                started_at: startTime,
-                completed_at: new Date().toISOString(),
-                duration_min: Math.round(elapsed / 60),
-                gym_id: user.home_gym || null
-            });
-
-            if (user.home_gym) {
-                const activeWar = await getActiveWar(user.home_gym);
-                const gym = findGym(user.home_gym);
-
-                let isVerifiedLocation = false;
-                if (verifyLocation && gym) {
-                    isVerifiedLocation = await verifyGymPresence(gym.lat, gym.lng);
-                    if (!isVerifiedLocation) {
-                        alert('Anti-Cheat Active: You are not within 200m of the gym. Workout logged without verification bonus.');
-                    } else {
-                        updateUser({ xp: (user.xp || 0) + 150 });
-                    }
-                }
-
-                const totalVolume = exercises.reduce((acc, ex) =>
-                    acc + (ex.completed ? (ex.sets * ex.reps * (ex.weight || 0)) : 0), 0
-                );
-
-                await supabase.from('activity_logs').insert({
+            try {
+                await supabase.from('workout_logs').insert({
                     user_id: user.id,
-                    gym_id: user.home_gym,
-                    type: 'workout',
-                    value: totalVolume,
-                    metadata: {
-                        plan_name: plan.name,
-                        is_war_contribution: !!activeWar && isVerifiedLocation,
-                        war_id: activeWar?.id,
-                        geofenced: isVerifiedLocation
-                    }
+                    plan_id: plan.id,
+                    exercises: exercises,
+                    started_at: startTime,
+                    completed_at: new Date().toISOString(),
+                    duration_min: Math.max(1, Math.round(elapsed / 60)),
+                    gym_id: user.home_gym || null
                 });
+
+                if (user.home_gym) {
+                    const activeWar = await getActiveWar(user.home_gym);
+                    const gym = findGym(user.home_gym);
+
+                    let isVerifiedLocation = false;
+                    if (verifyLocation && gym) {
+                        isVerifiedLocation = await verifyGymPresence(gym.lat, gym.lng);
+                        if (!isVerifiedLocation) {
+                            console.warn('Anti-Cheat: You are not within 600m of the gym.');
+                        } else {
+                            updateUser({ xp: (user.xp || 0) + 150 });
+                        }
+                    }
+
+                    await supabase.from('activity_logs').insert({
+                        user_id: user.id,
+                        gym_id: user.home_gym,
+                        type: 'workout',
+                        value: totalVolume,
+                        metadata: {
+                            plan_name: plan.name,
+                            is_war_contribution: !!activeWar && isVerifiedLocation,
+                            war_id: activeWar?.id,
+                            geofenced: isVerifiedLocation
+                        }
+                    });
+                }
+            } catch (err) {
+                console.warn('Failed to sync workout to cloud:', err);
+            }
+        }
+    };
+
+    const handlePostToFeed = async (postData: { content: string; mediaUrl?: string; totalVolume: number }) => {
+        if (isSupabaseConfigured && user) {
+            try {
+                await supabase.from('posts').insert({
+                    author_id: user.id,
+                    gym_id: user.home_gym || null,
+                    content: postData.content,
+                    media_url: postData.mediaUrl,
+                    is_auto_generated: true,
+                    spots_count: 0
+                });
+            } catch (err) {
+                console.warn('Cloud post failed, saving locally:', err);
             }
         }
 
-        setTimeout(() => onComplete(log), 2500);
+        // Cache into local feed so it shows immediately on the social hub
+        const localPost = {
+            id: `post-${Date.now()}`,
+            author_id: user?.id || 'user-local',
+            gym_id: user?.home_gym || null,
+            content: postData.content,
+            media_url: postData.mediaUrl,
+            media_type: 'image',
+            created_at: new Date().toISOString(),
+            spots_count: 1,
+            is_auto_generated: true,
+            profiles: {
+                name: user?.name || 'Iron Lifter',
+                profile_image_url: user?.profile_image_url || 'https://i.pravatar.cc/100',
+                verification_status: 'verified',
+                is_founding_trainer: false,
+                big4: user?.big4
+            }
+        };
+
+        try {
+            const cached = safeStorage.getItem('ironmatch_feed_cache');
+            const existing = cached ? JSON.parse(cached) : [];
+            safeStorage.setItem('ironmatch_feed_cache', JSON.stringify([localPost, ...existing]));
+        } catch (e) {
+            console.warn('Feed caching issue:', e);
+        }
     };
 
     if (finished) {
         return (
-            <ActiveWorkoutSummary 
+            <ActiveWorkoutSummary
                 planName={plan.name}
-                completedCount={completedCount}
-                totalCount={exercises.length}
+                exercises={exercises}
                 elapsed={elapsed}
-                shared={shared}
-                onShare={() => setShared(true)}
+                prs={prs}
+                onDone={() => onComplete(lastCompletedLog || {
+                    id: `wl-${Date.now()}`,
+                    plan_id: plan.id,
+                    user_id: userId,
+                    exercises,
+                    started_at: startTime,
+                    completed_at: new Date().toISOString(),
+                    duration_min: Math.max(1, Math.round(elapsed / 60))
+                })}
+                onPostToFeed={handlePostToFeed}
             />
         );
     }
 
     return (
         <div className="flex flex-col min-h-screen bg-oled pb-24">
-            <ActiveWorkoutHeader 
+            <ActiveWorkoutHeader
                 planName={plan.name}
                 elapsed={elapsed}
                 formatTime={formatTime}
                 completedCount={completedCount}
                 totalCount={exercises.length}
-                onCancel={onCancel}
+                onCancel={() => setShowDiscardConfirm(true)}
                 onFinish={handleFinish}
                 canFinish={completeAll}
+                difficulty={difficulty}
+                onDifficultyChange={handleDifficultyChange}
             />
 
-            <ActiveWorkoutExerciseList 
+            <ActiveWorkoutExerciseList
                 exercises={exercises}
                 currentIdx={currentIdx}
                 setCurrentIdx={setCurrentIdx}
                 toggleComplete={toggleComplete}
+                onUpdateExercise={handleUpdateExercise}
+                onOpenSwap={setSwapModalExercise}
+                onOpenPlateCalc={(weight) => {
+                    setPlateCalcWeight(weight);
+                    setShowPlateCalculator(true);
+                }}
+                onTriggerRest={(secs) => {
+                    if (secs) setRestDuration(secs);
+                    setShowRestTimer(true);
+                }}
+                unit={(user?.unit_preference as any) || 'kg'}
             />
 
             <div className="px-4">
-                <GeofenceToggle 
+                <GeofenceToggle
                     verifyLocation={verifyLocation}
                     setVerifyLocation={setVerifyLocation}
                 />
             </div>
+
+            <RestTimerOverlay
+                durationSeconds={restDuration}
+                isOpen={showRestTimer}
+                onClose={() => setShowRestTimer(false)}
+            />
+
+            <PlateCalculatorModal
+                isOpen={showPlateCalculator}
+                onClose={() => setShowPlateCalculator(false)}
+                initialWeight={plateCalcWeight}
+                unit={(user?.unit_preference as any) || 'kg'}
+            />
 
             <AnimatePresence>
                 {activePR && (
@@ -215,9 +349,61 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
                         exercise={activePR.exercise}
                         newWeight={activePR.newWeight}
                         oldWeight={activePR.oldWeight}
-                        unit={user?.unit_preference || 'lbs'}
+                        unit={user?.unit_preference || 'kg'}
                         onClose={() => setActivePR(null)}
                     />
+                )}
+                {swapModalExercise && (
+                    <ExerciseSwapModal
+                        exercise={swapModalExercise}
+                        onSelectSwap={handleSelectSwap}
+                        onClose={() => setSwapModalExercise(null)}
+                    />
+                )}
+                {showDiscardConfirm && (
+                    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowDiscardConfirm(false)}
+                            className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.92, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.92, opacity: 0 }}
+                            className="relative w-full max-w-sm bg-oled border border-red-500/30 rounded-3xl p-6 z-10 shadow-[0_0_40px_rgba(239,68,68,0.2)] text-center space-y-4"
+                        >
+                            <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 mx-auto">
+                                <X size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black uppercase text-white tracking-wide">
+                                    Discard Workout?
+                                </h3>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    All sets logged in this session will be discarded. This cannot be undone.
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDiscardConfirm(false)}
+                                    className="py-3 px-4 rounded-xl bg-gray-900 border border-gray-800 text-xs font-black uppercase text-gray-300 hover:text-white transition active:scale-95"
+                                >
+                                    Keep Lifting
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleConfirmDiscard}
+                                    className="py-3 px-4 rounded-xl bg-red-600 text-xs font-black uppercase text-white hover:bg-red-500 transition active:scale-95 shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+                                >
+                                    Discard
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
         </div>

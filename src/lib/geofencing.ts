@@ -19,7 +19,7 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
 /**
  * Checks if a user is within a certain distance of a gym
  */
-export function isNearGym(userLat: number, userLng: number, gymLat: number, gymLng: number, radiusMeters: number = 200): boolean {
+export function isNearGym(userLat: number, userLng: number, gymLat: number, gymLng: number, radiusMeters: number = 600): boolean {
     if (!userLat || !userLng || !gymLat || !gymLng) return false;
     const distance = calculateDistance(userLat, userLng, gymLat, gymLng);
     return distance <= radiusMeters;

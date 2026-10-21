@@ -1,7 +1,7 @@
 import React from 'react';
-import { Swords, Shield, Target, LucideIcon } from 'lucide-react';
+import { Swords, Shield, Target, Users, LucideIcon } from 'lucide-react';
 
-export type ArenaTab = 'wars' | 'duels' | 'quests';
+export type ArenaTab = 'wars' | 'duels' | 'family' | 'quests';
 
 interface ArenaTabOption {
     key: ArenaTab;
@@ -18,6 +18,7 @@ const ArenaTabNavigation: React.FC<ArenaTabNavigationProps> = ({ activeTab, onTa
     const tabs: ArenaTabOption[] = [
         { key: 'wars', icon: Shield, label: 'Gym Wars' },
         { key: 'duels', icon: Swords, label: 'Duels' },
+        { key: 'family', icon: Users, label: 'Family 🇳🇱' },
         { key: 'quests', icon: Target, label: 'Quests' },
     ];
 

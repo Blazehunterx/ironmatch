@@ -47,5 +47,8 @@ export function profileToUser(profile: any): User {
         revolut_tag: profile.revolut_tag || '',
         payout_iban: profile.payout_iban || '',
         pending_balance: profile.pending_balance || 0,
+        is_pro: profile.is_pro || false,
+        pro_tier: profile.pro_tier || 'free',
+        pro_expires_at: profile.pro_expires_at || '',
     };
 }

@@ -174,7 +174,7 @@ export default function GymWarArena({ war, gym1, gym2 }: GymWarArenaProps) {
                 <div className="mt-6 p-4 bg-gray-900 rounded-2xl border border-gray-800 flex items-start gap-3">
                     <Shield className="text-lime shrink-0" size={16} />
                     <p className="text-[9px] text-gray-500 leading-relaxed font-medium">
-                        Anti-Cheat Active: You must be within 200m of your gym to contribute to the war score. Verified GPS coordinates are required for all logs.
+                        Anti-Cheat Active: You must be within 600m of your gym to contribute to the war score. Verified GPS coordinates are required for all logs.
                     </p>
                 </div>
             </div>

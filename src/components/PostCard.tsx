@@ -39,7 +39,7 @@ const PostCard = React.memo(({ post, onSelect, onToggleSpot, currentUserId }: Po
                                 {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
                             </span>
                             {post.is_auto_generated && (
-                                <span className="text-[8px] bg-lime/10 text-lime px-1.5 py-0.5 rounded border border-lime/20 font-black uppercase tracking-tighter">Verified Link</span>
+                                <span className="text-[8px] bg-lime/10 text-lime px-1.5 py-0.5 rounded border border-lime/20 font-black uppercase tracking-tighter">Verified Workout</span>
                             )}
                         </div>
                     </div>
@@ -71,35 +71,36 @@ const PostCard = React.memo(({ post, onSelect, onToggleSpot, currentUserId }: Po
                     )}
 
                     {post.is_auto_generated && (
-                        <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/90 to-transparent">
+                        <div className="absolute inset-x-0 bottom-0 p-5 bg-gradient-to-t from-black/95 via-black/60 to-transparent">
                             <div className="flex items-end justify-between">
                                 <div>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <Trophy size={16} className="text-lime" />
-                                        <span className="text-[10px] font-black text-lime uppercase tracking-[0.2em]">Strength Milestone</span>
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                        <Trophy size={14} className="text-lime" />
+                                        <span className="text-[9px] font-black text-lime uppercase tracking-[0.2em]">Verified Proof Card</span>
                                     </div>
-                                    <div className="flex gap-4">
+                                    <div className="flex gap-3">
                                         {post.profiles?.big4 && (
                                             <>
-                                                <div className="text-center">
-                                                    <p className="text-[8px] text-gray-500 font-bold uppercase">Bench</p>
-                                                    <p className="text-lg font-black text-white italic">{post.profiles.big4.bench}<span className="text-[8px] text-lime ml-0.5">LB</span></p>
+                                                <div className="text-left">
+                                                    <p className="text-[7px] text-gray-400 font-bold uppercase">Bench</p>
+                                                    <p className="text-sm font-black text-white italic">{post.profiles.big4.bench}<span className="text-[7px] text-lime ml-0.5">KG</span></p>
                                                 </div>
-                                                <div className="text-center">
-                                                    <p className="text-[8px] text-gray-500 font-bold uppercase">Squat</p>
-                                                    <p className="text-lg font-black text-white italic">{post.profiles.big4.squat}<span className="text-[8px] text-lime ml-0.5">LB</span></p>
+                                                <div className="text-left">
+                                                    <p className="text-[7px] text-gray-400 font-bold uppercase">Squat</p>
+                                                    <p className="text-sm font-black text-white italic">{post.profiles.big4.squat}<span className="text-[7px] text-lime ml-0.5">KG</span></p>
                                                 </div>
-                                                <div className="text-center">
-                                                    <p className="text-[8px] text-gray-500 font-bold uppercase">Dead</p>
-                                                    <p className="text-lg font-black text-white italic">{post.profiles.big4.deadlift}<span className="text-[8px] text-lime ml-0.5">LB</span></p>
+                                                <div className="text-left">
+                                                    <p className="text-[7px] text-gray-400 font-bold uppercase">Dead</p>
+                                                    <p className="text-sm font-black text-white italic">{post.profiles.big4.deadlift}<span className="text-[7px] text-lime ml-0.5">KG</span></p>
                                                 </div>
                                             </>
                                         )}
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase">Total Volume</p>
-                                    <p className="text-2xl font-black text-white italic">Elite<span className="text-xs text-lime ml-1">LIFT</span></p>
+                                    <span className="text-[8px] bg-lime/20 text-lime px-2 py-0.5 rounded-full font-black uppercase tracking-wider border border-lime/40">
+                                        LOCKED IN 🔥
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -112,12 +113,12 @@ const PostCard = React.memo(({ post, onSelect, onToggleSpot, currentUserId }: Po
                 <div className="flex items-center gap-4">
                     <button
                         onClick={(e) => { e.stopPropagation(); onToggleSpot(post.id); }}
-                        className="flex items-center gap-2 group/spot"
+                        className="flex items-center gap-2 group/spot active:scale-90 transition-transform"
                     >
                         <div className="p-2 rounded-xl bg-lime/10 group-hover/spot:bg-lime/20 transition-colors">
                             <Zap size={18} className="text-lime fill-lime/20 group-hover/spot:fill-lime transition-all" />
                         </div>
-                        <span className="text-xs font-black text-white italic">{post.spots_count || 0} SPOTS</span>
+                        <span className="text-xs font-black text-white italic">{post.spots_count || 0} HIGH-FIVES 🔥</span>
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onSelect(post); }}

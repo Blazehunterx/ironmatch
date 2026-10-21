@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Big4Lifts, Rank } from '../../lib/gamification';
+import { Camera, Sparkles } from 'lucide-react';
+import PlacementMatchModal from '../placement/PlacementMatchModal';
 
 interface Big4StepProps {
     lifts: Big4Lifts;
@@ -13,6 +15,8 @@ interface Big4StepProps {
 const Big4Step: React.FC<Big4StepProps> = ({
     lifts, unitPref, rank, hasAnyLift, onSetLifts
 }) => {
+    const [showPlacementModal, setShowPlacementModal] = useState(false);
+
     const liftConfigs = [
         { key: 'bench' as const, label: 'Bench Press', icon: '🪑' },
         { key: 'squat' as const, label: 'Squat', icon: '🏋️' },
@@ -27,8 +31,29 @@ const Big4Step: React.FC<Big4StepProps> = ({
     return (
         <div className="flex-1 flex flex-col">
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
-                <h2 className="text-2xl font-black text-white mb-1">Your Big 4</h2>
-                <p className="text-sm text-gray-500 mb-2">Enter your 1 rep max (1RM) for each lift. This determines your rank.</p>
+                <h2 className="text-2xl font-black text-white mb-1">Strength Calibration</h2>
+                <p className="text-sm text-gray-500 mb-3">Snap your bar or enter your working weights to unlock Ranked Mode.</p>
+                
+                {/* Instant Snapshot Placement Button */}
+                <button
+                    onClick={() => setShowPlacementModal(true)}
+                    className="w-full mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-lime/20 via-gray-900 to-black border border-lime/40 flex items-center justify-between text-left hover:border-lime transition-all active:scale-[0.98] shadow-lg shadow-lime/5"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-lime text-oled rounded-xl shrink-0">
+                            <Camera size={18} />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-1.5">
+                                <p className="text-xs font-black text-white uppercase italic">Snap Bar or Load Digital Plates</p>
+                                <span className="text-[8px] bg-lime text-oled px-1.5 py-0.2 rounded font-black uppercase">Instant</span>
+                            </div>
+                            <p className="text-[10px] text-gray-400">Zero manual math · Auto-derives your Big 4</p>
+                        </div>
+                    </div>
+                    <Sparkles size={16} className="text-lime shrink-0" />
+                </button>
+
                 {hasAnyLift && (
                     <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                         className="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 mb-4">
@@ -63,9 +88,18 @@ const Big4Step: React.FC<Big4StepProps> = ({
             {!hasAnyLift && (
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
                     className="text-[10px] text-gray-600 text-center mt-4">
-                    Don't know your 1RM? No problem — skip this and add it later from your profile.
+                    Don't know your 1RM? Snap a photo of what's on the bar above, or calibrate on your first workout.
                 </motion.p>
             )}
+
+            <PlacementMatchModal
+                isOpen={showPlacementModal}
+                onClose={() => setShowPlacementModal(false)}
+                onPlacementComplete={(_rankName, big4) => {
+                    onSetLifts(big4);
+                    setShowPlacementModal(false);
+                }}
+            />
         </div>
     );
 };

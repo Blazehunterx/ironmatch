@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types/database';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { mockUsers } from '../lib/mock';
 import { withTimeout, profileToUser } from '../lib/authUtils';
 import { safeStorage } from '../lib/safeStorage';
 
@@ -149,20 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const login = async (email: string, password: string) => {
         if (!isSupabaseConfigured) {
-            // Fallback: mock login
-            return new Promise<void>((resolve, reject) => {
-                setTimeout(() => {
-                    const foundUser = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-                    if (foundUser) {
-                        setUser(foundUser);
-                        safeStorage.setItem('ironmatch_user', JSON.stringify(foundUser));
-                        safeStorage.setItem('ironmatch_remembered_email', foundUser.email);
-                        resolve();
-                    } else {
-                        reject(new Error('User not found. Try alex@example.com'));
-                    }
-                }, 500);
-            });
+            throw new Error('Cloud database is not configured. Please verify your connection.');
         }
 
         const sanitizedEmail = email.trim().toLowerCase();
@@ -260,29 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const signup = async (userData: Partial<User> & { password?: string }) => {
         if (!isSupabaseConfigured) {
-            // Fallback: mock signup
-            return new Promise<void>((resolve) => {
-                setTimeout(() => {
-                    const newUser: User = {
-                        id: `u${Date.now()}`,
-                        name: userData.name || '',
-                        email: userData.email || '',
-                        home_gym: userData.home_gym || '',
-                        fitness_level: userData.fitness_level || 'Beginner',
-                        reliability_streak: 0,
-                        profile_image_url: userData.profile_image_url || 'https://i.pravatar.cc/150',
-                        bio: userData.bio || '',
-                        is_trainer: userData.is_trainer || false,
-                        goals: userData.goals || [],
-                        sub_goals: userData.sub_goals || [],
-                        availability: userData.availability || [],
-                    };
-                    mockUsers.push(newUser);
-                        setUser(newUser);
-                        safeStorage.setItem('ironmatch_user', JSON.stringify(newUser));
-                        resolve();
-                    }, 800);
-            });
+            throw new Error('Cloud database is not configured. Please verify your connection.');
         }
 
         const sanitizedEmail = (userData.email || '').trim().toLowerCase();
@@ -313,6 +277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const { error: upsertError } = await supabase.from('profiles').upsert({
                     id: data.user.id,
                     name: userData.name || '',
+                    display_name: userData.name || '',
                     email: sanitizedEmail,
                     fitness_level: userData.fitness_level || 'Beginner',
                     home_gym: userData.home_gym || '',
@@ -362,6 +327,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     payload[key] = updated.big4;
                 } else {
                     payload[key] = (userData as any)[key];
+                    if (key === 'name') {
+                        payload.display_name = (userData as any)[key];
+                    }
                 }
             });
 
@@ -378,8 +346,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         } else {
             safeStorage.setItem('ironmatch_user', JSON.stringify(updated));
-            const idx = mockUsers.findIndex(u => u.id === user.id);
-            if (idx !== -1) mockUsers[idx] = updated;
         }
     };
 

@@ -23,3 +23,23 @@ Thumbs.db
 *.log
 npm-debug.log*
 .vercel
+
+# Binaries & Temporary Artifacts
+release_binaries/
+*.apk
+*.aab
+*.png
+*.csv
+leads/
+*.db
+supabase/.temp/
+smb_leads_*.json
+*.ps1
+*.py
+*.txt
+
+# Operational scratch scripts
+*.cjs
+!verify_all_6_flows.cjs
+!verify_e2e_browser.cjs
+!verify_monetization_and_autoregulation.cjs

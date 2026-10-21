@@ -1,6 +1,11 @@
 import { User, Gym, Post, Match } from '../types/database';
 
 export const mockGyms: Gym[] = [
+    { id: 'bali-body-factory', name: 'Body Factory Bali', location: 'Canggu, Bali', member_count: 42, lat: -8.6534, lng: 115.1321 },
+    { id: 'bali-nirvana', name: 'Nirvana Strength Bali', location: 'Canggu, Bali', member_count: 38, lat: -8.6472, lng: 115.1398 },
+    { id: 'bali-avenue', name: 'Avenue Fitness Canggu', location: 'Canggu, Bali', member_count: 27, lat: -8.6511, lng: 115.1384 },
+    { id: 'bali-bull', name: 'Bull Gym Bali', location: 'Canggu, Bali', member_count: 24, lat: -8.6552, lng: 115.1412 },
+    { id: 'bali-komune', name: 'Komune Resort Gym', location: 'Keramas, Gianyar, Bali', member_count: 19, lat: -8.5833, lng: 115.3411 },
     { id: 'g1', name: 'Iron Forge', location: 'Downtown Core', member_count: 0, lat: 1.2837, lng: 103.8512 },
     { id: 'g2', name: 'Metro Fitness', location: 'Orchard', member_count: 0, lat: 1.3048, lng: 103.8318 },
     { id: 'g3', name: 'Peak Performance', location: 'Tanjong Pagar', member_count: 0, lat: 1.2764, lng: 103.8461 },

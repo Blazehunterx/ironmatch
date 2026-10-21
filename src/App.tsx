@@ -14,6 +14,7 @@ import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
 import Workouts from './pages/Workouts';
 import Arena from './pages/Arena';
+import Nutrition from './pages/Nutrition';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Onboarding from './pages/Onboarding';
@@ -46,6 +47,7 @@ function AppRoutes() {
                         <Route path="/search" element={<Search />} />
                         <Route path="/notifications" element={<Notifications />} />
                         <Route path="/workouts" element={<Workouts />} />
+                        <Route path="/nutrition" element={<Nutrition />} />
                         <Route path="/arena" element={<Arena />} />
                         <Route path="/messages" element={<Messages />} />
                         <Route path="/profile" element={<Profile />} />

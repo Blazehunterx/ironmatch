@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useGyms } from '../context/GymContext';
 import { supabase } from '../lib/supabase';
-import { RefreshCw, LayoutGrid, Users, MapPin, X, Filter } from 'lucide-react';
+import { RefreshCw, LayoutGrid, Users, MapPin, X, Filter, Dumbbell } from 'lucide-react';
 import RequestModal from '../components/RequestModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Goal, DayOfWeek, TimeBlock } from '../types/database';
@@ -12,6 +13,7 @@ import ProfileDetail from '../components/ProfileDetail';
 import SocialFeed from '../components/SocialFeed';
 import GymWarArena from '../components/GymWarArena';
 import StoryViewer from '../components/StoryViewer';
+import PlacementMatchModal from '../components/placement/PlacementMatchModal';
 import { Story } from '../types/database';
 
 export default function Home() {
@@ -35,6 +37,7 @@ export default function Home() {
 
     // Filter state
     const [showFilters, setShowFilters] = useState(false);
+    const [showPlacementModal, setShowPlacementModal] = useState(false);
     const [filterTrainer] = useState(false);
     const [filterGoal] = useState<Goal | null>(null);
     const [filterDay] = useState<DayOfWeek | null>(null);
@@ -42,6 +45,10 @@ export default function Home() {
     const [filterLevel] = useState<string | null>(null);
     const [filterGym] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'feed' | 'buddies'>('feed');
+    const [feedScope, setFeedScope] = useState<'my_gym' | 'global'>('my_gym');
+
+    const activeGym = findGym(user?.home_gym || 'bali-body-factory');
+    const currentGymId = feedScope === 'my_gym' ? (user?.home_gym || 'bali-body-factory') : filterGym;
 
     const fetchProfiles = async () => {
         setIsLoadingProfiles(true);
@@ -147,6 +154,28 @@ export default function Home() {
                 </div>
             </div>
 
+            {/* Provisional Rank Placement Banner */}
+            {(!user?.big4 || (user.big4.bench + user.big4.squat + user.big4.deadlift + user.big4.ohp) === 0) && (
+                <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-lime/20 via-gray-900 to-black border border-lime/40 flex items-center justify-between gap-3 shadow-lg shadow-lime/5">
+                    <div className="flex items-center gap-3">
+                        <span className="text-2xl">🌱</span>
+                        <div>
+                            <div className="flex items-center gap-1.5">
+                                <h4 className="text-xs font-black text-white uppercase italic">Provisional · Unranked</h4>
+                                <span className="text-[8px] bg-lime text-oled px-1.5 py-0.2 rounded font-black uppercase">Tutorial</span>
+                            </div>
+                            <p className="text-[10px] text-gray-400">Snap your bar to unlock Ranked Arena & AI Split</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setShowPlacementModal(true)}
+                        className="px-3.5 py-2 rounded-xl bg-lime text-oled font-black text-xs uppercase tracking-wider shrink-0 hover:scale-105 active:scale-95 transition shadow-[0_0_12px_rgba(50,255,50,0.3)]"
+                    >
+                        Placement ⚡
+                    </button>
+                </div>
+            )}
+
             <div className="flex bg-gray-900/50 p-1.5 rounded-2xl mb-6 border border-gray-800">
                 <button
                     onClick={() => setActiveTab('feed')}
@@ -163,9 +192,45 @@ export default function Home() {
             </div>
 
             {activeTab === 'feed' ? (
-                <div className="space-y-6">
+                <div className="space-y-4">
+                    {/* Facility Anchor Card */}
+                    <div className="p-3.5 rounded-2xl bg-gradient-to-r from-lime/10 via-gray-950 to-oled border border-lime/30 flex items-center justify-between shadow-[0_0_20px_rgba(50,255,50,0.08)]">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-lime/10 border border-lime/30 flex items-center justify-center text-lime font-black shrink-0">
+                                <MapPin size={18} />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-[9px] font-black uppercase text-lime tracking-widest block">Home Facility</span>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-lime animate-pulse" />
+                                </div>
+                                <h3 className="text-xs sm:text-sm font-black text-white uppercase italic tracking-wide truncate">
+                                    {activeGym?.name || user?.home_gym_name || 'Body Factory Bali'}
+                                </h3>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/5 shrink-0 ml-2">
+                            <button
+                                onClick={() => setFeedScope('my_gym')}
+                                className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition ${
+                                    feedScope === 'my_gym' ? 'bg-lime text-black shadow-sm' : 'text-gray-400 hover:text-white'
+                                }`}
+                            >
+                                Facility
+                            </button>
+                            <button
+                                onClick={() => setFeedScope('global')}
+                                className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition ${
+                                    feedScope === 'global' ? 'bg-lime text-black shadow-sm' : 'text-gray-400 hover:text-white'
+                                }`}
+                            >
+                                Global
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Recently Active (Stories) */}
-                    <div className="mb-4">
+                    <div className="mb-2">
                         <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
                             {/* Show everyone with an active story first, then founding trainers */}
                             {allProfiles
@@ -199,7 +264,7 @@ export default function Home() {
                         </div>
                     </div>
 
-                    <SocialFeed gymId={filterGym} onStoryCreated={fetchProfiles} />
+                    <SocialFeed gymId={currentGymId} onStoryCreated={fetchProfiles} />
                 </div>
             ) : (
                 <>
@@ -296,6 +361,23 @@ export default function Home() {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Quick Floating Action for In-Gym Workout */}
+            <div className="fixed bottom-20 right-4 z-40">
+                <Link
+                    to="/workouts"
+                    className="px-4 py-3 bg-lime text-oled rounded-2xl font-black shadow-[0_0_20px_rgba(50,255,50,0.4)] hover:scale-105 active:scale-95 transition-all flex items-center gap-2 text-xs border border-lime/50"
+                >
+                    <Dumbbell size={18} />
+                    <span className="font-black uppercase italic tracking-wider">Start Workout</span>
+                </Link>
+            </div>
+
+            <PlacementMatchModal
+                isOpen={showPlacementModal}
+                onClose={() => setShowPlacementModal(false)}
+                onPlacementComplete={() => setShowPlacementModal(false)}
+            />
         </div>
     );
 }

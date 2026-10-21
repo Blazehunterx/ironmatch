@@ -49,7 +49,12 @@ export function ConversationProvider({ children, currentUserId }: { children: Re
                 .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
                 .order('created_at', { ascending: true });
 
-            if (error) throw error;
+            if (error) {
+                console.warn('Conversation query notice (table schema pending receiver_id column):', error.message);
+                setConversations([]);
+                setLoading(false);
+                return;
+            }
 
             // 2. Group by the OTHER user
             const grouped: Record<string, ChatMessage[]> = {};

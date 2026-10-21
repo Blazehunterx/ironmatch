@@ -73,6 +73,24 @@ export interface User {
     revolut_tag?: string;
     payout_iban?: string;
     pending_balance?: number;
+    is_pro?: boolean;
+    pro_tier?: 'free' | 'pro_monthly' | 'pro_annual' | 'lifetime';
+    pro_expires_at?: string;
+}
+
+export interface Purchase {
+    id: string;
+    user_id: string;
+    item_id: string;
+    item_name: string;
+    item_type: 'plan' | 'subscription' | 'cosmetic';
+    price_usd: number;
+    payment_method: 'card' | 'xp' | 'google_play' | 'apple_pay';
+    trainer_id?: string;
+    trainer_cut_usd?: number;
+    platform_fee_usd?: number;
+    status: 'completed' | 'refunded' | 'pending';
+    created_at: string;
 }
 
 export interface Follow {
@@ -217,6 +235,15 @@ export const ALL_DAYS: DayOfWeek[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 
 export const ALL_TIME_BLOCKS: TimeBlock[] = ['Morning', 'Afternoon', 'Evening'];
 
 // Workout Plan Types
+export interface SetDetail {
+    setNumber: number;
+    reps: number;
+    weight: number;
+    completed?: boolean;
+    rpe?: number; // Rate of Perceived Exertion (6.0 - 10.0)
+    suggestedWeight?: number; // Autoregulated progressive overload recommendation
+}
+
 export interface WorkoutExercise {
     id: string;
     name: string;
@@ -225,6 +252,7 @@ export interface WorkoutExercise {
     weight?: number;
     notes?: string;
     completed?: boolean;
+    setDetails?: SetDetail[];
 }
 
 export interface WorkoutPlan {

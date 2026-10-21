@@ -2,7 +2,6 @@ import { useState, useEffect, createContext, useContext, useCallback } from 'rea
 import { safeStorage } from '../lib/safeStorage';
 import { Gym } from '../types/database';
 import { GeoCoords, getCurrentPosition, haversineDistance } from '../lib/location';
-import { mockGyms as fallbackGyms } from '../lib/mock';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface GymContextType {
@@ -18,6 +17,7 @@ interface GymContextType {
     findGym: (id: string) => Gym | undefined;
     getActiveWar: (gymId: string) => Promise<any | null>;
     searchGymsByLocation: (lat: number, lng: number) => Promise<void>;
+    searchGymsByName: (nameQuery: string) => Promise<Gym[]>;
 }
 
 const GymContext = createContext<GymContextType | null>(null);
@@ -26,9 +26,8 @@ const GymContext = createContext<GymContextType | null>(null);
  * Query OpenStreetMap Overpass API for nearby gyms/fitness centers
  */
 async function fetchNearbyGyms(coords: GeoCoords, radiusMeters = 50000): Promise<Gym[]> {
-    // Broaden query to include nwr (Node, Way, Relation) and more tags
     const query = `
-        [out:json][timeout:20];
+        [out:json][timeout:25];
         (
           nwr["leisure"="fitness_centre"](around:${radiusMeters},${coords.lat},${coords.lng});
           nwr["leisure"="gym"](around:${radiusMeters},${coords.lat},${coords.lng});
@@ -56,16 +55,15 @@ async function fetchNearbyGyms(coords: GeoCoords, radiusMeters = 50000): Promise
                 location: el.tags['addr:street']
                     ? `${el.tags['addr:street']}${el.tags['addr:housenumber'] ? ' ' + el.tags['addr:housenumber'] : ''}`
                     : el.tags['addr:city'] || el.tags['addr:suburb'] || el.tags['addr:district'] || 'Nearby',
-                member_count: 0, // Real count will be updated via fetchMemberCounts
+                member_count: 0,
                 lat: el.lat || el.center?.lat,
                 lng: el.lon || el.center?.lon,
             }))
             .filter((g: Gym) => g.lat && g.lng);
 
-        console.debug(`Found ${gyms.length} gyms via Overpass`);
-        return gyms.slice(0, 300); // Increased limit
+        return gyms.slice(0, 300);
     } catch (err) {
-        console.warn('Overpass API failed:', err);
+        console.warn('Overpass API failed, using cached/preloaded:', err);
         return [];
     }
 }
@@ -76,43 +74,54 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     const [userLocation, setUserLocation] = useState<GeoCoords | null>(null);
     const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'granted' | 'denied'>('idle');
     const [isLoadingGyms, setIsLoadingGyms] = useState(false);
-    const [searchRadius, setSearchRadius] = useState(50); // Increased to 50km for better discovery
+    const [searchRadius, setSearchRadius] = useState(50); // 50km
 
-    // Fetch custom gyms from Supabase
+    // Fetch custom gyms from local storage + Supabase
     const fetchDBGyms = useCallback(async () => {
-        if (!isSupabaseConfigured) {
+        let loaded: Gym[] = [];
+        try {
             const stored = safeStorage.getItem('ironmatch_custom_gyms');
-            if (stored) setCustomGyms(JSON.parse(stored));
-            return;
+            if (stored) loaded = JSON.parse(stored);
+        } catch { /* storage fallback */ }
+
+        if (isSupabaseConfigured) {
+            try {
+                const { data, error } = await supabase.from('gyms').select('*');
+                if (!error && data && data.length > 0) {
+                    const merged = [...loaded];
+                    data.forEach((dg: Gym) => {
+                        if (!merged.some(m => m.id === dg.id)) merged.push(dg);
+                    });
+                    loaded = merged;
+                }
+            } catch (err) {
+                console.warn('Supabase gym fetch error:', err);
+            }
         }
 
-        const { data, error } = await supabase.from('gyms').select('*');
-        if (!error && data) {
-            setCustomGyms(data);
-        }
+        setCustomGyms(loaded);
     }, []);
 
     // Aggregated member counts from profiles table
     const fetchMemberCounts = useCallback(async (allGymList: Gym[]) => {
         if (!isSupabaseConfigured) return allGymList;
 
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('home_gym');
+        try {
+            const { data, error } = await supabase.from('profiles').select('home_gym');
+            if (error || !data) return allGymList;
 
-        if (error || !data) return allGymList;
+            const counts: Record<string, number> = {};
+            data.forEach(p => {
+                if (p.home_gym) counts[p.home_gym] = (counts[p.home_gym] || 0) + 1;
+            });
 
-        const counts: Record<string, number> = {};
-        data.forEach(p => {
-            if (p.home_gym) {
-                counts[p.home_gym] = (counts[p.home_gym] || 0) + 1;
-            }
-        });
-
-        return allGymList.map(g => ({
-            ...g,
-            member_count: counts[g.id] || 0
-        }));
+            return allGymList.map(g => ({
+                ...g,
+                member_count: counts[g.id] || g.member_count || 0
+            }));
+        } catch {
+            return allGymList;
+        }
     }, []);
 
     // Get location + discover gyms on mount
@@ -130,24 +139,20 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
             })
             .catch(() => {
                 setLocationStatus('denied');
+                setIsLoadingGyms(false);
             });
 
-        fetchDBGyms().then(async () => {
-            // After DB gyms fetched, we'll need to update counts if they aren't updated yet
-            // This is simplified for now but ensure we call it
-        });
-    }, [fetchDBGyms, fetchMemberCounts]);
+        fetchDBGyms();
+    }, [fetchDBGyms, fetchMemberCounts, searchRadius]);
 
-    // Update customGyms with counts whenever customGyms change
-    useEffect(() => {
-        if (customGyms.length > 0) {
-            fetchMemberCounts(customGyms).then(setCustomGyms);
+    // Combine custom gyms + API gyms, sorted by distance if userLocation available
+    const allGyms = [...osmGyms, ...customGyms].reduce((acc: Gym[], g: Gym) => {
+        if (!acc.some(existing => existing.id === g.id || existing.name.toLowerCase() === g.name.toLowerCase())) {
+            acc.push(g);
         }
-    }, [customGyms.length, fetchMemberCounts]);
-
-    // Combine API gyms + custom gyms, sorted by distance
-    const allGyms = [...osmGyms, ...customGyms].sort((a, b) => {
-        if (!userLocation) return 0;
+        return acc;
+    }, []).sort((a, b) => {
+        if (!userLocation) return (b.member_count || 0) - (a.member_count || 0);
         return haversineDistance(userLocation, { lat: a.lat, lng: a.lng }) -
             haversineDistance(userLocation, { lat: b.lat, lng: b.lng });
     });
@@ -156,38 +161,44 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         const newId = `custom-${Date.now()}`;
         const newGym: Gym = {
             id: newId,
-            name,
-            location,
-            member_count: 0,
-            lat: lat ?? userLocation?.lat ?? 0,
-            lng: lng ?? userLocation?.lng ?? 0,
+            name: name.trim(),
+            location: location.trim(),
+            member_count: 1,
+            lat: lat ?? userLocation?.lat ?? -8.6534,
+            lng: lng ?? userLocation?.lng ?? 115.1321,
         };
 
-        if (isSupabaseConfigured) {
-            const { error } = await supabase.from('gyms').insert({
-                id: newId,
-                name,
-                location,
-                lat: newGym.lat,
-                lng: newGym.lng,
-                created_by: (await supabase.auth.getUser()).data.user?.id
-            });
-            if (error) {
-                console.warn('DB Gym insert error:', error);
-                throw error;
-            }
-            await fetchDBGyms();
-        } else {
-            const updated = [...customGyms, newGym];
-            setCustomGyms(updated);
+        // Always save to safeStorage immediately so it's indestructible
+        const updated = [newGym, ...customGyms];
+        setCustomGyms(updated);
+        try {
             safeStorage.setItem('ironmatch_custom_gyms', JSON.stringify(updated));
+        } catch { /* full */ }
+
+        if (isSupabaseConfigured) {
+            try {
+                const user = (await supabase.auth.getUser()).data.user;
+                await supabase.from('gyms').insert({
+                    id: newId,
+                    name: newGym.name,
+                    location: newGym.location,
+                    lat: newGym.lat,
+                    lng: newGym.lng,
+                    created_by: user?.id
+                });
+            } catch (err) {
+                console.warn('Supabase DB gym insert offline fallback:', err);
+            }
         }
 
         return newId;
-    }, [userLocation, customGyms, fetchDBGyms]);
+    }, [userLocation, customGyms]);
 
     const refreshGyms = useCallback(async () => {
-        if (!userLocation) return;
+        if (!userLocation) {
+            fetchDBGyms();
+            return;
+        }
         setIsLoadingGyms(true);
         const nearby = await fetchNearbyGyms(userLocation, searchRadius * 1000);
         setOsmGyms(nearby);
@@ -201,25 +212,24 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     }, [userLocation]);
 
     const findGym = useCallback((id: string): Gym | undefined => {
-        const gym = allGyms.find(g => g.id === id) || fallbackGyms.find(g => g.id === id);
-        if (!gym) return undefined;
-
-        // If it's a mock gym, it still has the mock member_count. 
-        // We should really be using the real counts for these too if we have them.
-        return gym;
+        return allGyms.find(g => g.id === id);
     }, [allGyms]);
 
     const getActiveWar = useCallback(async (gymId: string) => {
         if (!isSupabaseConfigured) return null;
-        const { data, error } = await supabase
-            .from('gym_wars')
-            .select('*')
-            .or(`gym_1_id.eq.${gymId},gym_2_id.eq.${gymId}`)
-            .eq('status', 'active')
-            .single();
+        try {
+            const { data, error } = await supabase
+                .from('gym_wars')
+                .select('*')
+                .or(`gym_1_id.eq.${gymId},gym_2_id.eq.${gymId}`)
+                .eq('status', 'active')
+                .single();
 
-        if (error) return null;
-        return data;
+            if (error) return null;
+            return data;
+        } catch {
+            return null;
+        }
     }, []);
 
     const searchGymsByLocation = useCallback(async (lat: number, lng: number) => {
@@ -230,6 +240,38 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         setOsmGyms(withCounts);
         setIsLoadingGyms(false);
     }, [searchRadius, fetchMemberCounts]);
+
+    const searchGymsByName = useCallback(async (nameQuery: string): Promise<Gym[]> => {
+        if (!nameQuery || nameQuery.length < 2) return allGyms;
+
+        const lower = nameQuery.toLowerCase();
+        const localMatches = allGyms.filter(g =>
+            g.name.toLowerCase().includes(lower) ||
+            g.location.toLowerCase().includes(lower)
+        );
+
+        // If local matches exist, return them immediately
+        if (localMatches.length >= 3) return localMatches;
+
+        // Try OpenStreetMap Nominatim for live global search
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(nameQuery + ' gym')}&format=json&limit=8`);
+            if (res.ok) {
+                const results = await res.json();
+                const externalGyms: Gym[] = results.map((item: any) => ({
+                    id: `nom-${item.place_id}`,
+                    name: item.display_name.split(',')[0],
+                    location: item.display_name.split(',').slice(1, 3).join(',').trim(),
+                    member_count: 0,
+                    lat: parseFloat(item.lat),
+                    lng: parseFloat(item.lon),
+                }));
+                return [...localMatches, ...externalGyms];
+            }
+        } catch { /* offline */ }
+
+        return localMatches;
+    }, [allGyms]);
 
     return (
         <GymContext.Provider value={{
@@ -244,7 +286,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
             getDistance,
             findGym,
             getActiveWar,
-            searchGymsByLocation
+            searchGymsByLocation,
+            searchGymsByName
         }}>
             {children}
         </GymContext.Provider>

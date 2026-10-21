@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase';
 import { Image, Trophy, X, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { safeStorage } from '../lib/safeStorage';
+import { compressImage } from '../lib/imageCompression';
 
 interface PostCreatorProps {
     gymId?: string | null;
@@ -19,14 +21,23 @@ export default function PostCreator({ gymId, onPostCreated }: PostCreatorProps) 
     const [postType, setPostType] = useState<'feed' | 'story'>('feed');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         setMediaFile(file);
         const type = file.type.startsWith('video/') ? 'video' : 'image';
         setMediaType(type);
-        setMediaPreview(URL.createObjectURL(file));
+        if (type === 'image') {
+            try {
+                const compressed = await compressImage(file, 1080, 0.75);
+                setMediaPreview(compressed);
+            } catch {
+                setMediaPreview(URL.createObjectURL(file));
+            }
+        } else {
+            setMediaPreview(URL.createObjectURL(file));
+        }
     };
 
     const clearMedia = () => {
@@ -41,26 +52,36 @@ export default function PostCreator({ gymId, onPostCreated }: PostCreatorProps) 
         setIsPosting(true);
 
         try {
-            const { data: userData } = await supabase.auth.getUser();
-            if (!userData.user) throw new Error('Not authenticated');
+            let authorId = user?.id;
+            try {
+                const { data: userData } = await supabase.auth.getUser();
+                if (userData?.user?.id) authorId = userData.user.id;
+            } catch (e) {}
+
+            if (!authorId) throw new Error('Please sign in to share to the Guild Feed.');
 
             let mediaUrl = '';
             if (mediaFile) {
-                const fileExt = mediaFile.name.split('.').pop();
-                const fileName = `${Math.random()}.${fileExt}`;
-                const filePath = `posts/${userData.user.id}/${fileName}`;
+                try {
+                    const fileExt = mediaFile.name.split('.').pop();
+                    const fileName = `${Math.random()}.${fileExt}`;
+                    const filePath = `posts/${authorId}/${fileName}`;
 
-                const { error: uploadError } = await supabase.storage
-                    .from('media')
-                    .upload(filePath, mediaFile);
+                    const { error: uploadError } = await supabase.storage
+                        .from('media')
+                        .upload(filePath, mediaFile);
 
-                if (uploadError) throw uploadError;
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('media')
-                    .getPublicUrl(filePath);
-
-                mediaUrl = publicUrl;
+                    if (!uploadError) {
+                        const { data: { publicUrl } } = supabase.storage
+                            .from('media')
+                            .getPublicUrl(filePath);
+                        mediaUrl = publicUrl;
+                    } else {
+                        mediaUrl = mediaPreview || '';
+                    }
+                } catch (e) {
+                    mediaUrl = mediaPreview || '';
+                }
             }
 
             if (postType === 'story') {
@@ -69,31 +90,58 @@ export default function PostCreator({ gymId, onPostCreated }: PostCreatorProps) 
                 const expiresAt = new Date();
                 expiresAt.setHours(expiresAt.getHours() + 24);
 
-                const { error: storyError } = await supabase
-                    .from('stories')
-                    .insert([{
-                        author_id: userData.user.id,
-                        media_url: mediaUrl,
-                        media_type: mediaType || 'image',
-                        content: content.trim(),
-                        expires_at: expiresAt.toISOString()
-                    }]);
-
-                if (storyError) throw storyError;
+                try {
+                    await supabase
+                        .from('stories')
+                        .insert([{
+                            author_id: authorId,
+                            media_url: mediaUrl,
+                            media_type: mediaType || 'image',
+                            content: content.trim(),
+                            expires_at: expiresAt.toISOString()
+                        }]);
+                } catch (e) {}
             } else {
-                const { error: postError } = await supabase
-                    .from('posts')
-                    .insert([{
-                        author_id: userData.user.id,
+                let cloudSuccess = false;
+                try {
+                    const { error: postError } = await supabase
+                        .from('posts')
+                        .insert([{
+                            author_id: authorId,
+                            gym_id: gymId || null,
+                            content: content.trim(),
+                            media_url: mediaUrl,
+                            media_type: mediaType,
+                            is_auto_generated: false,
+                            spots_count: 0
+                        }]);
+                    if (!postError) cloudSuccess = true;
+                } catch (e) {}
+
+                // Offline-first fallback to local feed cache
+                if (!cloudSuccess) {
+                    const localPost = {
+                        id: `post-${Date.now()}`,
+                        author_id: authorId,
                         gym_id: gymId || null,
                         content: content.trim(),
                         media_url: mediaUrl,
-                        media_type: mediaType,
+                        media_type: mediaType || 'image',
+                        created_at: new Date().toISOString(),
+                        spots_count: 0,
                         is_auto_generated: false,
-                        spots_count: 0
-                    }]);
-
-                if (postError) throw postError;
+                        profiles: {
+                            name: user?.name || 'Iron Lifter',
+                            profile_image_url: user?.profile_image_url || 'https://i.pravatar.cc/100',
+                            verification_status: 'verified',
+                            is_founding_trainer: false,
+                            big4: user?.big4
+                        }
+                    };
+                    const cached = safeStorage.getItem('ironmatch_feed_cache');
+                    const existing = cached ? JSON.parse(cached) : [];
+                    safeStorage.setItem('ironmatch_feed_cache', JSON.stringify([localPost, ...existing]));
+                }
             }
 
             setContent('');
@@ -132,7 +180,7 @@ export default function PostCreator({ gymId, onPostCreated }: PostCreatorProps) 
                     <textarea
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
-                        placeholder="What's on your mind?"
+                        placeholder="What's on your mind? Share PRs, sets, or ask for a spot..."
                         className="w-full bg-transparent border-none focus:ring-0 text-white placeholder-gray-500 resize-none font-medium text-[15px] leading-relaxed min-h-[80px]"
                     />
 

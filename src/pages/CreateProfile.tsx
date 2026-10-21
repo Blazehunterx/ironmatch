@@ -1,35 +1,34 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { mockGyms } from '../lib/mock';
+import { useGyms } from '../context/GymContext';
 import { Camera, ArrowRight, User as UserIcon } from 'lucide-react';
 import type { FitnessLevel } from '../types/database';
 
 export default function CreateProfile() {
-    const { user, signup } = useAuth();
+    const { updateUser } = useAuth();
+    const { gyms } = useGyms();
     const navigate = useNavigate();
-    const [gymId, setGymId] = useState(mockGyms[0].id);
+    const [gymId, setGymId] = useState(gyms[0]?.id || '');
     const [fitnessLevel, setFitnessLevel] = useState<FitnessLevel>('Beginner');
     const [bio, setBio] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // If we already have a full profile, could redirect.
-    // For the mock, we just update the user.
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        // In a real app we would call a supabase update matching the authenticated user.
-        // For mock, we'll re-call signup with the updated fields, or a separate update function.
-        // Let's use signup mock to just merge properties for demonstration
-        await signup({
-            ...user,
-            home_gym: gymId,
-            fitness_level: fitnessLevel,
-            bio: bio
-        });
-        setLoading(false);
-        navigate('/');
+        try {
+            await updateUser({
+                home_gym: gymId || '',
+                fitness_level: fitnessLevel,
+                bio: bio
+            });
+            navigate('/');
+        } catch (err) {
+            console.error('Failed to save profile:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -60,7 +59,7 @@ export default function CreateProfile() {
                                 onChange={(e) => setGymId(e.target.value)}
                                 className="w-full px-4 py-3 mt-1 text-white bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime appearance-none"
                             >
-                                {mockGyms.map(gym => (
+                                {gyms.map(gym => (
                                     <option key={gym.id} value={gym.id}>{gym.name} - {gym.location}</option>
                                 ))}
                             </select>

@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { mockUsers } from '../lib/mock';
 import { useGyms } from '../context/GymContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User } from '../types/database';
@@ -41,21 +40,25 @@ export default function Search() {
     const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
 
     const fetchData = useCallback(async () => {
-        if (!isSupabaseConfigured || !selectedGym) {
-            setProfiles(mockUsers);
+        if (!isSupabaseConfigured) {
+            setProfiles([]);
             setIsLoadingProfiles(false);
             return;
         }
 
         setIsLoadingProfiles(true);
-        // Fetch Profiles in this gym
-        const { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('home_gym', selectedGym);
-
-        if (profileData) setProfiles(profileData);
-        setIsLoadingProfiles(false);
+        try {
+            let query = supabase.from('profiles').select('*').limit(30);
+            if (selectedGym) {
+                query = query.eq('home_gym', selectedGym);
+            }
+            const { data: profileData } = await query;
+            setProfiles(profileData || []);
+        } catch {
+            setProfiles([]);
+        } finally {
+            setIsLoadingProfiles(false);
+        }
     }, [selectedGym]);
 
     useEffect(() => {
