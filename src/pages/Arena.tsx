@@ -19,7 +19,12 @@ import DuelCreator from '../components/arena/DuelCreator';
 import RemoteWhatsAppDuel from '../components/arena/RemoteWhatsAppDuel';
 import FamilyCircle from '../components/arena/FamilyCircle';
 import PlacementMatchModal from '../components/placement/PlacementMatchModal';
-import { Trophy, Lock } from 'lucide-react';
+import SquadCard from '../components/squads/SquadCard';
+import NationalWhiteboard from '../components/squads/NationalWhiteboard';
+import CreateJoinSquadModal from '../components/squads/CreateJoinSquadModal';
+import { getUserSquad, leaveSquad } from '../lib/squads';
+import { GymSquad } from '../types/database';
+import { Trophy, Lock, Shield } from 'lucide-react';
 
 type Tab = ArenaTab;
 
@@ -28,6 +33,8 @@ export default function Arena() {
     const [activeTab, setActiveTab] = useState<Tab>('wars');
     const [showDuelCreator, setShowDuelCreator] = useState(false);
     const [showPlacementModal, setShowPlacementModal] = useState(false);
+    const [showSquadModal, setShowSquadModal] = useState(false);
+    const [userSquad, setUserSquad] = useState<GymSquad | null>(() => getUserSquad(user?.id || ''));
     const [allProfiles, setAllProfiles] = useState<User[]>([]);
     const [duels, setDuels] = useState<Duel[]>([]);
     const [milestones, setMilestones] = useState<GymMilestone[]>([]);
@@ -211,8 +218,61 @@ export default function Arena() {
             )}
 
             {activeTab === 'family' && (
-                <div className="px-4">
-                    <FamilyCircle />
+                <div className="space-y-6 px-4">
+                    {/* User's Current Squad or CTA */}
+                    {userSquad ? (
+                        <SquadCard
+                            squad={userSquad}
+                            currentUser={user as any}
+                            onLeaveSquad={() => {
+                                if (user?.id) leaveSquad(user.id);
+                                setUserSquad(null);
+                            }}
+                        />
+                    ) : (
+                        <div className="p-5 rounded-3xl bg-gradient-to-r from-lime/10 via-gray-950 to-oled border border-lime/40 flex items-center justify-between gap-3 shadow-[0_0_30px_rgba(50,255,50,0.1)]">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-2xl bg-lime/10 border border-lime/30 flex items-center justify-center text-lime font-black shrink-0">
+                                    <Shield size={22} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black uppercase text-white tracking-wide">
+                                        Squad Ranked (2 to 4 Lifters)
+                                    </h4>
+                                    <p className="text-[10px] text-gray-400">
+                                        Compete with your gym bro in the Netherlands or locally.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowSquadModal(true)}
+                                className="px-3.5 py-2 rounded-xl bg-lime text-oled font-black text-xs uppercase tracking-wider shrink-0 hover:scale-105 active:scale-95 transition shadow-[0_0_12px_rgba(50,255,50,0.3)]"
+                            >
+                                Squad Up ⚡
+                            </button>
+                        </div>
+                    )}
+
+                    {/* National & Global Whiteboard */}
+                    <NationalWhiteboard
+                        userGymId={user?.home_gym}
+                        userGymName={user?.home_gym_name || 'Your Gym'}
+                        userCountry={user?.country || 'NL'}
+                    />
+
+                    {/* Family & Clan Circle */}
+                    <div className="pt-2 border-t border-gray-900">
+                        <FamilyCircle />
+                    </div>
+
+                    {user && (
+                        <CreateJoinSquadModal
+                            isOpen={showSquadModal}
+                            onClose={() => setShowSquadModal(false)}
+                            user={user}
+                            onSquadUpdated={(sq) => setUserSquad(sq)}
+                        />
+                    )}
                 </div>
             )}
 

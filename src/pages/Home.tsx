@@ -8,17 +8,18 @@ import RequestModal from '../components/RequestModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Goal, DayOfWeek, TimeBlock } from '../types/database';
 import ActiveToggle from '../components/ActiveToggle';
-import ProfileCard from '../components/ProfileCard';
 import ProfileDetail from '../components/ProfileDetail';
 import SocialFeed from '../components/SocialFeed';
 import GymWarArena from '../components/GymWarArena';
 import StoryViewer from '../components/StoryViewer';
 import PlacementMatchModal from '../components/placement/PlacementMatchModal';
-import { Story } from '../types/database';
+import GymFloorRoster from '../components/squads/GymFloorRoster';
+import { getUserSquad } from '../lib/squads';
+import { Story, GymSquad } from '../types/database';
 
 export default function Home() {
     const { user } = useAuth();
-    const { findGym, getActiveWar } = useGyms();
+    const { findGym, getActiveWar, gyms } = useGyms();
 
     // State for profiles, stories and war
     const [allProfiles, setAllProfiles] = useState<User[]>([]);
@@ -28,6 +29,7 @@ export default function Home() {
     const [showArena, setShowArena] = useState(false);
     const [showStories, setShowStories] = useState(false);
     const [startStoryIndex, setStartStoryIndex] = useState(0);
+    const [userSquad] = useState<GymSquad | null>(() => getUserSquad(user?.id || ''));
 
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,8 +49,8 @@ export default function Home() {
     const [activeTab, setActiveTab] = useState<'feed' | 'buddies'>('feed');
     const [feedScope, setFeedScope] = useState<'my_gym' | 'global'>('my_gym');
 
-    const activeGym = findGym(user?.home_gym || 'bali-body-factory');
-    const currentGymId = feedScope === 'my_gym' ? (user?.home_gym || 'bali-body-factory') : filterGym;
+    const activeGym = findGym(user?.home_gym || '') || (gyms.length > 0 ? gyms[0] : null);
+    const currentGymId = feedScope === 'my_gym' ? (user?.home_gym || activeGym?.id || null) : filterGym;
 
     const fetchProfiles = async () => {
         setIsLoadingProfiles(true);
@@ -181,13 +183,13 @@ export default function Home() {
                     onClick={() => setActiveTab('feed')}
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'feed' ? 'bg-lime text-oled shadow-lg' : 'text-gray-500 hover:text-white'}`}
                 >
-                    <LayoutGrid size={14} /> Global Feed
+                    <LayoutGrid size={14} /> Feed & Activity
                 </button>
                 <button
                     onClick={() => setActiveTab('buddies')}
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'buddies' ? 'bg-lime text-oled shadow-lg' : 'text-gray-500 hover:text-white'}`}
                 >
-                    <Users size={14} /> Find Buddies
+                    <Users size={14} /> Gym Floor Roster
                 </button>
             </div>
 
@@ -205,7 +207,7 @@ export default function Home() {
                                     <span className="w-1.5 h-1.5 rounded-full bg-lime animate-pulse" />
                                 </div>
                                 <h3 className="text-xs sm:text-sm font-black text-white uppercase italic tracking-wide truncate">
-                                    {activeGym?.name || user?.home_gym_name || 'Body Factory Bali'}
+                                    {activeGym?.name || user?.home_gym_name || 'Global Lifters Facility'}
                                 </h3>
                             </div>
                         </div>
@@ -267,39 +269,27 @@ export default function Home() {
                     <SocialFeed gymId={currentGymId} onStoryCreated={fetchProfiles} />
                 </div>
             ) : (
-                <>
-                    <div className="mb-6">
+                <div className="space-y-4">
+                    <div className="mb-4">
                         <ActiveToggle />
                     </div>
 
-                    {isLoadingProfiles ? (
-                        <div className="flex flex-col items-center justify-center py-20 gap-4">
-                            <div className="w-12 h-12 border-4 border-lime/20 border-t-lime rounded-full animate-spin" />
-                            <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-600">Syncing profiles...</p>
-                        </div>
-                    ) : filteredUsers.length === 0 ? (
-                        <div className="text-center py-20 px-8 relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-lime/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            <div className="w-16 h-16 bg-gray-900 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-gray-800 relative z-10">
-                                <MapPin className="text-lime" size={32} />
-                            </div>
-                            <h3 className="text-white font-bold mb-2 relative z-10">Pioneer of {findGym(filterGym || user?.home_gym || '')?.name || 'this Gym'}</h3>
-                            <p className="text-gray-400 text-xs leading-relaxed relative z-10">You are the first to claim this territory! Invite your lifting partner to start building your squad and dominating the leaderboards.</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 gap-4">
-                            {filteredUsers.map((u, i) => (
-                                <ProfileCard
-                                    key={u.id}
-                                    user={u}
-                                    index={i}
-                                    onRequest={handleRequest}
-                                    onViewProfile={handleViewProfile}
-                                />
-                            ))}
-                        </div>
+                    {user && (
+                        <GymFloorRoster
+                            currentUser={user}
+                            gymLifters={filteredUsers}
+                            gymName={activeGym?.name || user?.home_gym_name || 'Gym Floor'}
+                            gymId={currentGymId || 'facility-main'}
+                            userSquad={userSquad}
+                            onInviteToSquad={(targetUser) => {
+                                handleRequest(targetUser);
+                            }}
+                            onOpenChat={(targetUser) => {
+                                handleViewProfile(targetUser);
+                            }}
+                        />
                     )}
-                </>
+                </div>
             )}
 
             <AnimatePresence>

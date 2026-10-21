@@ -1,17 +1,14 @@
 import { User, Gym, Post, Match } from '../types/database';
 
 export const mockGyms: Gym[] = [
+    { id: 'vondelgym-ams', name: 'Vondelgym Amsterdam', location: 'Amsterdam, Netherlands', member_count: 58, lat: 52.3600, lng: 4.8727 },
+    { id: 'iron-house-utrecht', name: 'Iron House Utrecht', location: 'Utrecht, Netherlands', member_count: 41, lat: 52.0907, lng: 5.1214 },
+    { id: 'david-lloyd-rdam', name: 'David Lloyd Rotterdam', location: 'Rotterdam, Netherlands', member_count: 35, lat: 51.9244, lng: 4.4777 },
+    { id: 'golds-venice', name: "Gold's Gym Venice", location: 'Los Angeles, USA', member_count: 84, lat: 33.9926, lng: -118.4727 },
+    { id: 'puregym-piccadilly', name: 'PureGym London Piccadilly', location: 'London, United Kingdom', member_count: 62, lat: 51.5099, lng: -0.1347 },
     { id: 'bali-body-factory', name: 'Body Factory Bali', location: 'Canggu, Bali', member_count: 42, lat: -8.6534, lng: 115.1321 },
     { id: 'bali-nirvana', name: 'Nirvana Strength Bali', location: 'Canggu, Bali', member_count: 38, lat: -8.6472, lng: 115.1398 },
-    { id: 'bali-avenue', name: 'Avenue Fitness Canggu', location: 'Canggu, Bali', member_count: 27, lat: -8.6511, lng: 115.1384 },
-    { id: 'bali-bull', name: 'Bull Gym Bali', location: 'Canggu, Bali', member_count: 24, lat: -8.6552, lng: 115.1412 },
-    { id: 'bali-komune', name: 'Komune Resort Gym', location: 'Keramas, Gianyar, Bali', member_count: 19, lat: -8.5833, lng: 115.3411 },
-    { id: 'g1', name: 'Iron Forge', location: 'Downtown Core', member_count: 0, lat: 1.2837, lng: 103.8512 },
-    { id: 'g2', name: 'Metro Fitness', location: 'Orchard', member_count: 0, lat: 1.3048, lng: 103.8318 },
-    { id: 'g3', name: 'Peak Performance', location: 'Tanjong Pagar', member_count: 0, lat: 1.2764, lng: 103.8461 },
-    { id: 'g4', name: 'PowerHouse Gym', location: 'Bugis', member_count: 0, lat: 1.3003, lng: 103.8554 },
-    { id: 'g5', name: 'FitLab Studio', location: 'Holland Village', member_count: 0, lat: 1.3112, lng: 103.7958 },
-    { id: 'g6', name: 'Titan Strength', location: 'Clementi', member_count: 0, lat: 1.3148, lng: 103.7653 },
+    { id: 'g1', name: 'Iron Forge', location: 'Downtown Core', member_count: 22, lat: 1.2837, lng: 103.8512 },
 ];
 
 export const mockUsers: User[] = [

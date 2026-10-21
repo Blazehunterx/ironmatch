@@ -63,6 +63,9 @@ export interface User {
     active_cosmetic_frame?: string;
     active_cosmetic_color?: string;
     active_graph_skin?: string;
+    squad_id?: string;
+    squad_tag?: string;
+    country?: string;
     is_admin?: boolean;
     verification_status?: 'none' | 'pending' | 'verified';
     is_founding_trainer?: boolean;
@@ -166,6 +169,67 @@ export interface SessionParticipant {
         name: string;
         profile_image_url: string;
     };
+}
+
+export interface SquadMember {
+    user_id: string;
+    name: string;
+    avatar_url: string;
+    country: string; // e.g. "NL", "ID", "US", "GB"
+    gym_name?: string;
+    weight_kg?: number;
+    big4?: { bench: number; squat: number; deadlift: number; ohp: number };
+    total_kg: number;
+    bw_multiplier: number;
+    role: 'captain' | 'member';
+}
+
+export interface GymSquad {
+    id: string;
+    name: string;
+    tag: string; // 3-5 chars, e.g. "NL-TITAN", "IRON", "APEX"
+    join_code: string;
+    captain_id: string;
+    captain_name: string;
+    members: SquadMember[];
+    max_members: number; // 2 for Duo, up to 4 for Full Squad
+    total_score: number; // Combined BW multiplier (e.g. 11.4x BW)
+    total_volume_kg: number;
+    primary_country: string; // e.g. "NL", "GLOBAL", "US"
+    rank_tier: 'Bronze' | 'Silver' | 'Cobalt' | 'Gold' | 'Legend';
+    created_at: string;
+}
+
+export interface SpotBeacon {
+    id: string;
+    user_id: string;
+    user_name: string;
+    avatar_url: string;
+    gym_id: string;
+    gym_name: string;
+    exercise: string;
+    current_weight: number;
+    unit: 'kg' | 'lbs';
+    status: 'need_spot' | 'working_in' | 'squad_recruit';
+    squad_tag?: string;
+    created_at: string;
+}
+
+export interface WhiteboardRecord {
+    id: string;
+    exercise: 'squat' | 'bench' | 'deadlift' | 'ohp';
+    weight_kg: number;
+    reps: number;
+    lifter_id: string;
+    lifter_name: string;
+    lifter_avatar: string;
+    lifter_country: string;
+    squad_name?: string;
+    squad_tag?: string;
+    gym_id?: string;
+    gym_name?: string;
+    scope: 'facility' | 'national' | 'global';
+    verified_at: string;
 }
 
 export interface Post {
