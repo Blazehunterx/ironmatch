@@ -85,9 +85,24 @@ const Big4Step: React.FC<Big4StepProps> = ({
                 ))}
             </div>
 
+            <div className="mt-4 pt-2 border-t border-gray-800/80">
+                <button
+                    type="button"
+                    onClick={() => {
+                        const starterWeights = unitPref === 'kg'
+                            ? { bench: 30, squat: 40, deadlift: 50, ohp: 20 }
+                            : { bench: 65, squat: 90, deadlift: 115, ohp: 45 };
+                        onSetLifts(starterWeights);
+                    }}
+                    className="w-full py-2.5 px-3 rounded-xl bg-gray-900 hover:bg-gray-800 border border-gray-800 text-[11px] font-bold text-gray-400 hover:text-white transition flex items-center justify-center gap-2"
+                >
+                    🌱 I'm New to Lifting · Start at Freshman Tier
+                </button>
+            </div>
+
             {!hasAnyLift && (
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-                    className="text-[10px] text-gray-600 text-center mt-4">
+                    className="text-[10px] text-gray-600 text-center mt-3">
                     Don't know your 1RM? Snap a photo of what's on the bar above, or calibrate on your first workout.
                 </motion.p>
             )}

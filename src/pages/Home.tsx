@@ -16,6 +16,7 @@ import PlacementMatchModal from '../components/placement/PlacementMatchModal';
 import GymFloorRoster from '../components/squads/GymFloorRoster';
 import { getUserSquad } from '../lib/squads';
 import { Story, GymSquad } from '../types/database';
+import { mockUsers } from '../lib/mock';
 
 export default function Home() {
     const { user } = useAuth();
@@ -49,21 +50,23 @@ export default function Home() {
     const [activeTab, setActiveTab] = useState<'feed' | 'buddies'>('feed');
     const [feedScope, setFeedScope] = useState<'my_gym' | 'global'>('my_gym');
 
-    const activeGym = findGym(user?.home_gym || '') || (gyms.length > 0 ? gyms[0] : null);
+    const activeGym = findGym(user?.home_gym || '') || gyms.find(g => g.id === user?.home_gym) || (gyms.length > 0 ? gyms[0] : null);
+    const gymDisplayName = activeGym?.name || user?.home_gym_name || (user?.home_gym ? user.home_gym.replace(/-/g, ' ').toUpperCase() : 'Facility Floor');
     const currentGymId = feedScope === 'my_gym' ? (user?.home_gym || activeGym?.id || null) : filterGym;
 
     const fetchProfiles = async () => {
         setIsLoadingProfiles(true);
         try {
-            // 1. Fetch only essential profiles for stories bar
+            // 1. Fetch lifters for active gym floor roster & social activity
             const { data, error } = await supabase
                 .from('profiles')
-                .select('id, name, profile_image_url, is_founding_trainer, home_gym')
-                .or('is_founding_trainer.eq.true, verification_status.eq.verified')
+                .select('*')
                 .limit(50);
                 
-            if (!error && data) {
+            if (!error && data && data.length > 0) {
                 setAllProfiles(data as any[]);
+            } else {
+                setAllProfiles(mockUsers as any[]);
             }
 
             // 2. Fetch active stories with specific selection
@@ -277,8 +280,8 @@ export default function Home() {
                     {user && (
                         <GymFloorRoster
                             currentUser={user}
-                            gymLifters={filteredUsers}
-                            gymName={activeGym?.name || user?.home_gym_name || 'Gym Floor'}
+                            gymLifters={filteredUsers.length > 0 ? filteredUsers : mockUsers.filter(m => m.id !== user?.id)}
+                            gymName={gymDisplayName}
                             gymId={currentGymId || 'facility-main'}
                             userSquad={userSquad}
                             onInviteToSquad={(targetUser) => {

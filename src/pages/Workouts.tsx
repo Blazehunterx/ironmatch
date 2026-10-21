@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { WorkoutPlan, WorkoutLog, GroupSession } from '../types/database';
-import { Sparkles, ShieldAlert } from 'lucide-react';
+import { Sparkles, ShieldAlert, Play } from 'lucide-react';
 
 import LevelUpOverlay from '../components/LevelUpOverlay';
 import JoinSessionModal from '../components/JoinSessionModal';
@@ -254,6 +254,40 @@ export default function Workouts() {
                     totalKg={((user?.big4?.bench || 0) + (user?.big4?.squat || 0) + (user?.big4?.deadlift || 0) + (user?.big4?.ohp || 0)) || 380}
                     isPro={user?.is_pro || false}
                 />
+
+                {/* 1-Tap Quick Workout Starter */}
+                <div className="mb-4">
+                    <button
+                        onClick={() => {
+                            if (plans.length > 0) {
+                                setActiveWorkout(plans[0]);
+                            } else {
+                                setActiveWorkout({
+                                    id: `quick-${Date.now()}`,
+                                    name: 'Day 1: Full Body Foundations',
+                                    author_id: user?.id || '',
+                                    target: 'Full Body',
+                                    exercises: [
+                                        { id: 'quick-bench', name: 'Barbell Bench Press', sets: 3, reps: 8 },
+                                        { id: 'quick-squat', name: 'Barbell Back Squat', sets: 3, reps: 8 },
+                                        { id: 'quick-lat', name: 'Lat Pulldown', sets: 3, reps: 10 }
+                                    ],
+                                    shared: false,
+                                    created_at: new Date().toISOString()
+                                });
+                            }
+                        }}
+                        className="w-full py-3 px-4 rounded-2xl bg-lime text-oled font-black text-xs uppercase tracking-wider flex items-center justify-between shadow-[0_0_20px_rgba(50,255,50,0.25)] hover:brightness-105 active:scale-[0.99] transition"
+                    >
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-oled flex items-center justify-center text-lime">
+                                <Play size={14} fill="currentColor" />
+                            </div>
+                            <span className="truncate">{plans.length > 0 ? `Start: ${plans[0].name}` : 'Start Quick Workout'}</span>
+                        </div>
+                        <span className="text-[10px] bg-black/25 px-2 py-0.5 rounded-full font-mono text-black font-extrabold shrink-0">1-TAP GO</span>
+                    </button>
+                </div>
 
                 {/* Dual AI Brain Action Buttons */}
                 <div className="grid grid-cols-2 gap-3 mb-5">
