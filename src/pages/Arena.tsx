@@ -7,6 +7,7 @@ import {
 } from '../lib/gamification';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { User, GymMilestone } from '../types/database';
+import { getSavedGhostDuels } from '../lib/ghostDuels';
 
 // Modular Components
 import ArenaHeader from '../components/arena/ArenaHeader';
@@ -47,8 +48,9 @@ export default function Arena() {
     }, []);
 
     const fetchDuels = useCallback(async () => {
+        const savedGhosts = getSavedGhostDuels();
         if (!isSupabaseConfigured || !user?.id) {
-            setDuels([]);
+            setDuels(savedGhosts);
             return;
         }
 
@@ -59,7 +61,7 @@ export default function Arena() {
             .order('created_at', { ascending: false });
 
         if (data) {
-            setDuels(data.map(d => {
+            const remoteDuels = data.map(d => {
                 const challenger = allProfiles.find(p => p.id === d.challenger_id);
                 const opponent = allProfiles.find(p => p.id === d.opponent_id);
 
@@ -81,7 +83,17 @@ export default function Arena() {
                     endsAt: d.ends_at || '7 days left',
                     xpReward: d.xp_reward || 150
                 };
-            }));
+            });
+
+            const merged = [...remoteDuels];
+            for (const g of savedGhosts) {
+                if (!merged.some(d => d.id === g.id)) {
+                    merged.push(g);
+                }
+            }
+            setDuels(merged);
+        } else {
+            setDuels(savedGhosts);
         }
     }, [user, allProfiles]);
 
@@ -193,6 +205,7 @@ export default function Arena() {
                         duels={duels} 
                         user={user} 
                         onShowCreator={() => setShowDuelCreator(true)} 
+                        onAddDuel={(newDuel) => setDuels(prev => [newDuel, ...prev.filter(d => d.id !== newDuel.id)])}
                     />
                 </div>
             )}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Swords, X, Upload, Users, Check, Scale } from 'lucide-react';
 import { User } from '../../types/database';
@@ -6,6 +6,7 @@ import {
     getRankFromLifts, getBig4Total, checkDuelFairness, 
     calculateEquivalentWeight, DUEL_TEMPLATES 
 } from '../../lib/gamification';
+import { GHOST_LIFTERS_CATALOG, convertGhostToUser } from '../../lib/ghostDuels';
 
 interface DuelCreatorProps {
     isOpen: boolean;
@@ -25,12 +26,20 @@ const DuelCreator: React.FC<DuelCreatorProps> = ({
     const [customTarget, setCustomTarget] = useState('');
     const [duelWeight, setDuelWeight] = useState<number>(0);
 
+    const combinedOpponents = useMemo(() => {
+        const real = allProfiles.filter(u => u.id !== user?.id);
+        const ghosts = GHOST_LIFTERS_CATALOG.map(convertGhostToUser);
+        return real.length > 0 
+            ? [...real, ...ghosts.filter(g => !real.some(r => r.id === g.id))]
+            : ghosts;
+    }, [allProfiles, user]);
+
     const handleSend = () => {
         if (!user) return;
         let newDuelData: any = null;
 
         if (useCustomDuel && customExercise.trim() && customTarget.trim() && selectedOpponent) {
-            const opp = allProfiles.find(u => u.id === selectedOpponent);
+            const opp = combinedOpponents.find(u => u.id === selectedOpponent);
             if (!opp) return;
 
             newDuelData = {
@@ -45,7 +54,7 @@ const DuelCreator: React.FC<DuelCreatorProps> = ({
                 xp_reward: 150
             };
         } else if (selectedDuelTemplate !== null) {
-            const opp = allProfiles.find(u => u.id === selectedOpponent);
+            const opp = combinedOpponents.find(u => u.id === selectedOpponent);
             const template = DUEL_TEMPLATES[selectedDuelTemplate];
             if (!opp || !template) return;
 
@@ -101,7 +110,7 @@ const DuelCreator: React.FC<DuelCreatorProps> = ({
                         <div className="mb-5">
                             <p className="text-xs font-bold text-gray-400 mb-2 flex items-center gap-1"><Users size={12} /> Choose Opponent</p>
                             <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                                {allProfiles.filter(u => u.id !== user?.id).map(u => {
+                                {combinedOpponents.map(u => {
                                     const opRank = u.big4 ? getRankFromLifts(u.big4, u.unit_preference) : null;
                                     return (
                                         <button key={u.id} onClick={() => setSelectedOpponent(u.id)}
@@ -123,7 +132,7 @@ const DuelCreator: React.FC<DuelCreatorProps> = ({
 
                         {/* Fairness indicator */}
                         {selectedOpponent && selectedDuelTemplate !== null && DUEL_TEMPLATES[selectedDuelTemplate]?.type === 'weight' && (() => {
-                            const opp = allProfiles.find(u => u.id === selectedOpponent);
+                            const opp = combinedOpponents.find(u => u.id === selectedOpponent);
                             if (!opp?.weight_kg || !user?.weight_kg) return null;
                             const myBig4 = user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 };
                             const oppBig4 = opp.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 };
