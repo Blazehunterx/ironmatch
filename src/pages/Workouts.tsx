@@ -17,6 +17,7 @@ import EmpireShop from '../components/EmpireShop';
 import WorkoutPlanCreator from '../components/workouts/WorkoutPlanCreator';
 import StarterTemplateCard from '../components/workouts/StarterTemplateCard';
 import { BarbellVisualizer } from '../components/workouts/BarbellVisualizer';
+import { MuscleHeatmap } from '../components/workouts/MuscleHeatmap';
 import { STARTER_TEMPLATES } from '../constants/starterTemplates';
 
 // Modular Components
@@ -42,6 +43,7 @@ export default function Workouts() {
     const [showLevelUp, setShowLevelUp] = useState(false);
     const [showGroupModal, setShowGroupModal] = useState(false);
     const [showJoinModal, setShowJoinModal] = useState(false);
+    const [showPlateLoader, setShowPlateLoader] = useState(false);
     const [activeGroupSession, setActiveGroupSession] = useState<GroupSession | null>(null);
 
     const [plans, setPlans] = useState<WorkoutPlan[]>([]);
@@ -248,6 +250,9 @@ export default function Workouts() {
                 <WorkoutsHeader 
                     onJoinSession={() => setShowJoinModal(true)}
                     onCreatePlan={() => setShowCreator(true)}
+                    onOpenPlateLoader={() => setShowPlateLoader(true)}
+                    totalKg={((user?.big4?.bench || 0) + (user?.big4?.squat || 0) + (user?.big4?.deadlift || 0) + (user?.big4?.ohp || 0)) || 380}
+                    isPro={user?.is_pro || false}
                 />
 
                 {/* Dual AI Brain Action Buttons */}
@@ -283,8 +288,9 @@ export default function Workouts() {
                     <HostSessionCTA onClick={() => setShowGroupModal(true)} />
                 )}
 
+                {/* Interactive Anatomy Volume Heatmap (all exercise modalities) */}
                 <div className="mb-5">
-                    <BarbellVisualizer />
+                    <MuscleHeatmap logs={logs} />
                 </div>
 
                 <WorkoutTabNavigation activeTab={tab} onTabChange={setTab} />
@@ -347,6 +353,42 @@ export default function Workouts() {
                 userId={user?.id || ''}
                 onJoined={(session) => setActiveGroupSession(session)}
             />
+
+            {/* On-Demand Barbell Plate Calculator Drawer */}
+            <AnimatePresence>
+                {showPlateLoader && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowPlateLoader(false)}
+                            className="fixed inset-0 bg-black/85 backdrop-blur-md z-50"
+                        />
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+                            className="fixed bottom-0 left-0 right-0 z-50 bg-oled rounded-t-3xl border-t border-gray-800 max-h-[92vh] overflow-y-auto p-4 pb-28 shadow-2xl"
+                        >
+                            <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-wider text-lime">Barbell Utility</p>
+                                    <h3 className="text-base font-bold text-white">Plate Loader & Breakdown</h3>
+                                </div>
+                                <button
+                                    onClick={() => setShowPlateLoader(false)}
+                                    className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors"
+                                >
+                                    Done
+                                </button>
+                            </div>
+                            <BarbellVisualizer />
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
 
             {/* Tab Content */}
             <div className="px-4">
