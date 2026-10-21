@@ -18,31 +18,36 @@ export default function RestTimerOverlay({
     const [timeLeft, setTimeLeft] = useState<number>(durationSeconds);
     const [totalDuration, setTotalDuration] = useState<number>(durationSeconds);
     const [isPaused, setIsPaused] = useState<boolean>(false);
+    const endTimeRef = useState<{ current: number }>({ current: Date.now() + durationSeconds * 1000 })[0];
 
     useEffect(() => {
         if (isOpen) {
             setTimeLeft(durationSeconds);
             setTotalDuration(durationSeconds);
             setIsPaused(false);
+            endTimeRef.current = Date.now() + durationSeconds * 1000;
         }
     }, [isOpen, durationSeconds]);
 
-    // Audio chime on zero
+    // Resilient Audio & Haptic Chime
     const playChime = () => {
         try {
+            if ('vibrate' in navigator) {
+                navigator.vibrate([200, 100, 200, 100, 400]);
+            }
             const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const frequencies = [440, 554.37, 659.25]; // A major chord
+            const frequencies = [440, 554.37, 659.25, 880]; // A major triumphant chime
             frequencies.forEach((freq, idx) => {
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.1);
-                gain.gain.setValueAtTime(0.2, ctx.currentTime + idx * 0.1);
-                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
+                gain.gain.setValueAtTime(0.25, ctx.currentTime + idx * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
                 osc.connect(gain);
                 gain.connect(ctx.destination);
-                osc.start(ctx.currentTime + idx * 0.1);
-                osc.stop(ctx.currentTime + 1.0);
+                osc.start(ctx.currentTime + idx * 0.08);
+                osc.stop(ctx.currentTime + 1.2);
             });
         } catch {}
     };
@@ -50,25 +55,19 @@ export default function RestTimerOverlay({
     useEffect(() => {
         if (!isOpen || isPaused) return;
 
-        if (timeLeft <= 0) {
-            playChime();
-            if (onFinished) onFinished();
-            return;
-        }
-
+        // Wall-clock calculation guarantees accurate countdown even if mobile OS suspends JS
         const interval = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) {
-                    playChime();
-                    if (onFinished) onFinished();
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
+            const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
+            setTimeLeft(remaining);
+            if (remaining <= 0) {
+                clearInterval(interval);
+                playChime();
+                if (onFinished) onFinished();
+            }
+        }, 500);
 
         return () => clearInterval(interval);
-    }, [isOpen, isPaused, timeLeft, onFinished]);
+    }, [isOpen, isPaused]);
 
     if (!isOpen) return null;
 

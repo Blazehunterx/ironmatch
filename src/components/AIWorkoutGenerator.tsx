@@ -1,25 +1,41 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, ArrowRight, ShieldCheck, X, AlertTriangle, Zap } from 'lucide-react';
-import { WorkoutPlan, BodyPart } from '../types/database';
+import { Sparkles, ArrowRight, X, Zap, Activity } from 'lucide-react';
+import { WorkoutPlan, BodyPart, WorkoutExercise, WorkoutLog } from '../types/database';
 import { useAuth } from '../context/AuthContext';
+import { EXERCISE_DATABASE } from '../lib/exercises';
+import { weeklyMuscleSets, MUSCLES, Muscle } from '../lib/muscles';
 
 interface AIWorkoutGeneratorProps {
     onGenerate: (plan: WorkoutPlan) => void;
     onClose: () => void;
+    logs?: WorkoutLog[];
 }
 
-type Archetype = 'tank' | 'berserker' | 'warrior';
+type Archetype = 'hypertrophy' | 'powerlifting' | 'bulletproof';
 type RedFlag = 'shoulder' | 'knee' | 'back' | 'none';
 type Realm = 'commercial' | 'cable' | 'home';
 
-export default function AIWorkoutGenerator({ onGenerate, onClose }: AIWorkoutGeneratorProps) {
+export default function AIWorkoutGenerator({ onGenerate, onClose, logs = [] }: AIWorkoutGeneratorProps) {
     const { user } = useAuth();
     const [step, setStep] = useState(1);
-    const [archetype, setArchetype] = useState<Archetype>('tank');
+    const [archetype, setArchetype] = useState<Archetype>('hypertrophy');
     const [scars, setScars] = useState<RedFlag[]>(['none']);
     const [realm, setRealm] = useState<Realm>('commercial');
     const [days, setDays] = useState<number>(4);
+
+    // Compute volume deficits from real 7-day workout history
+    const muscleVolume = useMemo(() => weeklyMuscleSets(logs), [logs]);
+
+    const laggingMuscles = useMemo(() => {
+        const lagged: { muscle: Muscle; sets: number; label: string }[] = [];
+        for (const [m, s] of Object.entries(muscleVolume) as [Muscle, number][]) {
+            if (s < 6) {
+                lagged.push({ muscle: m, sets: s, label: MUSCLES[m] });
+            }
+        }
+        return lagged.slice(0, 3); // top 3 lagging
+    }, [muscleVolume]);
 
     const toggleScar = (s: RedFlag) => {
         if (s === 'none') {
@@ -37,179 +53,154 @@ export default function AIWorkoutGenerator({ onGenerate, onClose }: AIWorkoutGen
 
     const generatePlan = () => {
         const planId = `ai-${Date.now()}`;
-        let name = 'AI ';
-        let target: BodyPart = 'Full Body';
-        const exercises: any[] = [];
-
         const hasShoulder = scars.includes('shoulder');
         const hasKnee = scars.includes('knee');
         const hasBack = scars.includes('back');
 
-        // Dynamically calibrate weights based on user strength profile & bodyweight
         const bw = user?.weight_kg || 75;
         const bench1RM = user?.big4?.bench || (bw * 1.0);
         const squat1RM = user?.big4?.squat || (bw * 1.3);
         const deadlift1RM = user?.big4?.deadlift || (bw * 1.6);
         const ohp1RM = user?.big4?.ohp || (bw * 0.6);
 
-        // Calibrated loads (rounded to nearest 2.5kg plate increment)
-        const heavyBench = Math.max(30, Math.round((bench1RM * 0.75) / 2.5) * 2.5);
-        const heavySquat = Math.max(40, Math.round((squat1RM * 0.75) / 2.5) * 2.5);
-        const heavyDeadlift = Math.max(50, Math.round((deadlift1RM * 0.75) / 2.5) * 2.5);
-        const heavyHackSquat = Math.max(40, Math.round((squat1RM * 0.85) / 2.5) * 2.5);
-        const neutralDbPress = Math.max(12, Math.round((bench1RM * 0.32) / 2) * 2);
-        const cableFly = Math.max(8, Math.round((bench1RM * 0.18) / 2.5) * 2.5);
-        const tBarRow = Math.max(20, Math.round((deadlift1RM * 0.35) / 2.5) * 2.5);
-        const suitcaseCarry = Math.max(14, Math.round((bw * 0.25) / 2) * 2);
-        const hamstringCurl = Math.max(20, Math.round((squat1RM * 0.30) / 2.5) * 2.5);
-        const latPulldown = Math.max(25, Math.round((deadlift1RM * 0.40) / 2.5) * 2.5);
-        const lateralRaise = Math.max(6, Math.round((ohp1RM * 0.15)));
-        const tricepPushdown = Math.max(12, Math.round((bench1RM * 0.25) / 2.5) * 2.5);
-        const bicepCurl = Math.max(8, Math.round((bench1RM * 0.18) / 2) * 2);
-        const trapBarDeadlift = Math.max(50, Math.round((deadlift1RM * 0.70) / 2.5) * 2.5);
-        const weightedPullUp = Math.max(0, Math.round(bw > 85 ? 0 : 10));
-        const kbCarry = Math.max(12, Math.round((bw * 0.20) / 2) * 2);
+        // Filter exercise candidates based on realm and joint scars
+        const candidateExercises = EXERCISE_DATABASE.filter(ex => {
+            // Equipment check
+            if (realm === 'cable' && (ex.modality === 'barbell' || ex.modality === 'smith')) return false;
+            if (realm === 'home' && (ex.modality === 'machine' || ex.modality === 'cable')) return false;
 
-        if (archetype === 'tank') {
-            name += 'Eldritch Tank Protocol';
+            // Joint protection check
+            if (hasShoulder && (ex.id === 'standing-barbell-ohp' || ex.id === 'barbell-bench-press' || ex.id === 'dips-chest')) return false;
+            if (hasKnee && (ex.id === 'barbell-back-squat')) return false;
+            if (hasBack && (ex.id === 'conventional-deadlift' || ex.id === 'barbell-row')) return false;
+
+            return true;
+        });
+
+        // Assemble balanced routine targeting primary movement patterns + lagging volume
+        const selectedExercises: WorkoutExercise[] = [];
+
+        const addCandidate = (id: string, sets: number, reps: number, calcWeight: number, notes?: string) => {
+            const found = candidateExercises.find(e => e.id === id) || EXERCISE_DATABASE.find(e => e.id === id);
+            if (!found) return;
+            selectedExercises.push({
+                id: `${planId}-${selectedExercises.length + 1}`,
+                name: found.name,
+                sets,
+                reps,
+                weight: Math.max(0, Math.round(calcWeight / found.defaultIncrement) * found.defaultIncrement),
+                modality: found.modality,
+                notes: notes || found.description
+            });
+        };
+
+        let protocolName = 'AI ';
+        let target: BodyPart = 'Full Body';
+
+        if (archetype === 'hypertrophy') {
+            protocolName += 'Autoregulated Volume Optimizer';
             target = 'Full Body';
 
-            // If knee scar, hamstring curl comes FIRST!
+            // Knee friendly / Hamstring priority
             if (hasKnee) {
-                exercises.push({
-                    id: `${planId}-1`,
-                    name: 'Seated Hamstring Curls (Joint Lube)',
-                    sets: 3,
-                    reps: 15,
-                    weight: hamstringCurl,
-                    notes: '3s eccentric · Pre-exhausts knee capsule'
-                });
-                exercises.push({
-                    id: `${planId}-2`,
-                    name: 'Spanish Squat / Banded Hack Squat',
-                    sets: 3,
-                    reps: 10,
-                    weight: heavyHackSquat,
-                    notes: '3s lowering · Vertical shins'
-                });
+                addCandidate('seated-leg-curl', 4, 12, squat1RM * 0.32, 'Pre-exhausts knee capsule · 3s eccentric');
+                addCandidate('romanian-deadlift', 4, 8, deadlift1RM * 0.65, 'Hinge focus, soft knees, zero shear');
+                addCandidate('leg-press-45', 3, 10, squat1RM * 0.90, 'High foot placement for glute/hamstring recruitment');
             } else {
-                exercises.push({
-                    id: `${planId}-1`,
-                    name: 'Barbell Box Squat',
-                    sets: 4,
-                    reps: 6,
-                    weight: heavySquat,
-                    notes: 'Controlled 2s down · Explode up'
-                });
+                addCandidate('barbell-back-squat', 4, 6, squat1RM * 0.75, 'Controlled 2s eccentric · Explode out of hole');
+                addCandidate('seated-leg-curl', 3, 12, squat1RM * 0.30, 'Deep knee flexion pump');
             }
 
-            // Shoulder friendly pressing
+            // Shoulder friendly / Chest priority
             if (hasShoulder) {
-                exercises.push({
-                    id: `${planId}-3`,
-                    name: 'Neutral-Grip Dumbbell Press (Floor/Incline)',
-                    sets: 3,
-                    reps: 10,
-                    weight: neutralDbPress,
-                    notes: '3s eccentric · Tuck elbows 30°'
-                });
-                exercises.push({
-                    id: `${planId}-4`,
-                    name: 'Standing Cable Fly (Neutral Wrist)',
-                    sets: 3,
-                    reps: 12,
-                    weight: cableFly,
-                    notes: 'Constant tension · Joint-safe'
-                });
+                addCandidate('incline-dumbbell-press', 4, 10, bench1RM * 0.32, 'Neutral 30° tuck · Zero subacromial friction');
+                addCandidate('cable-chest-fly', 3, 12, bench1RM * 0.18, 'Constant tension throughout full range');
+                addCandidate('cable-face-pull', 4, 15, ohp1RM * 0.25, 'Rotator cuff stabilization & rear delts');
             } else {
-                exercises.push({
-                    id: `${planId}-3`,
-                    name: 'Barbell Bench Press',
-                    sets: 4,
-                    reps: 6,
-                    weight: heavyBench,
-                    notes: 'Explosive drive · Strict arch'
-                });
+                addCandidate('incline-barbell-bench-press', 4, 8, bench1RM * 0.70, 'Clavicular pec focus · 2s controlled descent');
+                addCandidate('cable-chest-fly', 3, 12, bench1RM * 0.18, 'Peak squeeze at horizontal abduction');
             }
 
-            // Back friendly pulling
+            // Back friendly / Pull priority
             if (hasBack) {
-                exercises.push({
-                    id: `${planId}-5`,
-                    name: 'Chest-Supported T-Bar Row',
-                    sets: 4,
-                    reps: 10,
-                    weight: tBarRow,
-                    notes: 'Zero lumbar shear'
-                });
-                exercises.push({
-                    id: `${planId}-6`,
-                    name: 'Suitcase Carry (45s hold)',
-                    sets: 3,
-                    reps: 45,
-                    weight: suitcaseCarry,
-                    notes: 'Walk tall · Neutral spine'
-                });
+                addCandidate('chest-supported-t-bar-row', 4, 10, deadlift1RM * 0.40, 'Zero spinal axial loading');
+                addCandidate('lat-pulldown', 4, 10, deadlift1RM * 0.40, 'Vertical pull · Drive elbows into back pockets');
             } else {
-                exercises.push({
-                    id: `${planId}-5`,
-                    name: 'Barbell Deadlift',
-                    sets: 3,
-                    reps: 5,
-                    weight: heavyDeadlift,
-                    notes: 'Reset every rep · Braced core'
-                });
+                addCandidate('barbell-row', 4, 8, deadlift1RM * 0.55, 'Strict 45° torso angle');
+                addCandidate('pull-ups', 3, 8, bw > 85 ? 0 : 5, 'Full dead hang stretch');
             }
-        } else if (archetype === 'berserker') {
-            name += 'Iron Berserker Hypertrophy';
-            target = 'Chest';
-            exercises.push(
-                { id: `${planId}-1`, name: hasShoulder ? 'Incline Neutral DB Press' : 'Incline Barbell Bench', sets: 4, reps: 10, weight: hasShoulder ? neutralDbPress : Math.round(heavyBench * 0.85), notes: '3s lowering tempo' },
-                { id: `${planId}-2`, name: 'Lat Pulldown (Mag Grip)', sets: 4, reps: 12, weight: latPulldown, notes: 'Full squeeze at clavicle' },
-                { id: `${planId}-3`, name: 'Cable Lateral Raise', sets: 4, reps: 15, weight: lateralRaise, notes: 'Lead with elbow' },
-                { id: `${planId}-4`, name: 'Rope Tricep Pushdown', sets: 3, reps: 12, weight: tricepPushdown, notes: 'Flared finish' },
-                { id: `${planId}-5`, name: 'Incline Dumbbell Bicep Curl', sets: 3, reps: 12, weight: bicepCurl, notes: 'Deep stretch at bottom' }
-            );
-        } else {
-            name += 'Agile Warrior Hybrid';
+
+            addCandidate('cable-lateral-raise', 4, 15, ohp1RM * 0.15, 'Lagging lateral delt stimulus');
+            addCandidate('standing-calf-raise', 3, 15, bw * 0.8, 'Full 3s bottom calf stretch');
+
+        } else if (archetype === 'powerlifting') {
+            protocolName += 'Big 4 Peaking Split';
             target = 'Full Body';
-            exercises.push(
-                { id: `${planId}-1`, name: 'Trap Bar Deadlift', sets: 4, reps: 8, weight: trapBarDeadlift, notes: 'Power production' },
-                { id: `${planId}-2`, name: 'Weighted Pull-Ups', sets: 3, reps: 6, weight: weightedPullUp, notes: 'Chest to bar' },
-                { id: `${planId}-3`, name: 'Overhead Kettlebell Carry', sets: 3, reps: 40, weight: kbCarry, notes: 'Rotator cuff stability' },
-                { id: `${planId}-4`, name: 'Bodyweight Push-Up Burnout', sets: 3, reps: 20, weight: 0, notes: 'To mechanical failure' }
-            );
+
+            addCandidate('barbell-back-squat', 5, 5, squat1RM * 0.80, 'Competition depth · Aggressive brace');
+            addCandidate('barbell-bench-press', 5, 5, bench1RM * 0.80, 'Strict paused lockout on chest');
+            addCandidate('conventional-deadlift', 4, 3, deadlift1RM * 0.82, 'Sub-maximal explosive speed pull');
+            addCandidate('standing-barbell-ohp', 4, 6, ohp1RM * 0.75, 'Strict overhead press');
+            addCandidate('barbell-row', 4, 8, deadlift1RM * 0.50, 'Scapular stability for bench platform');
+
+        } else {
+            protocolName += 'Combat Longevity & Bulletproof Protocol';
+            target = 'Full Body';
+
+            addCandidate('seated-leg-curl', 4, 15, squat1RM * 0.30, 'Tendon primer · Slow negative');
+            addCandidate('incline-dumbbell-press', 4, 10, bench1RM * 0.30, 'Joint-safe neutral grip');
+            addCandidate('chest-supported-t-bar-row', 4, 12, deadlift1RM * 0.35, 'Decompresses lumbar spine');
+            addCandidate('cable-face-pull', 4, 20, ohp1RM * 0.20, 'Posterior rotator protection');
+            addCandidate('cable-lateral-raise', 4, 15, ohp1RM * 0.15, 'Zero-shear side delt tension');
+            addCandidate('hanging-leg-raise', 3, 12, 0, 'Spinal decompression + pelvic control');
         }
 
-        const newPlan: WorkoutPlan = {
+        const generatedPlan: WorkoutPlan = {
             id: planId,
-            name,
-            author_id: 'ai-head-coach',
+            name: protocolName,
+            author_id: user?.id || 'ai-coach',
             target,
-            exercises,
+            exercises: selectedExercises,
             shared: false,
             created_at: new Date().toISOString()
         };
 
-        onGenerate(newPlan);
+        onGenerate(generatedPlan);
     };
 
     return (
-        <div className="p-6 pb-12 space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="p-6 bg-oled max-w-lg mx-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-800">
                 <div className="flex items-center gap-2">
-                    <div className="p-2 bg-lime rounded-xl shadow-[0_0_15px_-5px_#32FF32]">
-                        <Sparkles size={20} className="text-oled" />
+                    <div className="p-2 bg-lime/10 rounded-xl text-lime">
+                        <Sparkles size={20} />
                     </div>
                     <div>
-                        <h3 className="text-xl font-black text-white uppercase tracking-tight">AI Head Coach</h3>
-                        <p className="text-xs text-gray-400">Roll custom joint-safe split</p>
+                        <h2 className="text-lg font-black text-white uppercase tracking-wider">AI Head Coach</h2>
+                        <p className="text-xs text-gray-400">Algorithmic Program Synthesizer</p>
                     </div>
                 </div>
-                <button onClick={onClose} className="p-2 text-gray-500 hover:text-white transition-colors">
+                <button onClick={onClose} className="p-1 rounded-full text-gray-500 hover:text-white">
                     <X size={20} />
                 </button>
             </div>
+
+            {/* Lagging Volume Detection Pill */}
+            {laggingMuscles.length > 0 && (
+                <div className="mt-4 p-3 rounded-2xl bg-gray-900 border border-gray-800 text-xs">
+                    <div className="flex items-center gap-1.5 text-amber-400 font-bold mb-1">
+                        <Activity size={14} />
+                        <span>Detected 7-Day Volume Deficits:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {laggingMuscles.map(l => (
+                            <span key={l.muscle} className="px-2 py-0.5 rounded-lg bg-black text-[11px] font-mono text-gray-300 border border-gray-700">
+                                {l.label}: <strong className="text-amber-400">{l.sets} sets</strong>
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <AnimatePresence mode="wait">
                 {step === 1 && (
@@ -218,42 +209,48 @@ export default function AIWorkoutGenerator({ onGenerate, onClose }: AIWorkoutGen
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
-                        className="space-y-4"
+                        className="space-y-4 mt-5"
                     >
-                        <p className="text-xs font-black uppercase text-lime tracking-wider">Step 1 of 3: Class & Archetype</p>
-                        <div className="grid grid-cols-1 gap-3">
+                        <p className="text-xs font-black uppercase text-lime tracking-wider">Step 1 of 3: Training Doctrine</p>
+
+                        <div className="space-y-2.5">
                             {[
-                                { id: 'tank', label: 'Eldritch Tank', sub: 'Heavy compound & cables, joint-safe priority', badge: 'Recommended' },
-                                { id: 'berserker', label: 'Iron Berserker', sub: 'High volume hypertrophy and pump' },
-                                { id: 'warrior', label: 'Agile Warrior', sub: 'Hybrid athletic conditioning & strength' },
-                            ].map((item: any) => (
+                                {
+                                    id: 'hypertrophy' as Archetype,
+                                    name: 'Hypertrophy & Volume Balance',
+                                    desc: 'Reads Muscle Heatmap to prioritize lagging muscle groups with optimal 10-14 set stimulus.'
+                                },
+                                {
+                                    id: 'powerlifting' as Archetype,
+                                    name: 'Powerlifting Big 4 Peaking',
+                                    desc: 'Heavy linear progressive overload for Squat, Bench, Deadlift, and Overhead Press.'
+                                },
+                                {
+                                    id: 'bulletproof' as Archetype,
+                                    name: 'Bulletproof Longevity & Joints',
+                                    desc: 'Eliminates joint shear. Emphasizes cables, neutral dumbbell grips, and isometric primers.'
+                                }
+                            ].map(item => (
                                 <button
                                     key={item.id}
                                     onClick={() => setArchetype(item.id)}
-                                    className={`p-4 rounded-2xl border transition-all text-left flex items-center justify-between ${
+                                    className={`w-full p-4 rounded-2xl border text-left transition-all ${
                                         archetype === item.id
-                                            ? 'bg-lime/10 border-lime text-white shadow-[inset_0_0_20px_-10px_#32FF32]'
-                                            : 'bg-gray-900 border-gray-800 text-gray-400 hover:border-gray-700'
+                                            ? 'bg-lime/10 border-lime shadow-[0_0_15px_rgba(50,255,50,0.15)]'
+                                            : 'bg-gray-900 border-gray-800 hover:border-gray-700'
                                     }`}
                                 >
-                                    <div>
-                                        <p className="font-bold text-white text-sm">{item.label}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5">{item.sub}</p>
-                                    </div>
-                                    {item.badge && (
-                                        <span className="text-[10px] px-2 py-0.5 bg-lime/20 text-lime rounded-full font-bold">
-                                            {item.badge}
-                                        </span>
-                                    )}
+                                    <p className={`font-black text-sm ${archetype === item.id ? 'text-lime' : 'text-white'}`}>{item.name}</p>
+                                    <p className="text-xs text-gray-400 mt-1 leading-relaxed">{item.desc}</p>
                                 </button>
                             ))}
                         </div>
 
                         <button
                             onClick={() => setStep(2)}
-                            className="w-full py-3 bg-lime text-oled font-black rounded-xl hover:bg-lime/90 flex items-center justify-center gap-2 mt-4"
+                            className="w-full mt-4 py-3.5 bg-lime text-oled font-black rounded-xl hover:bg-lime/90 flex items-center justify-center gap-2 transition active:scale-95"
                         >
-                            Continue to Red Flags <ArrowRight size={16} />
+                            Next: Joint Profile <ArrowRight size={16} />
                         </button>
                     </motion.div>
                 )}
@@ -264,50 +261,40 @@ export default function AIWorkoutGenerator({ onGenerate, onClose }: AIWorkoutGen
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
-                        className="space-y-4"
+                        className="space-y-4 mt-5"
                     >
-                        <p className="text-xs font-black uppercase text-red-400 tracking-wider flex items-center gap-1.5">
-                            <AlertTriangle size={14} /> Step 2 of 3: Battle Scars & Joint Red Flags
-                        </p>
-                        <p className="text-xs text-gray-400">Select any active aches so Coach can auto-swap aggravating lifts:</p>
+                        <p className="text-xs font-black uppercase text-lime tracking-wider">Step 2 of 3: Joint Scars & Red Flags</p>
+                        <p className="text-xs text-gray-400">The engine automatically swaps high-shear lifts to safe alternatives.</p>
 
-                        <div className="space-y-2.5">
+                        <div className="space-y-2">
                             {[
-                                { id: 'shoulder', label: 'Left Shoulder Pinch / Impingement', sub: 'Replaces flared pressing with neutral cables' },
-                                { id: 'knee', label: 'Patellar Knee Shear', sub: 'Puts Hamstring Curls first on leg days' },
-                                { id: 'back', label: 'Lower Back / Spinal Tightness', sub: 'Replaces heavy axial loading with chest-supported lifts' },
-                                { id: 'none', label: 'None (100% Joint Clear)', sub: 'Standard compound programming' },
-                            ].map((item: any) => {
-                                const isChecked = scars.includes(item.id);
+                                { id: 'none' as RedFlag, name: '100% Iron Frame (No Pain)', desc: 'Full range of motion, heavy barbells enabled.' },
+                                { id: 'shoulder' as RedFlag, name: 'Shoulder Impingement / AC Joint', desc: 'Swaps wide flat barbell bench to neutral dumbbell press & face pulls.' },
+                                { id: 'knee' as RedFlag, name: 'Patellar Tendon / Knee Pain', desc: 'Pre-exhausts with hamstring curls, switches to vertical-shin leg presses.' },
+                                { id: 'back' as RedFlag, name: 'Lower Back / Lumbar Shear', desc: 'Removes bent barbell rows & conventional deadlifts in favor of supported T-bars.' }
+                            ].map(item => {
+                                const isSelected = scars.includes(item.id);
                                 return (
                                     <button
                                         key={item.id}
                                         onClick={() => toggleScar(item.id)}
-                                        className={`w-full p-3.5 rounded-xl border text-left flex items-center justify-between transition-all ${
-                                            isChecked
-                                                ? 'bg-red-500/10 border-red-500/40 text-white'
-                                                : 'bg-gray-900 border-gray-800 text-gray-400 hover:border-gray-700'
+                                        className={`w-full p-3.5 rounded-2xl border text-left transition-all ${
+                                            isSelected
+                                                ? item.id === 'none'
+                                                    ? 'bg-lime/10 border-lime'
+                                                    : 'bg-red-500/10 border-red-500/50 shadow-sm'
+                                                : 'bg-gray-900 border-gray-800'
                                         }`}
                                     >
-                                        <div>
-                                            <p className="font-bold text-white text-xs">{item.label}</p>
-                                            <p className="text-[11px] text-gray-400">{item.sub}</p>
-                                        </div>
-                                        <div className={`w-5 h-5 rounded-md border flex items-center justify-center ${
-                                            isChecked ? 'bg-red-500 border-red-500 text-white' : 'border-gray-700'
-                                        }`}>
-                                            {isChecked && <ShieldCheck size={14} />}
-                                        </div>
+                                        <p className={`font-black text-sm ${isSelected ? (item.id === 'none' ? 'text-lime' : 'text-red-400') : 'text-white'}`}>{item.name}</p>
+                                        <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{item.desc}</p>
                                     </button>
                                 );
                             })}
                         </div>
 
                         <div className="flex gap-2 pt-2">
-                            <button
-                                onClick={() => setStep(1)}
-                                className="flex-1 py-3 bg-gray-900 text-gray-300 font-bold rounded-xl"
-                            >
+                            <button onClick={() => setStep(1)} className="flex-1 py-3 bg-gray-900 text-gray-300 font-bold rounded-xl">
                                 Back
                             </button>
                             <button
@@ -326,25 +313,23 @@ export default function AIWorkoutGenerator({ onGenerate, onClose }: AIWorkoutGen
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
-                        className="space-y-4"
+                        className="space-y-4 mt-5"
                     >
-                        <p className="text-xs font-black uppercase text-lime tracking-wider">Step 3 of 3: Realm & Quest Days</p>
+                        <p className="text-xs font-black uppercase text-lime tracking-wider">Step 3 of 3: Equipment & Days</p>
 
                         <div>
-                            <label className="text-xs font-bold text-gray-300 block mb-2">Training Realm (Equipment)</label>
+                            <label className="text-xs font-bold text-gray-300 block mb-2">Gym Realm (Equipment)</label>
                             <div className="grid grid-cols-3 gap-2">
                                 {[
                                     { id: 'commercial', label: 'Commercial Gym' },
-                                    { id: 'cable', label: 'Cable Heavy' },
+                                    { id: 'cable', label: 'Cables & DBs' },
                                     { id: 'home', label: 'Home / Barbell' },
                                 ].map((item: any) => (
                                     <button
                                         key={item.id}
                                         onClick={() => setRealm(item.id)}
                                         className={`p-2.5 rounded-xl border text-xs font-bold text-center transition-all ${
-                                            realm === item.id
-                                                ? 'bg-lime text-oled border-lime'
-                                                : 'bg-gray-900 border-gray-800 text-gray-400'
+                                            realm === item.id ? 'bg-lime text-oled border-lime' : 'bg-gray-900 border-gray-800 text-gray-400'
                                         }`}
                                     >
                                         {item.label}
@@ -354,16 +339,14 @@ export default function AIWorkoutGenerator({ onGenerate, onClose }: AIWorkoutGen
                         </div>
 
                         <div>
-                            <label className="text-xs font-bold text-gray-300 block mb-2">Quest Days Per Week</label>
+                            <label className="text-xs font-bold text-gray-300 block mb-2">Sessions Per Week</label>
                             <div className="grid grid-cols-3 gap-2">
                                 {[3, 4, 5].map(d => (
                                     <button
                                         key={d}
                                         onClick={() => setDays(d)}
                                         className={`py-3 rounded-xl border font-mono text-sm font-black text-center transition-all ${
-                                            days === d
-                                                ? 'bg-lime text-oled border-lime'
-                                                : 'bg-gray-900 border-gray-800 text-gray-400'
+                                            days === d ? 'bg-lime text-oled border-lime' : 'bg-gray-900 border-gray-800 text-gray-400'
                                         }`}
                                     >
                                         {d} Days
@@ -373,17 +356,14 @@ export default function AIWorkoutGenerator({ onGenerate, onClose }: AIWorkoutGen
                         </div>
 
                         <div className="flex gap-2 pt-4">
-                            <button
-                                onClick={() => setStep(2)}
-                                className="flex-1 py-3 bg-gray-900 text-gray-300 font-bold rounded-xl"
-                            >
+                            <button onClick={() => setStep(2)} className="flex-1 py-3 bg-gray-900 text-gray-300 font-bold rounded-xl">
                                 Back
                             </button>
                             <button
                                 onClick={generatePlan}
-                                className="flex-1 py-3 bg-lime text-oled font-black rounded-xl hover:bg-lime/90 flex items-center justify-center gap-2 shadow-[0_0_15px_#32FF32]"
+                                className="flex-1 py-3.5 bg-lime text-oled font-black rounded-xl hover:bg-lime/90 flex items-center justify-center gap-2 shadow-[0_0_15px_#32FF32] transition active:scale-95"
                             >
-                                <Zap size={16} /> Roll Custom Split!
+                                <Zap size={16} /> Synthesize Protocol!
                             </button>
                         </div>
                     </motion.div>

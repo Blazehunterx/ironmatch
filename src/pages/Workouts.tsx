@@ -320,6 +320,7 @@ export default function Workouts() {
                         >
                             <div className="pb-32">
                                 <AIWorkoutGenerator
+                                    logs={logs}
                                     onGenerate={(plan) => {
                                         setPlans(prev => [plan, ...prev]);
                                         setShowAI(false);

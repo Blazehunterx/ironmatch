@@ -7,6 +7,7 @@ import { useGyms } from '../context/GymContext';
 import { verifyGymPresence } from '../lib/location';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { safeStorage } from '../lib/safeStorage';
+import { getModalityForExercise } from '../lib/exercises';
 import PRCelebration from './PRCelebration';
 
 // Modular Components
@@ -72,6 +73,59 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
             }
         }
     }, [plan.id]);
+
+    // Fetch previous exercise performance history from workout_logs
+    useEffect(() => {
+        const fetchHistory = async () => {
+            if (!userId) return;
+            try {
+                const { data } = await supabase
+                    .from('workout_logs')
+                    .select('exercises, created_at')
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+
+                const historyMap: Record<string, { weight: number; reps: number; rpe?: number }> = {};
+                if (data && data.length > 0) {
+                    for (const log of data) {
+                        for (const ex of (log.exercises || [])) {
+                            const normName = ex.name?.toLowerCase().trim();
+                            if (normName && !historyMap[normName]) {
+                                let w = ex.weight || 0;
+                                let r = ex.reps || 0;
+                                let rpe = undefined;
+                                if (Array.isArray(ex.setDetails) && ex.setDetails.length > 0) {
+                                    const bestSet = ex.setDetails.find((s: any) => s.completed !== false) || ex.setDetails[0];
+                                    if (bestSet) {
+                                        w = bestSet.weight || w;
+                                        r = bestSet.reps || r;
+                                        rpe = bestSet.rpe;
+                                    }
+                                }
+                                historyMap[normName] = { weight: w, reps: r, rpe };
+                            }
+                        }
+                    }
+                }
+
+                // Attach previous performance & modality
+                setExercises(prev => prev.map(e => {
+                    const hist = historyMap[e.name.toLowerCase().trim()];
+                    const modality = e.modality || getModalityForExercise(e.name);
+                    return {
+                        ...e,
+                        modality,
+                        previousPerformance: hist || e.previousPerformance
+                    };
+                }));
+            } catch (err) {
+                console.warn('Failed to fetch previous workout history:', err);
+            }
+        };
+
+        fetchHistory();
+    }, [userId]);
 
     // Handle Difficulty Dial Changes
     const handleDifficultyChange = (newDiff: DifficultyDial) => {

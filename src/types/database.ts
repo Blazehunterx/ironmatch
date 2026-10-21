@@ -242,6 +242,8 @@ export interface SetDetail {
     completed?: boolean;
     rpe?: number; // Rate of Perceived Exertion (6.0 - 10.0)
     suggestedWeight?: number; // Autoregulated progressive overload recommendation
+    previousWeight?: number;
+    previousReps?: number;
 }
 
 export interface WorkoutExercise {
@@ -253,6 +255,12 @@ export interface WorkoutExercise {
     notes?: string;
     completed?: boolean;
     setDetails?: SetDetail[];
+    modality?: 'barbell' | 'dumbbell' | 'cable' | 'machine' | 'bodyweight' | 'smith';
+    previousPerformance?: {
+        weight: number;
+        reps: number;
+        rpe?: number;
+    };
 }
 
 export interface WorkoutPlan {

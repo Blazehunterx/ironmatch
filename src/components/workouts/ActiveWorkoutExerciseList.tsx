@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Dumbbell, ShieldAlert, Sparkles, Plus, Minus, CheckCircle2, Zap, TrendingUp } from 'lucide-react';
+import { Check, Dumbbell, ShieldAlert, Sparkles, Plus, Minus, CheckCircle2, Zap, TrendingUp, History } from 'lucide-react';
 import { WorkoutExercise, SetDetail } from '../../types/database';
 import { RPE_SCALE, calculateOverloadRecommendation } from '../../lib/autoregulation';
+import { getModalityForExercise } from '../../lib/exercises';
 
 interface ActiveWorkoutExerciseListProps {
     exercises: WorkoutExercise[];
@@ -181,9 +182,14 @@ export default function ActiveWorkoutExerciseList({
                             </button>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-1">
-                                    <h4 className={`font-bold text-sm truncate ${ex.completed ? 'text-gray-500 line-through' : 'text-white'}`}>
-                                        {ex.name}
-                                    </h4>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <h4 className={`font-bold text-sm truncate ${ex.completed ? 'text-gray-500 line-through' : 'text-white'}`}>
+                                            {ex.name}
+                                        </h4>
+                                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-white/10 text-gray-400 font-mono shrink-0">
+                                            {ex.modality || getModalityForExercise(ex.name)}
+                                        </span>
+                                    </div>
                                     {onOpenSwap && !ex.completed && (
                                         <button
                                             onClick={(e) => { e.stopPropagation(); onOpenSwap(ex); }}
@@ -193,10 +199,19 @@ export default function ActiveWorkoutExerciseList({
                                         </button>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5">
+                                <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5 flex-wrap">
                                     <span>{sets.length} sets</span>
                                     <span>·</span>
                                     <span>{ex.reps} target reps</span>
+                                    {ex.previousPerformance && (
+                                        <>
+                                            <span>·</span>
+                                            <span className="text-gray-300 font-mono flex items-center gap-1">
+                                                <History size={10} className="text-lime" />
+                                                Last: {ex.previousPerformance.weight}{unit} × {ex.previousPerformance.reps}
+                                            </span>
+                                        </>
+                                    )}
                                     {ex.weight ? (
                                         <>
                                             <span>·</span>
@@ -310,6 +325,29 @@ export default function ActiveWorkoutExerciseList({
                                             </button>
                                         </div>
 
+                                        {/* Ghost Previous History Banner */}
+                                        {ex.previousPerformance && (
+                                            <div className="flex items-center justify-between text-[11px] bg-white/5 px-2.5 py-1.5 rounded-xl border border-white/10">
+                                                <span className="text-gray-400 flex items-center gap-1.5">
+                                                    <History size={12} className="text-lime" />
+                                                    Previous: <strong className="text-white font-mono">{ex.previousPerformance.weight}{unit} × {ex.previousPerformance.reps}</strong> {ex.previousPerformance.rpe ? `@ RPE ${ex.previousPerformance.rpe}` : ''}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        updateSet(ex, activeSetIndex, {
+                                                            weight: ex.previousPerformance!.weight,
+                                                            reps: ex.previousPerformance!.reps
+                                                        });
+                                                    }}
+                                                    className="text-[10px] font-black text-lime uppercase tracking-wider bg-lime/10 px-2 py-0.5 rounded border border-lime/20 hover:bg-lime/20 transition-colors"
+                                                >
+                                                    Match
+                                                </button>
+                                            </div>
+                                        )}
+
                                         <div className="grid grid-cols-2 gap-2">
                                             {/* Reps Stepper */}
                                             <div className="p-2 bg-gray-900 rounded-xl border border-gray-800 flex items-center justify-between">
@@ -342,49 +380,57 @@ export default function ActiveWorkoutExerciseList({
                                             </div>
 
                                             {/* Weight Stepper */}
-                                            <div className="p-2 bg-gray-900 rounded-xl border border-gray-800 flex items-center justify-between">
-                                                <div className="flex items-center gap-1.5">
-                                                    <div>
-                                                        <span className="text-[8px] text-gray-500 uppercase font-black block">Weight ({unit})</span>
-                                                        <span className="text-base font-black text-lime font-mono">{activeSet.weight || 0}</span>
+                                            {(() => {
+                                                const modality = ex.modality || getModalityForExercise(ex.name);
+                                                const stepInc = modality === 'dumbbell' ? 2.0 : modality === 'barbell' ? 2.5 : modality === 'bodyweight' ? 2.5 : 5.0;
+                                                return (
+                                                    <div className="p-2 bg-gray-900 rounded-xl border border-gray-800 flex items-center justify-between">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div>
+                                                                <span className="text-[8px] text-gray-500 uppercase font-black block">
+                                                                    {modality === 'bodyweight' ? `+ Extra (${unit})` : `Weight (${unit})`}
+                                                                </span>
+                                                                <span className="text-base font-black text-lime font-mono">{activeSet.weight || 0}</span>
+                                                            </div>
+                                                            {modality === 'barbell' && onOpenPlateCalc && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        onOpenPlateCalc(activeSet.weight || 100);
+                                                                    }}
+                                                                    className="p-1 rounded-lg bg-lime/10 border border-lime/20 text-lime hover:bg-lime/20 transition active:scale-95 ml-1"
+                                                                    title="Barbell Plate Calculator"
+                                                                >
+                                                                    <Dumbbell size={12} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    updateSet(ex, activeSetIndex, { weight: Math.max(0, Math.round(((activeSet.weight || 0) - stepInc) * 10) / 10) });
+                                                                }}
+                                                                className="w-7 h-7 rounded-lg bg-gray-800 border border-gray-700 text-white font-bold flex items-center justify-center active:scale-95 text-xs"
+                                                            >
+                                                                -
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    updateSet(ex, activeSetIndex, { weight: Math.round(((activeSet.weight || 0) + stepInc) * 10) / 10 });
+                                                                }}
+                                                                className="w-7 h-7 rounded-lg bg-gray-800 border border-gray-700 text-white font-bold flex items-center justify-center active:scale-95 text-xs"
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                    {onOpenPlateCalc && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                onOpenPlateCalc(activeSet.weight || 100);
-                                                            }}
-                                                            className="p-1 rounded-lg bg-lime/10 border border-lime/20 text-lime hover:bg-lime/20 transition active:scale-95 ml-1"
-                                                            title="Barbell Plate Calculator"
-                                                        >
-                                                            <Dumbbell size={12} />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            updateSet(ex, activeSetIndex, { weight: Math.max(0, (activeSet.weight || 0) - 2.5) });
-                                                        }}
-                                                        className="w-7 h-7 rounded-lg bg-gray-800 border border-gray-700 text-white font-bold flex items-center justify-center active:scale-95 text-xs"
-                                                    >
-                                                        -
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            updateSet(ex, activeSetIndex, { weight: (activeSet.weight || 0) + 2.5 });
-                                                        }}
-                                                        className="w-7 h-7 rounded-lg bg-gray-800 border border-gray-700 text-white font-bold flex items-center justify-center active:scale-95 text-xs"
-                                                    >
-                                                        +
-                                                    </button>
-                                                </div>
-                                            </div>
+                                                );
+                                            })()}
                                         </div>
 
                                         {/* RPE & Autoregulation Overload Engine */}
