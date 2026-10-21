@@ -150,12 +150,11 @@ export default function Onboarding() {
                                 allGyms={allGyms} homeGym={homeGym} searchGymQuery={searchGymQuery} 
                                 isLoadingGyms={isLoadingGyms} locationStatus={locationStatus}
                                 onSetHomeGym={setHomeGym} onSearchChange={setSearchGymQuery} 
-                                onRefresh={refreshGyms} onAddCustom={async () => {
-                                    const name = prompt("Enter Gym Name:");
-                                    if (name) {
-                                        const id = await addCustomGym(name, "Manually added");
-                                        setHomeGym(id);
-                                    }
+                                onRefresh={refreshGyms} 
+                                onAddCustomGymDetails={async (name, location) => {
+                                    const id = await addCustomGym(name, location);
+                                    setHomeGym(id);
+                                    return id;
                                 }}
                             />
                         )}

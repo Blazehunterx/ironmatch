@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Big4Lifts, Rank } from '../../lib/gamification';
-import { Camera, Sparkles } from 'lucide-react';
+import { Camera, Sparkles, Activity, Trophy } from 'lucide-react';
 import PlacementMatchModal from '../placement/PlacementMatchModal';
+import InteractiveBodyCalibration from './InteractiveBodyCalibration';
+import { TierBadge, rankFor } from '../profile/RankBadge';
 
 interface Big4StepProps {
     lifts: Big4Lifts;
@@ -15,6 +17,8 @@ interface Big4StepProps {
 const Big4Step: React.FC<Big4StepProps> = ({
     lifts, unitPref, rank, hasAnyLift, onSetLifts
 }) => {
+    // Mode: 'guided_body' for new lifters or 'experienced_direct' for seasoned powerlifters
+    const [calibrationMode, setCalibrationMode] = useState<'guided_body' | 'experienced_direct'>('guided_body');
     const [showPlacementModal, setShowPlacementModal] = useState(false);
 
     const liftConfigs = [
@@ -28,83 +32,147 @@ const Big4Step: React.FC<Big4StepProps> = ({
         onSetLifts({ ...lifts, [key]: value });
     };
 
-    return (
-        <div className="flex-1 flex flex-col">
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
-                <h2 className="text-2xl font-black text-white mb-1">Strength Calibration</h2>
-                <p className="text-sm text-gray-500 mb-3">Snap your bar or enter your working weights to unlock Ranked Mode.</p>
-                
-                {/* Instant Snapshot Placement Button */}
-                <button
-                    onClick={() => setShowPlacementModal(true)}
-                    className="w-full mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-lime/20 via-gray-900 to-black border border-lime/40 flex items-center justify-between text-left hover:border-lime transition-all active:scale-[0.98] shadow-lg shadow-lime/5"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-lime text-oled rounded-xl shrink-0">
-                            <Camera size={18} />
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-1.5">
-                                <p className="text-xs font-black text-white uppercase italic">Snap Bar or Load Digital Plates</p>
-                                <span className="text-[8px] bg-lime text-oled px-1.5 py-0.2 rounded font-black uppercase">Instant</span>
-                            </div>
-                            <p className="text-[10px] text-gray-400">Zero manual math · Auto-derives your Big 4</p>
-                        </div>
-                    </div>
-                    <Sparkles size={16} className="text-lime shrink-0" />
-                </button>
+    const totalLifts = lifts.bench + lifts.squat + lifts.deadlift + lifts.ohp;
 
-                {hasAnyLift && (
-                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                        className="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 mb-4">
-                        <span className="text-xl">{rank.icon}</span>
-                        <span className="text-sm font-bold" style={{ color: rank.color }}>{rank.name}</span>
-                        <span className="text-[10px] text-gray-500 ml-auto">{lifts.bench + lifts.squat + lifts.deadlift + lifts.ohp} {unitPref} total</span>
-                    </motion.div>
-                )}
+    return (
+        <div className="flex-1 flex flex-col pb-8">
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+                <div className="flex items-center justify-between mb-1">
+                    <h2 className="text-2xl font-black text-white">Strength Calibration</h2>
+                    {totalLifts > 0 && (
+                        <span className="text-[10px] font-mono font-bold text-lime bg-lime/10 px-2 py-0.5 rounded-full border border-lime/30">
+                            {totalLifts} {unitPref} Total
+                        </span>
+                    )}
+                </div>
+                <p className="text-xs text-gray-400 mb-3">
+                    Choose your calibration style. New to lifting? Tap your muscles to fill in what you can lift.
+                </p>
+
+                {/* TWO-TRACK SEGMENTED SELECTOR */}
+                <div className="p-1 rounded-2xl bg-gray-950 border border-gray-800 grid grid-cols-2 gap-1 mb-4">
+                    <button
+                        type="button"
+                        onClick={() => setCalibrationMode('guided_body')}
+                        className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
+                            calibrationMode === 'guided_body'
+                                ? 'bg-lime text-oled shadow-[0_0_15px_rgba(50,255,50,0.3)]'
+                                : 'text-gray-400 hover:text-white'
+                        }`}
+                    >
+                        <Activity size={14} /> Interactive Body
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setCalibrationMode('experienced_direct')}
+                        className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
+                            calibrationMode === 'experienced_direct'
+                                ? 'bg-lime text-oled shadow-[0_0_15px_rgba(50,255,50,0.3)]'
+                                : 'text-gray-400 hover:text-white'
+                        }`}
+                    >
+                        <Trophy size={14} /> Experienced (Big 4)
+                    </button>
+                </div>
             </motion.div>
 
-            <div className="space-y-3">
-                {liftConfigs.map((lift, idx) => (
-                    <motion.div key={lift.key} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-                        transition={{ delay: idx * 0.08 }}
-                        className="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex items-center gap-4">
-                        <span className="text-2xl">{lift.icon}</span>
-                        <div className="flex-1">
-                            <p className="text-xs font-bold text-white">{lift.label}</p>
-                            <p className="text-[9px] text-gray-500">1 rep max</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <input type="number" value={lifts[lift.key] || ''}
-                                onChange={e => handleLiftChange(lift.key, Number(e.target.value) || 0)}
-                                placeholder="0"
-                                className="w-20 bg-oled border border-gray-700 text-white text-sm font-bold rounded-lg px-3 py-2 focus:outline-none focus:border-lime text-center" />
-                            <span className="text-[10px] text-gray-500">{unitPref}</span>
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
-
-            <div className="mt-4 pt-2 border-t border-gray-800/80">
-                <button
-                    type="button"
-                    onClick={() => {
-                        const starterWeights = unitPref === 'kg'
-                            ? { bench: 30, squat: 40, deadlift: 50, ohp: 20 }
-                            : { bench: 65, squat: 90, deadlift: 115, ohp: 45 };
-                        onSetLifts(starterWeights);
-                    }}
-                    className="w-full py-2.5 px-3 rounded-xl bg-gray-900 hover:bg-gray-800 border border-gray-800 text-[11px] font-bold text-gray-400 hover:text-white transition flex items-center justify-center gap-2"
+            {/* TRACK 1: GUIDED INTERACTIVE BODY CALIBRATION */}
+            {calibrationMode === 'guided_body' && (
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
                 >
-                    🌱 I'm New to Lifting · Start at Freshman Tier
-                </button>
-            </div>
+                    <InteractiveBodyCalibration
+                        unitPref={unitPref}
+                        currentLifts={lifts}
+                        onCalibratedLiftsChange={onSetLifts}
+                    />
+                </motion.div>
+            )}
 
-            {!hasAnyLift && (
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-                    className="text-[10px] text-gray-600 text-center mt-3">
-                    Don't know your 1RM? Snap a photo of what's on the bar above, or calibrate on your first workout.
-                </motion.p>
+            {/* TRACK 2: EXPERIENCED DIRECT BIG 4 LIFT ENTRY */}
+            {calibrationMode === 'experienced_direct' && (
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-4"
+                >
+                    {/* Instant Snapshot Placement Button */}
+                    <button
+                        type="button"
+                        onClick={() => setShowPlacementModal(true)}
+                        className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-lime/20 via-gray-900 to-black border border-lime/40 flex items-center justify-between text-left hover:border-lime transition-all active:scale-[0.98] shadow-lg shadow-lime/5"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-lime text-oled rounded-xl shrink-0">
+                                <Camera size={18} />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-1.5">
+                                    <p className="text-xs font-black text-white uppercase italic">Snap Bar or Load Digital Plates</p>
+                                    <span className="text-[8px] bg-lime text-oled px-1.5 py-0.2 rounded font-black uppercase">Instant</span>
+                                </div>
+                                <p className="text-[10px] text-gray-400">Zero manual math · Auto-derives your Big 4</p>
+                            </div>
+                        </div>
+                        <Sparkles size={16} className="text-lime shrink-0" />
+                    </button>
+
+                    {hasAnyLift && (
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                            className="flex items-center gap-3 bg-gray-950 border border-lime/30 rounded-2xl p-3">
+                            <TierBadge 
+                                tier={rankFor(unitPref === 'lbs' ? Math.round(totalLifts / 2.20462) : totalLifts).tier} 
+                                size="sm" 
+                            />
+                            <div>
+                                <p className="text-xs font-black uppercase text-white tracking-wider">{rank.name} Tier</p>
+                                <p className="text-[10px] text-gray-400 font-mono">{totalLifts} {unitPref} total recorded</p>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    <div className="space-y-2.5">
+                        {liftConfigs.map((lift, idx) => (
+                            <motion.div key={lift.key} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+                                transition={{ delay: idx * 0.06 }}
+                                className="bg-gray-950 border border-gray-800/90 rounded-2xl p-3.5 flex items-center gap-3 hover:border-gray-700 transition">
+                                <span className="text-2xl">{lift.icon}</span>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-white truncate">{lift.label}</p>
+                                    <p className="text-[9px] text-gray-500 font-mono">1 Rep Max</p>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <input 
+                                        type="number" 
+                                        value={lifts[lift.key] || ''}
+                                        onChange={e => handleLiftChange(lift.key, Number(e.target.value) || 0)}
+                                        placeholder="0"
+                                        className="w-20 bg-oled border border-gray-700 text-white text-sm font-mono font-bold rounded-xl px-3 py-2 focus:outline-none focus:border-lime text-center" 
+                                    />
+                                    <span className="text-[10px] text-gray-500 font-bold">{unitPref}</span>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+
+                    <div className="pt-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const starterWeights = unitPref === 'kg'
+                                    ? { bench: 30, squat: 40, deadlift: 50, ohp: 20 }
+                                    : { bench: 65, squat: 90, deadlift: 115, ohp: 45 };
+                                onSetLifts(starterWeights);
+                            }}
+                            className="w-full py-2.5 px-3 rounded-xl bg-gray-900 hover:bg-gray-800 border border-gray-800 text-[11px] font-bold text-gray-400 hover:text-white transition flex items-center justify-center gap-2"
+                        >
+                            🌱 Set Freshman Starter Baseline (Empty Bar + Dumbbells)
+                        </button>
+                    </div>
+                </motion.div>
             )}
 
             <PlacementMatchModal

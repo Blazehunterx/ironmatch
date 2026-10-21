@@ -3,6 +3,7 @@ import { safeStorage } from '../lib/safeStorage';
 import { Gym } from '../types/database';
 import { GeoCoords, getCurrentPosition, haversineDistance } from '../lib/location';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { mockGyms } from '../lib/mock';
 
 interface GymContextType {
     gyms: Gym[];
@@ -145,8 +146,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         fetchDBGyms();
     }, [fetchDBGyms, fetchMemberCounts, searchRadius]);
 
-    // Combine custom gyms + API gyms, sorted by distance if userLocation available
-    const allGyms = [...osmGyms, ...customGyms].reduce((acc: Gym[], g: Gym) => {
+    // Combine custom gyms + API gyms + worldwide mock gyms catalog
+    const allGyms = [...osmGyms, ...customGyms, ...mockGyms].reduce((acc: Gym[], g: Gym) => {
         if (!acc.some(existing => existing.id === g.id || existing.name.toLowerCase() === g.name.toLowerCase())) {
             acc.push(g);
         }

@@ -1,14 +1,40 @@
 import { User, Gym, Post, Match } from '../types/database';
 
 export const mockGyms: Gym[] = [
-    { id: 'vondelgym-ams', name: 'Vondelgym Amsterdam', location: 'Amsterdam, Netherlands', member_count: 58, lat: 52.3600, lng: 4.8727 },
-    { id: 'iron-house-utrecht', name: 'Iron House Utrecht', location: 'Utrecht, Netherlands', member_count: 41, lat: 52.0907, lng: 5.1214 },
-    { id: 'david-lloyd-rdam', name: 'David Lloyd Rotterdam', location: 'Rotterdam, Netherlands', member_count: 35, lat: 51.9244, lng: 4.4777 },
-    { id: 'golds-venice', name: "Gold's Gym Venice", location: 'Los Angeles, USA', member_count: 84, lat: 33.9926, lng: -118.4727 },
-    { id: 'puregym-piccadilly', name: 'PureGym London Piccadilly', location: 'London, United Kingdom', member_count: 62, lat: 51.5099, lng: -0.1347 },
-    { id: 'bali-body-factory', name: 'Body Factory Bali', location: 'Canggu, Bali', member_count: 42, lat: -8.6534, lng: 115.1321 },
-    { id: 'bali-nirvana', name: 'Nirvana Strength Bali', location: 'Canggu, Bali', member_count: 38, lat: -8.6472, lng: 115.1398 },
-    { id: 'g1', name: 'Iron Forge', location: 'Downtown Core', member_count: 22, lat: 1.2837, lng: 103.8512 },
+    // Netherlands
+    { id: 'vondelgym-ams', name: 'Vondelgym Amsterdam', location: 'Amsterdam, Netherlands', member_count: 88, lat: 52.3600, lng: 4.8727 },
+    { id: 'iron-house-utrecht', name: 'Iron House Utrecht', location: 'Utrecht, Netherlands', member_count: 64, lat: 52.0907, lng: 5.1214 },
+    { id: 'david-lloyd-rdam', name: 'David Lloyd Rotterdam', location: 'Rotterdam, Netherlands', member_count: 52, lat: 51.9244, lng: 4.4777 },
+    { id: 'trainmore-ams', name: 'TrainMore Koningsplein', location: 'Amsterdam, Netherlands', member_count: 73, lat: 52.3676, lng: 4.8890 },
+    { id: 'basicfit-ams', name: 'Basic-Fit Overtoom', location: 'Amsterdam, Netherlands', member_count: 95, lat: 52.3615, lng: 4.8703 },
+
+    // United Kingdom
+    { id: 'puregym-piccadilly', name: 'PureGym London Piccadilly', location: 'London, United Kingdom', member_count: 110, lat: 51.5099, lng: -0.1347 },
+    { id: 'gymbox-bank', name: 'Gymbox Bank London', location: 'London, United Kingdom', member_count: 78, lat: 51.5133, lng: -0.0886 },
+    { id: 'third-space-soho', name: 'Third Space Soho', location: 'London, United Kingdom', member_count: 85, lat: 51.5136, lng: -0.1332 },
+
+    // United States
+    { id: 'golds-venice', name: "Gold's Gym Venice (The Mecca)", location: 'Venice Beach, Los Angeles, USA', member_count: 184, lat: 33.9926, lng: -118.4727 },
+    { id: 'equinox-hudson-yards', name: 'Equinox Hudson Yards', location: 'New York, USA', member_count: 92, lat: 40.7538, lng: -74.0022 },
+    { id: 'metroflex-arlington', name: 'Metroflex Gym Arlington', location: 'Arlington, Texas, USA', member_count: 65, lat: 32.7357, lng: -97.1081 },
+    { id: 'bev-francis-powerhouse', name: 'Bev Francis Powerhouse Gym', location: 'Syosset, New York, USA', member_count: 98, lat: 40.8229, lng: -73.5012 },
+
+    // Germany & Europe
+    { id: 'mcfit-berlin', name: 'McFit Berlin Mitte', location: 'Berlin, Germany', member_count: 80, lat: 52.5200, lng: 13.4050 },
+    { id: 'john-reed-berlin', name: 'John Reed Fitness Kreuzberg', location: 'Berlin, Germany', member_count: 72, lat: 52.4990, lng: 13.4180 },
+    { id: 'fitness-park-paris', name: 'Fitness Park République', location: 'Paris, France', member_count: 67, lat: 48.8675, lng: 2.3638 },
+    { id: 'metropolitan-barcelona', name: 'Metropolitan Iradier', location: 'Barcelona, Spain', member_count: 54, lat: 41.4036, lng: 2.1287 },
+
+    // Southeast Asia & Bali
+    { id: 'bali-body-factory', name: 'Body Factory Bali', location: 'Canggu, Bali, Indonesia', member_count: 62, lat: -8.6534, lng: 115.1321 },
+    { id: 'bali-nirvana', name: 'Nirvana Strength Bali', location: 'Canggu, Bali, Indonesia', member_count: 58, lat: -8.6472, lng: 115.1398 },
+
+    // Australia
+    { id: 'dohertys-melbourne', name: "Doherty's Gym Brunswick", location: 'Melbourne, Australia', member_count: 76, lat: -37.7667, lng: 144.9600 },
+    { id: 'fitnessfirst-bondi', name: 'Fitness First Bondi Platinum', location: 'Sydney, Australia', member_count: 83, lat: -33.8915, lng: 151.2767 },
+
+    // Global Fallback
+    { id: 'g1', name: 'Iron Forge Club', location: 'International Facility', member_count: 45, lat: 52.3600, lng: 4.8727 },
 ];
 
 export const mockUsers: User[] = [
