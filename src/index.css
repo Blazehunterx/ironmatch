@@ -36,3 +36,22 @@
     padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
   }
 }
+
+:root {
+  --oled: #000000;
+  --lime: #32FF32;
+  --plate-25: #DC2626;
+  --plate-20: #2563EB;
+  --plate-15: #EAB308;
+  --plate-10: #16A34A;
+  --plate-5: #F3F4F6;
+  --plate-2-5: #4B5563;
+  --plate-1-25: #9CA3AF;
+  --plate-edge: rgb(0 0 0 / 0.5);
+  --plate-shine: rgb(255 255 255 / 0.18);
+  --steel-hi: #E5E7EB;
+  --steel: #9CA3AF;
+  --steel-lo: #4B5563;
+}
+.oled-panel { background: var(--oled); }
+.lime-glow { color: var(--lime); text-shadow: 0 0 18px color-mix(in oklab, var(--lime) 60%, transparent); }

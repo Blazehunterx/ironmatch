@@ -16,6 +16,7 @@ import WorkoutTabNavigation from '../components/workouts/WorkoutTabNavigation';
 import EmpireShop from '../components/EmpireShop';
 import WorkoutPlanCreator from '../components/workouts/WorkoutPlanCreator';
 import StarterTemplateCard from '../components/workouts/StarterTemplateCard';
+import { BarbellVisualizer } from '../components/workouts/BarbellVisualizer';
 import { STARTER_TEMPLATES } from '../constants/starterTemplates';
 
 // Modular Components
@@ -281,6 +282,10 @@ export default function Workouts() {
                 {user?.is_trainer && user?.verification_status === 'verified' && (
                     <HostSessionCTA onClick={() => setShowGroupModal(true)} />
                 )}
+
+                <div className="mb-5">
+                    <BarbellVisualizer />
+                </div>
 
                 <WorkoutTabNavigation activeTab={tab} onTabChange={setTab} />
             </div>
