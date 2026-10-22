@@ -33,6 +33,13 @@ import InsightsTab from '../components/workouts/InsightsTab';
 
 type Tab = 'plans' | 'community' | 'programs' | 'marketplace' | 'templates' | 'history' | 'insights';
 
+interface BlueprintProgress {
+    completedCount: number;
+    currentWeek: number;
+    currentDay: number;
+    lastCompletedAt?: string;
+}
+
 export default function Workouts() {
     const { user } = useAuth();
     const [tab, setTab] = useState<Tab>('plans');
@@ -51,6 +58,14 @@ export default function Workouts() {
     const [communityPlans, setCommunityPlans] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [logs, setLogs] = useState<WorkoutLog[]>([]);
+    const [blueprintProg, setBlueprintProg] = useState<BlueprintProgress>(() => {
+        try {
+            const raw = safeStorage.getItem(`ironmatch_blueprint_prog_${user?.id || 'guest'}`);
+            return raw ? JSON.parse(raw) : { completedCount: 0, currentWeek: 1, currentDay: 1 };
+        } catch {
+            return { completedCount: 0, currentWeek: 1, currentDay: 1 };
+        }
+    });
 
     const fetchPlans = async () => {
         if (!user) return;
@@ -219,6 +234,21 @@ export default function Workouts() {
             setLogs(prev => [log, ...prev]);
         }
 
+        // Auto-advance Blueprint progression
+        setBlueprintProg(prev => {
+            const nextCount = (prev.completedCount || 0) + 1;
+            const nextDay = ((prev.currentDay || 1) % 4) + 1;
+            const nextWeek = nextDay === 1 ? Math.min(8, (prev.currentWeek || 1) + 1) : (prev.currentWeek || 1);
+            const updated = {
+                completedCount: nextCount,
+                currentWeek: nextWeek,
+                currentDay: nextDay,
+                lastCompletedAt: new Date().toISOString()
+            };
+            safeStorage.setItem(`ironmatch_blueprint_prog_${user?.id || 'guest'}`, JSON.stringify(updated));
+            return updated;
+        });
+
         setActiveWorkout(null);
         setShowLevelUp(true);
     };
@@ -268,40 +298,87 @@ export default function Workouts() {
                     isPro={user?.is_pro || false}
                 />
 
-                {/* 1-Tap Quick Workout / 8-Week Blueprint Continuation */}
-                <div className="mb-4">
+                {/* 8-Week Masterplan Curriculum & Dynamic Day Continuation */}
+                <div className="mb-5 p-4 rounded-3xl bg-gradient-to-br from-lime/15 via-gray-950 to-oled border border-lime/30 shadow-[0_0_25px_rgba(50,255,50,0.12)]">
+                    <div className="flex items-center justify-between mb-2.5">
+                        <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 rounded-full bg-lime text-oled text-[9px] font-black uppercase tracking-wider">
+                                Week {blueprintProg.currentWeek} of 8
+                            </span>
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                                {blueprintProg.currentWeek <= 2 
+                                    ? 'Phase 1: Tendon Priming' 
+                                    : blueprintProg.currentWeek <= 5 
+                                        ? 'Phase 2: Mechanical Tension' 
+                                        : blueprintProg.currentWeek === 6 
+                                            ? 'Phase 3: Deload' 
+                                            : 'Phase 4: Peak PRs'}
+                            </span>
+                        </div>
+                        <span className="text-[11px] font-mono text-lime font-black">
+                            {blueprintProg.completedCount} Done
+                        </span>
+                    </div>
+
+                    {/* 4-Day Microcycle Indicator Pills */}
+                    <div className="grid grid-cols-4 gap-2 mb-3.5">
+                        {[1, 2, 3, 4].map(dayNum => {
+                            const isCompleted = dayNum < blueprintProg.currentDay;
+                            const isCurrent = dayNum === blueprintProg.currentDay;
+                            return (
+                                <div
+                                    key={dayNum}
+                                    className={`py-2 px-1 rounded-xl text-center border transition-all ${
+                                        isCompleted
+                                            ? 'bg-lime/20 border-lime/50 text-lime'
+                                            : isCurrent
+                                                ? 'bg-white/10 border-lime text-white ring-1 ring-lime/40'
+                                                : 'bg-black/30 border-gray-800 text-gray-500'
+                                    }`}
+                                >
+                                    <div className="text-[9px] font-bold uppercase">Day {dayNum}</div>
+                                    <div className="text-[10px] font-black mt-0.5">
+                                        {isCompleted ? '✓ Done' : isCurrent ? 'Next' : 'Rest'}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
                     <button
                         onClick={() => {
                             if (active8WeekPlan) {
                                 setActiveWorkout(active8WeekPlan);
                             } else {
                                 setActiveWorkout({
-                                    id: `quick-${Date.now()}`,
-                                    name: 'Day 1: Full Body Foundations',
+                                    id: `blueprint-w${blueprintProg.currentWeek}-d${blueprintProg.currentDay}`,
+                                    name: `Week ${blueprintProg.currentWeek} • Day ${blueprintProg.currentDay}: Tendon & Compound Split`,
                                     author_id: user?.id || '',
                                     target: 'Full Body',
                                     exercises: [
-                                        { id: 'quick-bench', name: 'Barbell Bench Press', sets: 3, reps: 8 },
-                                        { id: 'quick-squat', name: 'Barbell Back Squat', sets: 3, reps: 8 },
-                                        { id: 'quick-lat', name: 'Lat Pulldown', sets: 3, reps: 10 }
+                                        { id: 'b1', name: 'Spanish Squat Isometric Hold', sets: 2, reps: 45, weight: 0, notes: '45s hold tendon analgesia' },
+                                        { id: 'b2', name: 'Barbell Back Squat', sets: 4, reps: 6, weight: Math.round(((user?.big4?.squat || 100) * 0.75) / 2.5) * 2.5 },
+                                        { id: 'b3', name: 'Barbell Bench Press', sets: 4, reps: 6, weight: Math.round(((user?.big4?.bench || 80) * 0.75) / 2.5) * 2.5 },
+                                        { id: 'b4', name: 'Poliquin Step Down', sets: 3, reps: 12, weight: 0 },
+                                        { id: 'b5', name: 'Zottman Curl', sets: 3, reps: 10, weight: 12.5 }
                                     ],
                                     shared: false,
                                     created_at: new Date().toISOString()
                                 });
                             }
                         }}
-                        className="w-full py-3 px-4 rounded-2xl bg-lime text-oled font-black text-xs uppercase tracking-wider flex items-center justify-between shadow-[0_0_20px_rgba(50,255,50,0.25)] hover:brightness-105 active:scale-[0.99] transition"
+                        className="w-full py-3.5 px-4 rounded-2xl bg-lime text-oled font-black text-xs uppercase tracking-wider flex items-center justify-between shadow-[0_0_20px_rgba(50,255,50,0.25)] hover:brightness-105 active:scale-[0.99] transition"
                     >
                         <div className="flex items-center gap-2.5 min-w-0">
                             <div className="w-7 h-7 rounded-lg bg-oled flex items-center justify-center text-lime shrink-0">
                                 <Play size={14} fill="currentColor" />
                             </div>
                             <span className="truncate">
-                                {active8WeekPlan ? `Launch: ${active8WeekPlan.name}` : 'Start Quick Workout'}
+                                Start Week {blueprintProg.currentWeek} • Day {blueprintProg.currentDay}
                             </span>
                         </div>
                         <span className="text-[10px] bg-black/25 px-2 py-0.5 rounded-full font-mono text-black font-extrabold shrink-0">
-                            {active8WeekPlan?.weeks ? `WEEK ${active8WeekPlan.currentWeek || 1}` : '1-TAP GO'}
+                            LAUNCH ⚡
                         </span>
                     </button>
                 </div>

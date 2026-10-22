@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, RefreshCw } from 'lucide-react';
+import { X, RefreshCw, Shield, Trash2, AlertTriangle } from 'lucide-react';
 import { Big4Lifts } from '../../lib/gamification';
+import { useAuth } from '../../context/AuthContext';
+import LegalModal from '../LegalModal';
 
 interface ProfileSettingsModalProps {
     isOpen: boolean;
@@ -18,6 +20,25 @@ interface ProfileSettingsModalProps {
 const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
     isOpen, onClose, isTrainer, onSaveTrainer, unitPref, onSetUnitPref, editBig4, onSetBig4, onSaveBig4
 }) => {
+    const { deleteAccount } = useAuth();
+    const [showLegal, setShowLegal] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleDeleteAccount = async () => {
+        setIsDeleting(true);
+        try {
+            await deleteAccount();
+            onClose();
+            window.location.reload();
+        } catch (err) {
+            console.error('Delete account error:', err);
+            alert('Could not delete account. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const handleSwitchUnit = (newUnit: 'lbs' | 'kg') => {
         if (newUnit === unitPref) return;
         const factor = newUnit === 'lbs' ? 2.20462 : 1 / 2.20462;
@@ -103,8 +124,76 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                                     <RefreshCw size={14} /> Clear Cache & Refresh
                                 </button>
                             </div>
+
+                            {/* Legal & Compliance (Store Mandatory) */}
+                            <div className="pt-4 border-t border-gray-800">
+                                <h4 className="font-semibold text-white mb-2">Legal & Privacy</h4>
+                                <button
+                                    onClick={() => setShowLegal(true)}
+                                    className="w-full py-3 bg-gray-800/60 hover:bg-gray-800 border border-gray-700/80 text-gray-300 hover:text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition"
+                                >
+                                    <Shield size={14} className="text-lime" /> Privacy Policy & Terms of Service
+                                </button>
+                            </div>
+
+                            {/* Danger Zone: Account Deletion (Google Play & Apple Mandatory Policy) */}
+                            <div className="pt-4 border-t border-red-500/20">
+                                <h4 className="font-semibold text-red-400 mb-1">Danger Zone</h4>
+                                <p className="text-[10px] text-gray-500 mb-3">Irreversible account and data removal.</p>
+                                <button
+                                    onClick={() => setShowDeleteConfirm(true)}
+                                    className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-red-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition"
+                                >
+                                    <Trash2 size={14} /> Delete Account & Data
+                                </button>
+                            </div>
                         </div>
                     </motion.div>
+
+                    {/* Delete Account Confirmation Dialog */}
+                    {showDeleteConfirm && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+                            <motion.div
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="bg-gray-950 border border-red-500/40 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl"
+                            >
+                                <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500 mx-auto">
+                                    <AlertTriangle size={24} />
+                                </div>
+                                <div className="text-center">
+                                    <h3 className="text-base font-black uppercase text-white tracking-wider">
+                                        Permanently Delete Account?
+                                    </h3>
+                                    <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+                                        This action is <strong>irreversible</strong>. Your profile, workout logs, PR records, and squad memberships will be permanently erased immediately.
+                                    </p>
+                                </div>
+                                <div className="space-y-2 pt-2">
+                                    <button
+                                        disabled={isDeleting}
+                                        onClick={handleDeleteAccount}
+                                        className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-red-600/30"
+                                    >
+                                        <Trash2 size={14} /> {isDeleting ? 'Erasing All Data...' : 'Yes, Delete Everything'}
+                                    </button>
+                                    <button
+                                        disabled={isDeleting}
+                                        onClick={() => setShowDeleteConfirm(false)}
+                                        className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white font-bold text-xs uppercase tracking-wider rounded-xl transition"
+                                    >
+                                        Cancel & Keep Account
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+
+                    {/* Legal Policy Modal */}
+                    <LegalModal
+                        isOpen={showLegal}
+                        onClose={() => setShowLegal(false)}
+                    />
                 </div>
             )}
         </AnimatePresence>

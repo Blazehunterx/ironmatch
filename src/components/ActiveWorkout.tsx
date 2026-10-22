@@ -76,6 +76,33 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
         onCancel();
     };
 
+    // Keep screen awake during workouts (prevent phone screen sleep in gym)
+    useEffect(() => {
+        let wakeLock: any = null;
+        const acquireWakeLock = async () => {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await (navigator as any).wakeLock.request('screen');
+                }
+            } catch (_) {}
+        };
+        acquireWakeLock();
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                acquireWakeLock();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            if (wakeLock) {
+                wakeLock.release().catch(() => {});
+            }
+        };
+    }, []);
+
     // Persistence: Hydrate from localStorage on mount
     useEffect(() => {
         const saved = safeStorage.getItem(`active_workout_${plan.id}`);

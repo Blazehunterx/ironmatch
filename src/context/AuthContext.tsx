@@ -8,6 +8,7 @@ interface AuthContextType {
     user: User | null;
     login: (email: string, password: string) => Promise<void>;
     logout: () => void;
+    deleteAccount: () => Promise<void>;
     signup: (userData: Partial<User> & { password?: string }) => Promise<void>;
     updateUser: (userData: Partial<User>) => Promise<void>;
     resetPasswordEmail: (email: string) => Promise<void>;
@@ -211,6 +212,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         safeStorage.removeItem('ironmatch_user');
     };
 
+    const deleteAccount = async () => {
+        if (!user) return;
+        setLoading(true);
+        try {
+            if (isSupabaseConfigured) {
+                try {
+                    await supabase.from('workout_logs').delete().eq('user_id', user.id);
+                    await supabase.from('squad_members').delete().eq('user_id', user.id);
+                    await supabase.from('chat_messages').delete().eq('sender_id', user.id);
+                    await supabase.from('profiles').delete().eq('id', user.id);
+                } catch (e) {
+                    console.warn('Error purging relational user data:', e);
+                }
+                await supabase.auth.signOut();
+            }
+            safeStorage.clear();
+            setUser(null);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     async function uploadProfileImage(base64: string, userId: string): Promise<string> {
         // Convert base64 to blob
         const base64Data = base64.split(',')[1];
@@ -370,6 +393,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         login,
         logout,
+        deleteAccount,
         signup,
         updateUser,
         resetPasswordEmail,

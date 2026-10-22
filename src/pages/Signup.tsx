@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Dumbbell, ArrowRight, Check, AlertCircle } from 'lucide-react';
+import LegalModal from '../components/LegalModal';
 
 export default function Signup() {
     const [email, setEmail] = useState('');
@@ -12,6 +13,7 @@ export default function Signup() {
     const { signup } = useAuth();
     const navigate = useNavigate();
     const [agreedTos, setAgreedTos] = useState(false);
+    const [legalModalTab, setLegalModalTab] = useState<'privacy' | 'terms' | null>(null);
 
     const passChecks = {
         length: password.length >= 6,
@@ -126,17 +128,33 @@ export default function Signup() {
                     </div>
 
                     {/* Terms of Service */}
-                    <label className="flex items-start gap-3 cursor-pointer">
+                    <div className="flex items-start gap-3">
                         <input
                             type="checkbox"
+                            id="tos"
                             checked={agreedTos}
                             onChange={(e) => setAgreedTos(e.target.checked)}
-                            className="mt-0.5 w-4 h-4 rounded border-gray-700 bg-gray-900 text-lime focus:ring-lime accent-lime"
+                            className="mt-1 w-4 h-4 rounded border-gray-700 bg-gray-900 text-lime focus:ring-lime accent-lime cursor-pointer"
                         />
-                        <span className="text-xs text-gray-400 leading-relaxed">
-                            I agree to the <span className="text-lime">Terms of Service</span> and <span className="text-lime">Privacy Policy</span>
-                        </span>
-                    </label>
+                        <label htmlFor="tos" className="text-xs text-gray-400 leading-relaxed cursor-pointer select-none">
+                            I agree to the{' '}
+                            <button
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); setLegalModalTab('terms'); }}
+                                className="text-lime hover:underline font-bold"
+                            >
+                                Terms of Service
+                            </button>{' '}
+                            and{' '}
+                            <button
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); setLegalModalTab('privacy'); }}
+                                className="text-lime hover:underline font-bold"
+                            >
+                                Privacy Policy
+                            </button>
+                        </label>
+                    </div>
 
                     <button
                         type="submit"
@@ -154,6 +172,12 @@ export default function Signup() {
                         Sign in
                     </Link>
                 </p>
+
+                <LegalModal
+                    isOpen={legalModalTab !== null}
+                    onClose={() => setLegalModalTab(null)}
+                    initialTab={legalModalTab || 'privacy'}
+                />
             </div>
         </div>
     );
