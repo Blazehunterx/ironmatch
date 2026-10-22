@@ -1,8 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShieldCheck, Zap, Star, Trophy, Crown, ArrowRight, Loader2, Sparkles, Infinity as InfinityIcon } from 'lucide-react';
+import { X, ShieldCheck, Zap, Star, Trophy, Crown, ArrowRight, Loader2, Sparkles, Infinity as InfinityIcon, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { 
+    initNativePurchases, 
+    getNativeOfferings, 
+    purchaseNativePackage, 
+    restoreNativePurchases, 
+    IronPassOfferings 
+} from '../../lib/purchases';
 
 interface IronPassModalProps {
     isOpen: boolean;
@@ -14,6 +21,16 @@ export default function IronPassModal({ isOpen, onClose, onSuccess }: IronPassMo
     const { user, updateUser } = useAuth();
     const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual' | 'lifetime'>('lifetime');
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isRestoring, setIsRestoring] = useState(false);
+    const [offerings, setOfferings] = useState<IronPassOfferings | null>(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            initNativePurchases(user?.id).then(() => {
+                getNativeOfferings().then(setOfferings);
+            });
+        }
+    }, [isOpen, user?.id]);
 
     if (!isOpen) return null;
 
@@ -48,9 +65,24 @@ export default function IronPassModal({ isOpen, onClose, onSuccess }: IronPassMo
                 ? 'IronPass Pro (Annual)' 
                 : 'IronPass Pro (Monthly)';
 
+        const nativePkg = selectedPlan === 'lifetime' 
+            ? offerings?.lifetime 
+            : selectedPlan === 'annual' 
+                ? offerings?.annual 
+                : offerings?.monthly;
+
         try {
+            // 1. Trigger Native In-App Purchase (Google Play Store on Android / App Store on iOS)
+            const purchaseResult = await purchaseNativePackage(selectedPlan, nativePkg);
+            if (!purchaseResult.success) {
+                if (purchaseResult.error !== 'cancelled') {
+                    alert(purchaseResult.error || 'Payment failed. Please try again.');
+                }
+                return;
+            }
+
+            // 2. Synchronize Pro status with Supabase backend
             if (isSupabaseConfigured) {
-                // 1. Record purchase ledger
                 try {
                     await supabase.from('purchases').insert({
                         user_id: user.id,
@@ -58,15 +90,14 @@ export default function IronPassModal({ isOpen, onClose, onSuccess }: IronPassMo
                         item_name: itemName,
                         item_type: selectedPlan === 'lifetime' ? 'lifetime' : 'subscription',
                         price_usd: price,
-                        payment_method: 'card',
-                        platform_fee_usd: price,
+                        payment_method: 'app_store',
+                        platform_fee_usd: Number((price * 0.15).toFixed(2)), // Google Play 15% fee
                         status: 'completed'
                     });
                 } catch (e) {
                     console.warn('Purchase ledger notice:', e);
                 }
 
-                // 2. Activate Pro status in profile
                 const proExpires = new Date();
                 if (selectedPlan === 'lifetime') {
                     proExpires.setFullYear(proExpires.getFullYear() + 100);
@@ -96,6 +127,26 @@ export default function IronPassModal({ isOpen, onClose, onSuccess }: IronPassMo
             alert('Payment processing failed. Please try again.');
         } finally {
             setIsProcessing(false);
+        }
+    };
+
+    const handleRestore = async () => {
+        setIsRestoring(true);
+        try {
+            const res = await restoreNativePurchases();
+            if (res.isPro) {
+                await updateUser({ is_pro: true });
+                alert('Pro membership successfully restored from your App Store account!');
+                if (onSuccess) onSuccess();
+                onClose();
+            } else {
+                alert('No active IronPass Pro subscription found on this App Store account.');
+            }
+        } catch (err) {
+            console.error('Restore error:', err);
+            alert('Could not restore purchases. Please check your App Store connection.');
+        } finally {
+            setIsRestoring(false);
         }
     };
 
@@ -205,7 +256,7 @@ export default function IronPassModal({ isOpen, onClose, onSuccess }: IronPassMo
                             </div>
                             <div className="text-right shrink-0 ml-3">
                                 <div className="text-2xl font-black italic text-lime leading-none">
-                                    $79.99
+                                    {offerings?.formattedPrices?.lifetime || '$79.99'}
                                 </div>
                                 <div className="text-[9px] text-gray-400 font-bold uppercase mt-1">One-time payment</div>
                             </div>
@@ -228,9 +279,9 @@ export default function IronPassModal({ isOpen, onClose, onSuccess }: IronPassMo
                             </span>
                             <div className="text-[10px] font-black uppercase text-gray-400 mb-0.5">Annual Plan</div>
                             <div className="text-lg font-black italic text-white leading-tight">
-                                $59.99 <span className="text-[10px] font-normal text-gray-400">/yr</span>
+                                {offerings?.formattedPrices?.annual || '$59.99'} <span className="text-[10px] font-normal text-gray-400">/yr</span>
                             </div>
-                            <div className="text-[10px] text-lime font-bold mt-0.5">$5.00 / month</div>
+                            <div className="text-[10px] text-lime font-bold mt-0.5">Best Value</div>
                         </div>
 
                         {/* Monthly Option */}
@@ -244,7 +295,7 @@ export default function IronPassModal({ isOpen, onClose, onSuccess }: IronPassMo
                         >
                             <div className="text-[10px] font-black uppercase text-gray-400 mb-0.5">Monthly Plan</div>
                             <div className="text-lg font-black italic text-white leading-tight">
-                                $9.99 <span className="text-[10px] font-normal text-gray-400">/mo</span>
+                                {offerings?.formattedPrices?.monthly || '$9.99'} <span className="text-[10px] font-normal text-gray-400">/mo</span>
                             </div>
                             <div className="text-[10px] text-gray-400 font-bold mt-0.5">Cancel anytime</div>
                         </div>
@@ -259,22 +310,38 @@ export default function IronPassModal({ isOpen, onClose, onSuccess }: IronPassMo
                         {isProcessing ? (
                             <>
                                 <Loader2 size={16} className="animate-spin" />
-                                Calibrating Pro Status...
+                                Connecting to Store...
                             </>
                         ) : (
                             <>
                                 {selectedPlan === 'lifetime' 
-                                    ? 'Unlock Lifetime Founding Pass ($79.99)' 
+                                    ? `Unlock Lifetime Founding Pass (${offerings?.formattedPrices?.lifetime || '$79.99'})` 
                                     : selectedPlan === 'annual' 
-                                        ? 'Start Annual Pro ($59.99/yr)' 
-                                        : 'Start Monthly Pro ($9.99/mo)'}
+                                        ? `Start Annual Pro (${offerings?.formattedPrices?.annual || '$59.99'}/yr)` 
+                                        : `Start Monthly Pro (${offerings?.formattedPrices?.monthly || '$9.99'}/mo)`}
                                 <ArrowRight size={16} />
                             </>
                         )}
                     </button>
 
-                    <p className="text-[10px] text-gray-500 text-center mt-3">
-                        Instant unlock. 100% money-back guarantee within 7 days.
+                    {/* App Store Compliance: Restore Purchases & Guarantee */}
+                    <div className="flex items-center justify-between text-[11px] text-gray-400 mt-4 px-2">
+                        <span className="flex items-center gap-1.5 text-gray-500">
+                            <ShieldCheck size={13} className="text-lime" /> Google Play & App Store Protected
+                        </span>
+                        <button
+                            type="button"
+                            disabled={isRestoring}
+                            onClick={handleRestore}
+                            className="text-gray-400 hover:text-lime underline transition flex items-center gap-1 active:scale-95"
+                        >
+                            {isRestoring && <RefreshCw size={11} className="animate-spin text-lime" />}
+                            {isRestoring ? 'Restoring...' : 'Restore Purchases'}
+                        </button>
+                    </div>
+
+                    <p className="text-[10px] text-gray-500 text-center mt-2.5">
+                        Billed through your Google Play or Apple ID. Cancel anytime in store settings.
                     </p>
                 </motion.div>
             </div>
