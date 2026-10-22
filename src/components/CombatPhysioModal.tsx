@@ -130,7 +130,7 @@ export default function CombatPhysioModal({ isOpen, onClose, onApplySwap }: Comb
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="w-full max-w-md bg-gray-950 border border-gray-800 rounded-3xl p-5 shadow-2xl relative max-h-[90vh] overflow-y-auto space-y-5"
+                    className="w-full max-w-md bg-[#0A0A0A] border border-white/10 rounded-3xl p-5 pb-8 shadow-2xl relative max-h-[90vh] overflow-y-auto space-y-5"
                 >
                     <button
                         onClick={onClose}
@@ -140,13 +140,13 @@ export default function CombatPhysioModal({ isOpen, onClose, onApplySwap }: Comb
                     </button>
 
                     {/* Header */}
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-3">
                         <div className="p-2.5 bg-lime/10 border border-lime/30 text-lime rounded-2xl shadow-[0_0_15px_-5px_#32FF32]">
                             <ShieldAlert size={22} />
                         </div>
                         <div>
-                            <h3 className="text-lg font-black text-white flex items-center gap-2">
-                                QUEN COMBAT PHYSIO
+                            <h3 className="text-lg font-black text-white uppercase tracking-wide">
+                                IN-WORKOUT COMBAT PHYSIO
                             </h3>
                             <p className="text-xs text-gray-400">Real-time biomechanical triage & 45s tendon rehab</p>
                         </div>
@@ -154,31 +154,35 @@ export default function CombatPhysioModal({ isOpen, onClose, onApplySwap }: Comb
 
                     {/* Joint Selector Pills */}
                     <div className="grid grid-cols-2 gap-2">
-                        {(['shoulder', 'knee', 'back', 'elbow_wrist'] as JointCategory[]).map(key => {
-                            const p = PROTOCOLS[key];
-                            const isSelected = selectedJoint === key;
+                        {([
+                            { key: 'shoulder', label: 'Shoulder', icon: '🛡️' },
+                            { key: 'knee', label: 'Knee Tendon', icon: '🦵' },
+                            { key: 'back', label: 'Lower Back', icon: '🦴' },
+                            { key: 'elbow_wrist', label: 'Elbow & Wrist', icon: '🦾' }
+                        ] as const).map(item => {
+                            const isSelected = selectedJoint === item.key;
                             return (
                                 <button
-                                    key={key}
-                                    onClick={() => handleSwitchJoint(key)}
-                                    className={`p-2.5 rounded-xl border text-left transition-all text-xs font-bold flex items-center gap-2 ${
+                                    key={item.key}
+                                    onClick={() => handleSwitchJoint(item.key)}
+                                    className={`py-2.5 px-3 rounded-xl border text-left transition-all text-xs font-black flex items-center gap-2 ${
                                         isSelected
-                                            ? 'bg-lime text-oled border-lime shadow-md'
-                                            : 'bg-gray-900 text-gray-300 border-gray-800 hover:border-gray-700'
+                                            ? 'bg-lime text-black border-lime shadow-[0_0_12px_rgba(50,255,50,0.25)]'
+                                            : 'bg-[#121212] text-gray-300 border-white/5 hover:border-white/20'
                                     }`}
                                 >
-                                    <span>{p.icon}</span>
-                                    <span className="truncate">{p.title.split('/')[0]}</span>
+                                    <span>{item.icon}</span>
+                                    <span>{item.label}</span>
                                 </button>
                             );
                         })}
                     </div>
 
                     {/* Active Joint Diagnosis Card */}
-                    <div className="p-4 bg-gray-900 border border-gray-800 rounded-2xl space-y-3">
+                    <div className="p-4 bg-[#0D0D0D] border border-white/10 rounded-2xl space-y-3">
                         <div className="flex items-center justify-between">
                             <h4 className="text-sm font-black text-white">{protocol.title}</h4>
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-lime/10 text-lime border border-lime/30 font-bold">
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-lime/10 text-lime border border-lime/30 font-bold uppercase">
                                 Joint Safe
                             </span>
                         </div>
@@ -187,13 +191,13 @@ export default function CombatPhysioModal({ isOpen, onClose, onApplySwap }: Comb
                             <strong className="text-lime">Biomechanical Root Cause:</strong> {protocol.rootCause}
                         </p>
 
-                        <div className="p-2.5 bg-black/60 rounded-xl border border-gray-800 text-xs text-amber-300 font-mono">
+                        <div className="p-2.5 bg-black/60 rounded-xl border border-white/5 text-xs text-amber-300 font-mono">
                             ⚡ {protocol.tempoCue}
                         </div>
                     </div>
 
                     {/* 45-Second Isometric Rehab Timer (Rio et al. Protocol) */}
-                    <div className="p-5 bg-gradient-to-br from-gray-900 to-black border border-lime/40 rounded-2xl text-center space-y-4 shadow-xl">
+                    <div className="p-5 bg-gradient-to-br from-[#121212] to-black border border-lime/40 rounded-2xl text-center space-y-4 shadow-xl">
                         <div>
                             <span className="text-[10px] font-black tracking-wider uppercase text-lime block mb-1">
                                 Evidence-Based Tendon Analgesia (Rio et al. 2015)
@@ -206,7 +210,7 @@ export default function CombatPhysioModal({ isOpen, onClose, onApplySwap }: Comb
                         <div className="relative w-28 h-28 mx-auto flex items-center justify-center">
                             <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
                                 <path
-                                    className="text-gray-800"
+                                    className="text-zinc-800"
                                     strokeWidth="3.5"
                                     stroke="currentColor"
                                     fill="none"
@@ -224,7 +228,7 @@ export default function CombatPhysioModal({ isOpen, onClose, onApplySwap }: Comb
                             </svg>
                             <div className="absolute font-mono">
                                 <span className="text-3xl font-black text-white">{timeLeft}</span>
-                                <span className="text-[10px] text-gray-400 block -mt-1">SEC</span>
+                                <span className="text-[10px] text-gray-400 block -mt-1 font-bold">SEC</span>
                             </div>
                         </div>
 
@@ -234,15 +238,15 @@ export default function CombatPhysioModal({ isOpen, onClose, onApplySwap }: Comb
                                 onClick={handleStartPause}
                                 className={`px-5 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all ${
                                     isRunning
-                                        ? 'bg-amber-500 text-oled hover:bg-amber-400'
-                                        : 'bg-lime text-oled hover:bg-lime/90 shadow-[0_0_12px_#32FF32]'
+                                        ? 'bg-amber-500 text-black hover:bg-amber-400'
+                                        : 'bg-lime text-black hover:bg-lime/90 shadow-[0_0_14px_#32FF32]'
                                 }`}
                             >
-                                {isRunning ? <><Pause size={14} /> Pause</> : <><Play size={14} /> Start 45s Hold</>}
+                                {isRunning ? <><Pause size={14} /> Pause</> : <><Play size={14} fill="currentColor" /> Start 45s Hold</>}
                             </button>
                             <button
                                 onClick={handleReset}
-                                className="p-2.5 bg-gray-900 border border-gray-800 text-gray-400 hover:text-white rounded-xl"
+                                className="p-2.5 bg-zinc-900 border border-zinc-800 text-gray-400 hover:text-white rounded-xl active:scale-95 transition"
                             >
                                 <RotateCcw size={16} />
                             </button>
@@ -250,25 +254,38 @@ export default function CombatPhysioModal({ isOpen, onClose, onApplySwap }: Comb
                     </div>
 
                     {/* Recommended Safe Swaps */}
-                    <div className="space-y-2">
-                        <h5 className="text-xs font-black uppercase text-gray-400 px-1">Recommended Exercise Swaps</h5>
+                    <div className="space-y-2.5">
+                        <h5 className="text-xs font-black uppercase tracking-wider text-gray-400 px-1">
+                            Recommended Exercise Swaps
+                        </h5>
                         {protocol.swaps.map((swap, idx) => (
-                            <div key={idx} className="p-3 bg-gray-900/60 border border-gray-800 rounded-xl space-y-1.5 text-xs">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-red-400 line-through font-medium truncate max-w-[150px]">
-                                        {swap.avoid}
-                                    </span>
-                                    <span className="text-gray-500 font-mono text-[10px]">SWAP TO</span>
-                                    <span className="text-lime font-bold truncate max-w-[150px]">
-                                        {swap.useInstead}
-                                    </span>
+                            <div key={idx} className="p-3.5 bg-[#0D0D0D] border border-white/10 rounded-2xl space-y-2 text-xs">
+                                <div className="space-y-1.5">
+                                    <div className="flex items-start gap-2">
+                                        <span className="px-1.5 py-0.5 rounded bg-red-500/15 border border-red-500/30 text-red-400 text-[9px] font-black uppercase font-mono shrink-0">
+                                            AVOID
+                                        </span>
+                                        <span className="text-red-300/80 line-through font-medium leading-snug">
+                                            {swap.avoid}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-start gap-2">
+                                        <span className="px-1.5 py-0.5 rounded bg-lime/15 border border-lime/30 text-lime text-[9px] font-black uppercase font-mono shrink-0">
+                                            SUBSTITUTE
+                                        </span>
+                                        <span className="text-lime font-black leading-snug">
+                                            {swap.useInstead}
+                                        </span>
+                                    </div>
                                 </div>
-                                <p className="text-[11px] text-gray-400 italic">{swap.reason}</p>
+                                <p className="text-[11px] text-gray-400 italic pl-1 leading-relaxed">
+                                    {swap.reason}
+                                </p>
                                 {onApplySwap && (
                                     <button
                                         type="button"
                                         onClick={() => onApplySwap(swap.avoid, swap.useInstead)}
-                                        className="w-full mt-2 py-1.5 bg-lime/15 border border-lime/40 hover:bg-lime/25 text-lime font-black rounded-lg text-[11px] flex items-center justify-center gap-1 transition active:scale-98 shadow-sm"
+                                        className="w-full mt-2 py-2 bg-lime/15 border border-lime/40 hover:bg-lime/25 text-lime font-black rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-98 shadow-sm"
                                     >
                                         Apply Swap to Session ➔
                                     </button>

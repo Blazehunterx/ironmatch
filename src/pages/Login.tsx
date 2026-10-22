@@ -45,16 +45,11 @@ export default function Login() {
         <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-oled">
             <div className="w-full max-w-sm space-y-8">
                 <div className="flex flex-col items-center justify-center text-center">
-                    <div className="mt-1 flex items-center gap-2 mb-4">
-                        <span className="text-[8px] px-1.5 py-0.5 bg-red-500 rounded text-white font-black animate-pulse">SYNC VERIFY: v2.0.4</span>
-                        <span className="text-[8px] text-gray-600 font-mono text-[6px]">DEBUG MODE</span>
+                    <div className="p-3.5 mb-4 rounded-2xl bg-lime/10 border border-lime/20 shadow-[0_0_20px_rgba(50,255,50,0.15)]">
+                        <Dumbbell className="w-10 h-10 text-lime" />
                     </div>
-                    <div className="p-3 mb-4 rounded-full bg-lime/10">
-                        <Dumbbell className="w-12 h-12 text-lime" />
-                    </div>
-                    <h2 className="text-3xl font-bold tracking-tight text-white">Welcome back</h2>
-                    <p className="mt-2 text-sm text-gray-400">Ready to crush your next workout?</p>
-                    <p className="mt-3 text-xs text-gray-600 bg-gray-900 rounded-lg px-3 py-2 border border-gray-800">Demo: <span className="text-lime font-mono">alex@example.com</span></p>
+                    <h2 className="text-3xl font-black tracking-tight text-white uppercase">IronMatch</h2>
+                    <p className="mt-1 text-sm text-gray-400">Pure strength tracking & competitive gym duels</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="mt-8 space-y-6">

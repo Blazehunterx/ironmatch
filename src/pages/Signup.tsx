@@ -38,7 +38,7 @@ export default function Signup() {
             navigate('/onboarding');
         } catch (err: any) {
             if (err.message && err.message.toLowerCase().includes('rate limit')) {
-                setError('Too many signups from this IP. The admin needs to disable Email Confirmations in Supabase, or try again later.');
+                setError('Too many signup attempts. Please try again in a few moments.');
             } else if (err.message && err.message.toLowerCase().includes('already registered')) {
                 setError('This email is already registered. Please sign in instead.');
             } else {
@@ -53,11 +53,11 @@ export default function Signup() {
         <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-oled">
             <div className="w-full max-w-sm space-y-8">
                 <div className="flex flex-col items-center justify-center text-center">
-                    <div className="p-3 mb-4 rounded-full bg-lime/10">
-                        <Dumbbell className="w-12 h-12 text-lime" />
+                    <div className="p-3.5 mb-4 rounded-2xl bg-lime/10 border border-lime/20 shadow-[0_0_20px_rgba(50,255,50,0.15)]">
+                        <Dumbbell className="w-10 h-10 text-lime" />
                     </div>
-                    <h2 className="text-3xl font-bold tracking-tight text-white">Join IronMatch</h2>
-                    <p className="mt-2 text-sm text-gray-400">Find your perfect workout partner</p>
+                    <h2 className="text-3xl font-black tracking-tight text-white uppercase">Join IronMatch</h2>
+                    <p className="mt-1 text-sm text-gray-400">Pure strength tracking & competitive gym duels</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="mt-8 space-y-6">

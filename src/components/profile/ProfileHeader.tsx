@@ -10,11 +10,11 @@ interface ProfileHeaderProps {
     onOpenShop: () => void;
     onEditImage: () => void;
     onOpenWardrobe: () => void;
-    isSupabaseConfigured: boolean;
+    isSupabaseConfigured?: boolean;
 }
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({
-    user, onOpenSettings, onOpenShop, onEditImage, isSupabaseConfigured, onOpenWardrobe
+    user, onOpenSettings, onOpenShop, onEditImage, onOpenWardrobe
 }) => {
     const rank = getRankFromLifts(user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 });
 
@@ -83,41 +83,6 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                 <p className="text-gray-400 mt-1 flex items-center gap-1">
                     {user.home_gym_name || 'No gym set'}
                 </p>
-            </div>
-
-            <div className="px-2 pb-6 space-y-4 shrink-0">
-                <div className="p-4 rounded-2xl bg-gray-900 border border-gray-800 shadow-xl">
-                    <div className="flex justify-between items-center mb-3">
-                        <div>
-                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Your User ID</h4>
-                            <p className="text-[10px] text-gray-600">Unique database identifier</p>
-                        </div>
-                        <button
-                            onClick={() => {
-                                if (user?.id) {
-                                    navigator.clipboard.writeText(user.id);
-                                    alert('User ID copied to clipboard!');
-                                }
-                            }}
-                            className="px-3 py-1.5 bg-lime text-oled text-[10px] font-bold rounded-lg active:scale-95 transition-all shadow-lg shadow-lime/20"
-                        >
-                            Copy ID
-                        </button>
-                    </div>
-                    <div className="bg-oled/60 rounded-xl p-3 border border-gray-800/50">
-                        <code className="text-[10px] text-lime font-mono break-all opacity-80">{user?.id}</code>
-                    </div>
-                </div>
-
-                <div className="flex items-center justify-between px-2 pt-1">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${isSupabaseConfigured ? 'bg-lime animate-pulse' : 'bg-orange-500'}`} />
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                            {isSupabaseConfigured ? 'Live Database Active' : 'Offline Mode'}
-                        </span>
-                    </div>
-                    <span className="text-[10px] text-gray-700 font-mono">v1.2.5-stable</span>
-                </div>
             </div>
         </>
     );

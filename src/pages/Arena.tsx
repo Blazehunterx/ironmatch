@@ -130,6 +130,7 @@ export default function Arena() {
     }, [fetchProfiles, fetchDuels, fetchMilestones]);
 
     // Construct mock gym wars
+    const lifterNames = ['Marcus V.', 'Elena R.', 'Dmitri K.', 'Sarah T.', 'Thor B.', 'Kenji S.', 'Lucas M.'];
     const gymWars: GymWarEntry[] = allGyms.map((g, idx) => ({
         gymId: g.id,
         gymName: g.name,
@@ -139,7 +140,7 @@ export default function Arena() {
         memberCount: Math.max(1, g.member_count || 1),
         streak: 7 + (idx % 5),
         rank: idx + 1,
-        king: { name: 'Champion Lifter', id: 'u1' }
+        king: { name: lifterNames[idx % lifterNames.length], id: `u-${idx}` }
     }));
 
     const weeklyQuests = getActiveWeeklyQuests();

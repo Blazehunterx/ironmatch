@@ -27,32 +27,32 @@ export default function WorkoutsHeader({
                 <Link
                     to="/nutrition"
                     title="Macro & Fuel Tracker"
-                    className="p-2.5 rounded-xl bg-gray-900 border border-gray-800 text-orange-400 hover:text-orange-300 hover:border-orange-500/40 active:scale-95 transition-all"
+                    className="p-2.5 rounded-xl bg-[#0D0D0D] border border-white/10 text-orange-400 hover:text-orange-300 hover:border-orange-500/40 active:scale-95 transition-all shadow-sm"
                 >
-                    <Utensils size={18} />
+                    <Utensils size={17} />
                 </Link>
                 {onOpenPlateLoader && (
                     <button
                         onClick={onOpenPlateLoader}
                         title="Olympic Barbell Plate Loader"
-                        className="p-2.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-lime hover:border-lime/40 active:scale-95 transition-all"
+                        className="p-2.5 rounded-xl bg-[#0D0D0D] border border-white/10 text-gray-300 hover:text-lime hover:border-lime/40 active:scale-95 transition-all shadow-sm"
                     >
-                        <Dumbbell size={18} />
+                        <Dumbbell size={17} />
                     </button>
                 )}
                 <button
                     onClick={onJoinSession}
                     title="Live Group Sessions"
-                    className="p-2.5 rounded-xl bg-gray-900 border border-gray-800 text-lime hover:bg-gray-800 active:scale-95 transition-all"
+                    className="p-2.5 rounded-xl bg-[#0D0D0D] border border-white/10 text-lime hover:border-lime/40 active:scale-95 transition-all shadow-sm"
                 >
-                    <Users size={18} />
+                    <Users size={17} />
                 </button>
                 <button
                     onClick={onCreatePlan}
                     title="Create Workout Plan"
-                    className="p-2.5 rounded-xl bg-lime text-oled hover:bg-lime/90 active:scale-95 transition-all font-black"
+                    className="p-2.5 rounded-xl bg-lime text-black hover:bg-lime/90 active:scale-95 transition-all font-black shadow-[0_0_12px_rgba(50,255,50,0.3)]"
                 >
-                    <Plus size={18} />
+                    <Plus size={17} />
                 </button>
             </div>
         </div>

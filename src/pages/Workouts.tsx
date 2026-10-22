@@ -52,6 +52,7 @@ export default function Workouts() {
     const [showGroupModal, setShowGroupModal] = useState(false);
     const [showJoinModal, setShowJoinModal] = useState(false);
     const [showPlateLoader, setShowPlateLoader] = useState(false);
+    const [showAnatomyRadar, setShowAnatomyRadar] = useState(false);
     const [activeGroupSession, setActiveGroupSession] = useState<GroupSession | null>(null);
 
     const [plans, setPlans] = useState<WorkoutPlan[]>([]);
@@ -299,10 +300,10 @@ export default function Workouts() {
                 />
 
                 {/* 8-Week Masterplan Curriculum & Dynamic Day Continuation */}
-                <div className="mb-5 p-4 rounded-3xl bg-gradient-to-br from-lime/15 via-gray-950 to-oled border border-lime/30 shadow-[0_0_25px_rgba(50,255,50,0.12)]">
+                <div className="mb-5 p-4 rounded-3xl bg-[#0D0D0D] border border-white/10 shadow-xl">
                     <div className="flex items-center justify-between mb-2.5">
                         <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-0.5 rounded-full bg-lime text-oled text-[9px] font-black uppercase tracking-wider">
+                            <span className="px-2.5 py-0.5 rounded-full bg-lime text-black text-[9px] font-black uppercase tracking-wider">
                                 Week {blueprintProg.currentWeek} of 8
                             </span>
                             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
@@ -330,10 +331,10 @@ export default function Workouts() {
                                     key={dayNum}
                                     className={`py-2 px-1 rounded-xl text-center border transition-all ${
                                         isCompleted
-                                            ? 'bg-lime/20 border-lime/50 text-lime'
+                                            ? 'bg-lime/15 border-lime/40 text-lime font-bold'
                                             : isCurrent
-                                                ? 'bg-white/10 border-lime text-white ring-1 ring-lime/40'
-                                                : 'bg-black/30 border-gray-800 text-gray-500'
+                                                ? 'bg-white/10 border-lime text-white ring-1 ring-lime/40 font-bold'
+                                                : 'bg-black/40 border-white/5 text-gray-500 font-medium'
                                     }`}
                                 >
                                     <div className="text-[9px] font-bold uppercase">Day {dayNum}</div>
@@ -367,17 +368,17 @@ export default function Workouts() {
                                 });
                             }
                         }}
-                        className="w-full py-3.5 px-4 rounded-2xl bg-lime text-oled font-black text-xs uppercase tracking-wider flex items-center justify-between shadow-[0_0_20px_rgba(50,255,50,0.25)] hover:brightness-105 active:scale-[0.99] transition"
+                        className="w-full py-3.5 px-4 rounded-2xl bg-lime text-black font-black text-xs uppercase tracking-wider flex items-center justify-between shadow-[0_0_20px_rgba(50,255,50,0.25)] hover:bg-lime/90 active:scale-[0.99] transition"
                     >
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-lg bg-oled flex items-center justify-center text-lime shrink-0">
-                                <Play size={14} fill="currentColor" />
+                            <div className="w-7 h-7 rounded-lg bg-black flex items-center justify-center text-lime shrink-0">
+                                <Play size={13} fill="currentColor" />
                             </div>
                             <span className="truncate">
                                 Start Week {blueprintProg.currentWeek} • Day {blueprintProg.currentDay}
                             </span>
                         </div>
-                        <span className="text-[10px] bg-black/25 px-2 py-0.5 rounded-full font-mono text-black font-extrabold shrink-0">
+                        <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded-full font-mono text-black font-black shrink-0">
                             LAUNCH ⚡
                         </span>
                     </button>
@@ -387,27 +388,27 @@ export default function Workouts() {
                 <div className="grid grid-cols-2 gap-3 mb-5">
                     <button
                         onClick={() => setShowAI(true)}
-                        className="p-3.5 bg-gradient-to-br from-lime/15 to-gray-950 border border-lime/30 rounded-2xl text-left flex items-center gap-3 hover:border-lime/60 transition-all active:scale-[0.98] shadow-lg shadow-lime/5"
+                        className="p-3 bg-[#0D0D0D] border border-white/10 hover:border-lime/40 rounded-2xl text-left flex items-center gap-2.5 hover:bg-white/[0.02] transition-all active:scale-[0.98] shadow-sm"
                     >
-                        <div className="p-2.5 bg-lime text-oled rounded-xl font-black shrink-0">
-                            <Sparkles size={18} />
+                        <div className="p-2 bg-lime text-black rounded-xl font-black shrink-0 shadow-sm">
+                            <Sparkles size={16} />
                         </div>
                         <div className="min-w-0">
-                            <p className="text-[10px] font-black uppercase text-lime tracking-wider">AI Head Coach</p>
-                            <p className="text-xs font-bold text-white truncate">Roll Custom Split</p>
+                            <p className="text-[10px] font-black uppercase text-lime tracking-wider">AI Coach</p>
+                            <p className="text-xs font-bold text-white truncate">Generate Split</p>
                         </div>
                     </button>
 
                     <button
                         onClick={() => setShowCombatPhysio(true)}
-                        className="p-3.5 bg-gradient-to-br from-red-500/15 to-gray-950 border border-red-500/30 rounded-2xl text-left flex items-center gap-3 hover:border-red-500/60 transition-all active:scale-[0.98] shadow-lg shadow-red-500/5"
+                        className="p-3 bg-[#0D0D0D] border border-white/10 hover:border-red-500/40 rounded-2xl text-left flex items-center gap-2.5 hover:bg-white/[0.02] transition-all active:scale-[0.98] shadow-sm"
                     >
-                        <div className="p-2.5 bg-red-500/20 text-red-400 border border-red-500/40 rounded-xl font-black shrink-0">
-                            <ShieldAlert size={18} />
+                        <div className="p-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl font-black shrink-0">
+                            <ShieldAlert size={16} />
                         </div>
                         <div className="min-w-0">
-                            <p className="text-[10px] font-black uppercase text-red-400 tracking-wider">Combat Physio</p>
-                            <p className="text-xs font-bold text-white truncate">Pain Triage & 45s</p>
+                            <p className="text-[10px] font-black uppercase text-red-400 tracking-wider">Physio</p>
+                            <p className="text-xs font-bold text-white truncate">Joint Triage</p>
                         </div>
                     </button>
                 </div>
@@ -416,9 +417,33 @@ export default function Workouts() {
                     <HostSessionCTA onClick={() => setShowGroupModal(true)} />
                 )}
 
-                {/* Interactive Anatomy Volume Heatmap (all exercise modalities) */}
-                <div className="mb-5">
-                    <MuscleHeatmap logs={logs} />
+                {/* Collapsible Anatomy Volume Heatmap */}
+                <div className="mb-5 bg-[#0D0D0D] border border-white/10 rounded-2xl overflow-hidden transition-all shadow-md">
+                    <button
+                        type="button"
+                        onClick={() => setShowAnatomyRadar(!showAnatomyRadar)}
+                        className="w-full p-3.5 flex items-center justify-between text-left hover:bg-white/[0.02] transition"
+                    >
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-2 h-2 rounded-full bg-lime animate-pulse" />
+                            <div>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-lime block">
+                                    7-Day Volume Radar
+                                </span>
+                                <span className="text-xs font-bold text-white">
+                                    Anatomy Stimulus & Fatigue Map
+                                </span>
+                            </div>
+                        </div>
+                        <span className="text-[11px] text-gray-400 font-bold px-2.5 py-1 rounded-xl bg-white/5 border border-white/5">
+                            {showAnatomyRadar ? 'Hide ▲' : 'View ▼'}
+                        </span>
+                    </button>
+                    {showAnatomyRadar && (
+                        <div className="p-3 pt-0 border-t border-white/5">
+                            <MuscleHeatmap logs={logs} />
+                        </div>
+                    )}
                 </div>
 
                 <WorkoutTabNavigation activeTab={tab} onTabChange={setTab} />

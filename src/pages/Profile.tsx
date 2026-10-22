@@ -20,7 +20,6 @@ import ProfileFriends from '../components/profile/ProfileFriends';
 import ProfileSettingsModal from '../components/profile/ProfileSettingsModal';
 import ProfileImageModal from '../components/profile/ProfileImageModal';
 import IronPassModal from '../components/monetization/IronPassModal';
-import SystemStatus from '../components/SystemStatus';
 
 export default function Profile() {
     const { user, logout, updateUser } = useAuth();
@@ -225,17 +224,17 @@ export default function Profile() {
 
                 <div className="space-y-3 pt-4">
                     {/* 1-Tap CSV Training History Export */}
-                    <div className="p-4 rounded-2xl bg-gray-950 border border-gray-800 flex items-center justify-between gap-3 shadow-sm hover:border-lime/30 transition">
+                    <div className="p-4 rounded-2xl bg-[#0D0D0D] border border-white/10 flex items-center justify-between gap-3 shadow-sm hover:border-lime/30 transition">
                         <div className="flex items-center gap-3 min-w-0">
                             <div className="w-10 h-10 rounded-xl bg-lime/10 border border-lime/30 flex items-center justify-center text-lime font-black shrink-0">
                                 <Download size={18} />
                             </div>
                             <div className="min-w-0">
-                                <h4 className="text-xs font-black uppercase text-white tracking-wider truncate">
-                                    Export History (.CSV)
+                                <h4 className="text-xs font-black uppercase text-white tracking-wider">
+                                    Export Logs (.CSV)
                                 </h4>
-                                <p className="text-[10px] text-gray-400 truncate">
-                                    1-tap export for Google Sheets & coaches
+                                <p className="text-[10px] text-gray-400">
+                                    Raw workout data for spreadsheets & coaches
                                 </p>
                             </div>
                         </div>
@@ -243,22 +242,26 @@ export default function Profile() {
                             type="button"
                             onClick={handleExportCSV}
                             disabled={isExportingCSV}
-                            className="px-3.5 py-2 rounded-xl bg-gray-900 hover:bg-lime hover:text-oled border border-lime/30 text-xs font-black uppercase tracking-wider text-lime hover:text-black transition active:scale-95 flex items-center gap-1.5 shrink-0 shadow-sm"
+                            className="px-3 py-2 rounded-xl bg-zinc-900 hover:bg-lime hover:text-black border border-lime/30 text-xs font-black uppercase tracking-wider text-lime transition active:scale-95 flex items-center gap-1.5 shrink-0 shadow-sm"
                         >
-                            {isExportingCSV ? 'Exporting...' : 'Download'}
+                            {isExportingCSV ? 'Exporting...' : 'Export CSV'}
                         </button>
                     </div>
 
                     {user.is_admin && (
-                        <button onClick={() => window.location.href = '/admin'} className="w-full py-4 bg-purple-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 active:scale-95 transition-all">
-                            <Settings size={20} /> OPEN ADMIN BACKEND
+                        <button 
+                            onClick={() => window.location.href = '/admin'} 
+                            className="w-full py-3.5 bg-zinc-900 border border-zinc-700/80 hover:border-lime/50 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md"
+                        >
+                            <Settings size={18} className="text-lime" /> Admin Master Console
                         </button>
                     )}
-                    <button onClick={logout} className="w-full py-4 rounded-xl flex items-center justify-center gap-2 font-semibold text-red-500 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors">
-                        <LogOut size={18} /> Sign Out
+                    <button 
+                        onClick={logout} 
+                        className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-wider text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all active:scale-95"
+                    >
+                        <LogOut size={16} /> Sign Out
                     </button>
-
-                    <SystemStatus />
                 </div>
             </div>
 

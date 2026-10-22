@@ -32,32 +32,32 @@ const ProfileStats: React.FC<ProfileStatsProps> = ({ user, onEditLifts }) => {
         <div className="space-y-3.5 mb-6">
             {/* Top Stat Summary Pills */}
             <div className="grid grid-cols-3 gap-2.5">
-                <div className="bg-oled border border-gray-800 p-3.5 rounded-2xl text-center shadow-sm">
-                    <Flame className="text-orange-500 mx-auto mb-1" size={18} />
-                    <p className="text-[9px] text-gray-500 uppercase font-black tracking-wider">Streak</p>
+                <div className="bg-[#0D0D0D] border border-white/10 p-3.5 rounded-2xl text-center shadow-sm">
+                    <Flame className="text-orange-400 mx-auto mb-1" size={17} />
+                    <p className="text-[9px] text-gray-400 uppercase font-black tracking-wider">Streak</p>
                     <p className="text-lg font-black text-white">{user.reliability_streak || 0}d</p>
                 </div>
-                <div className="bg-oled border border-lime/30 p-3.5 rounded-2xl text-center shadow-[0_0_15px_rgba(50,255,50,0.08)]">
-                    <Target className="text-lime mx-auto mb-1" size={18} />
-                    <p className="text-[9px] text-gray-400 uppercase font-black tracking-wider">Big 4 Total</p>
+                <div className="bg-[#0D0D0D] border border-lime/30 p-3.5 rounded-2xl text-center shadow-[0_0_15px_rgba(50,255,50,0.08)]">
+                    <Target className="text-lime mx-auto mb-1" size={17} />
+                    <p className="text-[9px] text-gray-300 uppercase font-black tracking-wider">Big 4 Total</p>
                     <p className="text-lg font-black text-lime font-mono">
-                        {total} <span className="text-[10px] text-gray-500 font-normal">{unit}</span>
+                        {total} <span className="text-[10px] text-gray-400 font-normal">{unit}</span>
                     </p>
                     {strengthRatio && (
-                        <p className="text-[9px] text-lime/80 font-black tracking-wide mt-0.5">
+                        <p className="text-[9px] text-lime/90 font-black tracking-wide mt-0.5">
                             {strengthRatio}× BW
                         </p>
                     )}
                 </div>
-                <div className="bg-oled border border-gray-800 p-3.5 rounded-2xl text-center shadow-sm">
-                    <Zap className="text-yellow-400 mx-auto mb-1" size={18} />
-                    <p className="text-[9px] text-gray-500 uppercase font-black tracking-wider">Lifter XP</p>
+                <div className="bg-[#0D0D0D] border border-white/10 p-3.5 rounded-2xl text-center shadow-sm">
+                    <Zap className="text-lime mx-auto mb-1" size={17} />
+                    <p className="text-[9px] text-gray-400 uppercase font-black tracking-wider">Lifter XP</p>
                     <p className="text-lg font-black text-white font-mono">{user.xp || 0}</p>
                 </div>
             </div>
 
             {/* Big 4 Compound Matrix Card */}
-            <div className="bg-gray-950 border border-gray-800/80 rounded-2xl p-4 space-y-3">
+            <div className="bg-[#0D0D0D] border border-white/10 rounded-2xl p-4 space-y-3 shadow-md">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Dumbbell size={15} className="text-lime" />
