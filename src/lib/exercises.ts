@@ -447,6 +447,151 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     defaultIncrement: 5.0,
     jointImpact: 'low',
     description: 'Upper back on bench, barbell on padded hips, lockout to 90 degree knees.'
+  },
+
+  // --- TENDON RESILIENCE & SMALL MUSCLE ARMOR ---
+  {
+    id: 'tibialis-wall-raise',
+    name: 'Tibialis Wall Raise',
+    category: 'Legs',
+    modality: 'bodyweight',
+    primaryMuscles: ['calves'],
+    secondaryMuscles: ['quads'],
+    defaultIncrement: 1.0,
+    jointImpact: 'low',
+    description: 'Heels 12 inches from wall, flex toes up to shins. Absorbs ground reaction forces and shields knees.'
+  },
+  {
+    id: 'spanish-squat-isometric',
+    name: 'Spanish Squat Isometric Hold',
+    category: 'Legs',
+    modality: 'bodyweight',
+    primaryMuscles: ['quads'],
+    secondaryMuscles: ['glutes'],
+    defaultIncrement: 0,
+    jointImpact: 'low',
+    description: 'Heavy band behind knees at 70° knee flexion. 45s hold triggers patellar tendon analgesia (Rio et al. protocol).'
+  },
+  {
+    id: 'poliquin-step-down',
+    name: 'Poliquin Slant Step-Down',
+    category: 'Legs',
+    modality: 'dumbbell',
+    primaryMuscles: ['quads'],
+    secondaryMuscles: ['calves'],
+    defaultIncrement: 2.0,
+    jointImpact: 'low',
+    description: 'Heel elevated on slant board, knee tracks over toes. Isolates VMO teardrop and reinforces patellar tendon.'
+  },
+  {
+    id: 'copenhagen-plank',
+    name: 'Copenhagen Adductor Plank',
+    category: 'Core',
+    modality: 'bodyweight',
+    primaryMuscles: ['glutes'],
+    secondaryMuscles: ['abs'],
+    defaultIncrement: 0,
+    jointImpact: 'low',
+    description: 'Top ankle on bench, bottom leg elevated. Bulletproofs adductor magnus for deep squat stability and groin protection.'
+  },
+  {
+    id: 'seated-soleus-raise',
+    name: 'Seated Soleus Calf Raise',
+    category: 'Legs',
+    modality: 'machine',
+    primaryMuscles: ['calves'],
+    secondaryMuscles: [],
+    defaultIncrement: 2.5,
+    jointImpact: 'low',
+    description: 'Knees bent at 90 degrees. Deep 3s bottom stretch to load the soleus tendon (absorbs 8x bodyweight).'
+  },
+  {
+    id: 'zottman-curl',
+    name: 'Dumbbell Zottman Curl',
+    category: 'Arms',
+    modality: 'dumbbell',
+    primaryMuscles: ['biceps'],
+    secondaryMuscles: [],
+    defaultIncrement: 2.0,
+    jointImpact: 'low',
+    description: 'Palms up on concentric, rotate to palms down at peak, 3s controlled negative. Builds brachialis and protects elbows.'
+  },
+  {
+    id: 'jm-press',
+    name: 'JM Press (Elbow Armor)',
+    category: 'Arms',
+    modality: 'barbell',
+    primaryMuscles: ['triceps'],
+    secondaryMuscles: ['chest'],
+    defaultIncrement: 2.5,
+    jointImpact: 'moderate',
+    description: 'Hybrid close-grip bench and skull crusher. Powerlifter secret for massive tricep tendon strength and pressing lockout.'
+  },
+  {
+    id: 'lu-raise',
+    name: 'Lu Lateral Raise (Full ROM)',
+    category: 'Shoulders',
+    modality: 'dumbbell',
+    primaryMuscles: ['shoulders'],
+    secondaryMuscles: ['upperBack'],
+    defaultIncrement: 1.0,
+    jointImpact: 'low',
+    description: 'Light dumbbells taken overhead with thumbs up. Trains lateral deltoid and upward scapular rotators.'
+  },
+  {
+    id: 'cable-external-rotation',
+    name: 'Cable Rotator Cuff External Rotation',
+    category: 'Shoulders',
+    modality: 'cable',
+    primaryMuscles: ['shoulders'],
+    secondaryMuscles: [],
+    defaultIncrement: 1.25,
+    jointImpact: 'low',
+    description: 'Elbow pinned at 90 degrees. Strengthens infraspinatus and teres minor to eliminate bench press shoulder pinch.'
+  },
+  {
+    id: 'serratus-wall-slide',
+    name: 'Serratus Wall Slide with Protraction',
+    category: 'Shoulders',
+    modality: 'bodyweight',
+    primaryMuscles: ['shoulders'],
+    secondaryMuscles: ['chest'],
+    defaultIncrement: 0,
+    jointImpact: 'low',
+    description: 'Forearms on wall, slide up while actively pushing away. Glues scapula to ribcage to prevent shoulder impingement.'
+  },
+  {
+    id: 'jefferson-curl',
+    name: 'Jefferson Curl (Spinal Armor)',
+    category: 'Back',
+    modality: 'barbell',
+    primaryMuscles: ['hamstrings'],
+    secondaryMuscles: ['glutes'],
+    defaultIncrement: 2.5,
+    jointImpact: 'low',
+    description: 'Standing on elevated block, round spine down vertebra by vertebra. Re-conditions connective tissue in spinal erectors.'
+  },
+  {
+    id: 'farmers-walk-heavy',
+    name: 'Heavy Farmers Walk',
+    category: 'Core',
+    modality: 'dumbbell',
+    primaryMuscles: ['upperBack'],
+    secondaryMuscles: ['abs'],
+    defaultIncrement: 5.0,
+    jointImpact: 'low',
+    description: 'Chest high, shoulder blades packed, short brisk steps. Builds bone-crushing grip and unbreakable upper traps.'
+  },
+  {
+    id: 'neck-flexion-extension',
+    name: '3-Way Neck Isometric & Flexion',
+    category: 'Back',
+    modality: 'bodyweight',
+    primaryMuscles: ['upperBack'],
+    secondaryMuscles: [],
+    defaultIncrement: 1.0,
+    jointImpact: 'low',
+    description: 'Controlled neck flexion and extension on bench. Builds thick athletic collar and protects cervical spine.'
   }
 ];
 

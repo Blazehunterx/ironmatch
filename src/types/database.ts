@@ -335,6 +335,10 @@ export interface WorkoutPlan {
     exercises: WorkoutExercise[];
     shared: boolean;
     created_at: string;
+    weeks?: number; // e.g. 8
+    currentWeek?: number; // e.g. 1
+    phase?: string; // e.g. 'Phase 1: Tendon Priming & Structural Armor'
+    doctrine?: 'strength_tendon' | 'aesthetic_armor' | 'longevity_rehab';
 }
 
 export interface WorkoutLog {

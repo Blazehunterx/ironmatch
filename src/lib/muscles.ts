@@ -29,8 +29,14 @@ const RULES: [RegExp, Muscle[]][] = [
   [/leg raise|crunch|plank|ab |core|pallof/i, ["abs"]],
   [/glute|hip thrust|kickback|rdl|deadlift/i, ["glutes", "hamstrings"]],
   [/hamstring|leg curl/i, ["hamstrings"]],
-  [/leg press|squat|leg extension|machine extension|wall sit|lunge/i, ["quads", "glutes"]],
-  [/calf/i, ["calves"]],
+  [/leg press|squat|leg extension|machine extension|wall sit|lunge|spanish squat|poliquin|step-down/i, ["quads", "glutes"]],
+  [/calf|soleus|tibialis/i, ["calves"]],
+  [/copenhagen|adductor/i, ["glutes", "quads"]],
+  [/jm press/i, ["triceps", "chest"]],
+  [/zottman/i, ["biceps"]],
+  [/lu raise|serratus/i, ["shoulders"]],
+  [/jefferson/i, ["hamstrings", "upperBack"]],
+  [/neck/i, ["upperBack"]],
 ];
 
 export function musclesFor(name: string): Muscle[] {

@@ -14,11 +14,12 @@ interface ActiveWorkoutHeaderProps {
     canFinish: boolean;
     difficulty: DifficultyDial;
     onDifficultyChange: (d: DifficultyDial) => void;
+    onOpenPhysio?: () => void;
 }
 
 export default function ActiveWorkoutHeader({
     planName, elapsed, formatTime, completedCount, totalCount, onCancel, onFinish, canFinish,
-    difficulty, onDifficultyChange
+    difficulty, onDifficultyChange, onOpenPhysio
 }: ActiveWorkoutHeaderProps) {
     return (
         <div className="sticky top-0 z-10 bg-oled/95 backdrop-blur-md border-b border-gray-800 px-4 py-3">
@@ -26,9 +27,21 @@ export default function ActiveWorkoutHeader({
                 <button onClick={onCancel} className="p-1.5 text-gray-500 hover:text-white rounded-lg transition">
                     <X size={22} />
                 </button>
-                <div className="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl px-3 py-1.5">
-                    <Timer size={14} className="text-lime" />
-                    <span className="font-mono text-sm font-bold text-white">{formatTime(elapsed)}</span>
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl px-3 py-1.5">
+                        <Timer size={14} className="text-lime" />
+                        <span className="font-mono text-sm font-bold text-white">{formatTime(elapsed)}</span>
+                    </div>
+                    {onOpenPhysio && (
+                        <button
+                            type="button"
+                            onClick={onOpenPhysio}
+                            className="px-2.5 py-1.5 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300 text-[11px] font-black uppercase tracking-wider flex items-center gap-1 hover:bg-purple-500/30 active:scale-95 transition shadow-[0_0_12px_rgba(168,85,247,0.2)]"
+                            title="In-Workout Physio (Pain Relief & Smart Swaps)"
+                        >
+                            <span>🛡️ Physio</span>
+                        </button>
+                    )}
                 </div>
                 <button
                     onClick={onFinish}

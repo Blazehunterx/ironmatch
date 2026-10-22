@@ -38,6 +38,10 @@ export default function SquadCard({ squad, onLeaveSquad }: SquadCardProps) {
         : squad.primary_country === 'DE' ? '🇩🇪'
         : '🌐';
 
+    const uniqueCountries = Array.from(new Set(squad.members.map(m => m.country)));
+    const isCrossBorder = uniqueCountries.length > 1;
+    const crossBorderTitle = squad.members.map(m => m.country === 'NL' ? '🇳🇱 Amsterdam' : m.country === 'ID' ? '🇮🇩 Bali' : m.country === 'US' ? '🇺🇸 USA' : m.country === 'GB' ? '🇬🇧 UK' : '🌐 Overseas').join(' × ');
+
     return (
         <div className="bg-gradient-to-br from-gray-950 via-oled to-black border border-lime/30 rounded-3xl p-5 shadow-[0_0_30px_rgba(50,255,50,0.1)] relative overflow-hidden">
             {/* Top Bar: Squad Name & Join Code */}
@@ -70,6 +74,21 @@ export default function SquadCard({ squad, onLeaveSquad }: SquadCardProps) {
                     </span>
                 </div>
             </div>
+
+            {/* Cross-Border Overseas Connection Pill */}
+            {isCrossBorder && (
+                <div className="mb-4 px-3 py-2 rounded-2xl bg-gradient-to-r from-blue-950/40 to-lime/10 border border-blue-500/30 flex items-center justify-between">
+                    <div>
+                        <span className="text-[9px] font-black uppercase text-blue-400 tracking-wider flex items-center gap-1">
+                            🌏 Cross-Border Overseas Duo
+                        </span>
+                        <p className="text-xs text-white font-black mt-0.5">{crossBorderTitle}</p>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-lime bg-black/60 px-2 py-1 rounded-xl border border-lime/30">
+                        Zero Latency ⚡
+                    </span>
+                </div>
+            )}
 
             {/* Invite Code Pill */}
             <div className="mb-4 p-3 bg-gray-900/90 rounded-2xl border border-gray-800 flex items-center justify-between gap-2">

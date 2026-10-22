@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { WorkoutPlan, WorkoutLog, GroupSession } from '../types/database';
 import { Sparkles, ShieldAlert, Play } from 'lucide-react';
+import { safeStorage } from '../lib/safeStorage';
 
 import LevelUpOverlay from '../components/LevelUpOverlay';
 import JoinSessionModal from '../components/JoinSessionModal';
@@ -55,13 +56,23 @@ export default function Workouts() {
         if (!user) return;
         setLoading(true);
         try {
+            const localPlansRaw = safeStorage.getItem('ironmatch_plans');
+            const localPlans: WorkoutPlan[] = localPlansRaw ? JSON.parse(localPlansRaw) : [];
+
             const { data } = await supabase
                 .from('workout_plans')
                 .select('*')
                 .eq('author_id', user.id)
                 .order('created_at', { ascending: false });
 
-            if (data) setPlans(data);
+            const combined = [...localPlans, ...(data || [])];
+            const seen = new Set<string>();
+            const uniquePlans = combined.filter(p => {
+                if (seen.has(p.id)) return false;
+                seen.add(p.id);
+                return true;
+            });
+            if (uniquePlans.length > 0) setPlans(uniquePlans);
 
             const { data: cData } = await supabase
                 .from('workout_plans')
@@ -244,6 +255,8 @@ export default function Workouts() {
         );
     }
 
+    const active8WeekPlan = plans.find(p => p.weeks && p.weeks > 0) || (plans.length > 0 ? plans[0] : null);
+
     return (
         <div className="flex flex-col min-h-screen pb-24 max-w-md mx-auto">
             <div className="px-4 pt-6 pb-4">
@@ -255,12 +268,12 @@ export default function Workouts() {
                     isPro={user?.is_pro || false}
                 />
 
-                {/* 1-Tap Quick Workout Starter */}
+                {/* 1-Tap Quick Workout / 8-Week Blueprint Continuation */}
                 <div className="mb-4">
                     <button
                         onClick={() => {
-                            if (plans.length > 0) {
-                                setActiveWorkout(plans[0]);
+                            if (active8WeekPlan) {
+                                setActiveWorkout(active8WeekPlan);
                             } else {
                                 setActiveWorkout({
                                     id: `quick-${Date.now()}`,
@@ -279,13 +292,17 @@ export default function Workouts() {
                         }}
                         className="w-full py-3 px-4 rounded-2xl bg-lime text-oled font-black text-xs uppercase tracking-wider flex items-center justify-between shadow-[0_0_20px_rgba(50,255,50,0.25)] hover:brightness-105 active:scale-[0.99] transition"
                     >
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-oled flex items-center justify-center text-lime">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-7 h-7 rounded-lg bg-oled flex items-center justify-center text-lime shrink-0">
                                 <Play size={14} fill="currentColor" />
                             </div>
-                            <span className="truncate">{plans.length > 0 ? `Start: ${plans[0].name}` : 'Start Quick Workout'}</span>
+                            <span className="truncate">
+                                {active8WeekPlan ? `Launch: ${active8WeekPlan.name}` : 'Start Quick Workout'}
+                            </span>
                         </div>
-                        <span className="text-[10px] bg-black/25 px-2 py-0.5 rounded-full font-mono text-black font-extrabold shrink-0">1-TAP GO</span>
+                        <span className="text-[10px] bg-black/25 px-2 py-0.5 rounded-full font-mono text-black font-extrabold shrink-0">
+                            {active8WeekPlan?.weeks ? `WEEK ${active8WeekPlan.currentWeek || 1}` : '1-TAP GO'}
+                        </span>
                     </button>
                 </div>
 

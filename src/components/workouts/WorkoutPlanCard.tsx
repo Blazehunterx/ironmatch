@@ -57,6 +57,22 @@ const WorkoutPlanCard: React.FC<WorkoutPlanCardProps> = ({
                 </div>
             </div>
 
+            {/* 8-Week Blueprint Arc Banner */}
+            {plan.weeks && (
+                <div className="mb-3 px-3 py-2 rounded-xl bg-gray-950 border border-lime/30 flex items-center justify-between">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black uppercase text-lime tracking-wider bg-lime/10 px-2 py-0.5 rounded border border-lime/20">
+                                Week {plan.currentWeek || 1} of {plan.weeks}
+                            </span>
+                            <span className="text-[10px] text-gray-400 font-mono">Tendon & Strength Masterplan</span>
+                        </div>
+                        <p className="text-xs text-gray-200 font-bold mt-1">{plan.phase || 'Phase 1: Tendon Priming & Joint Armor'}</p>
+                    </div>
+                    <span className="text-lg">🛡️⚡</span>
+                </div>
+            )}
+
             {/* Exercise preview */}
             <div className="space-y-1 mb-3">
                 {plan.exercises.slice(0, 3).map((ex, i) => (

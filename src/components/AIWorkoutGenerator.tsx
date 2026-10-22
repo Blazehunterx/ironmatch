@@ -1,25 +1,24 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, ArrowRight, X, Zap, Activity } from 'lucide-react';
-import { WorkoutPlan, BodyPart, WorkoutExercise, WorkoutLog } from '../types/database';
+import { Sparkles, ArrowRight, X, Zap, Activity, Flame } from 'lucide-react';
+import { WorkoutPlan } from '../types/database';
 import { useAuth } from '../context/AuthContext';
-import { EXERCISE_DATABASE } from '../lib/exercises';
 import { weeklyMuscleSets, MUSCLES, Muscle } from '../lib/muscles';
+import { generate8WeekTendonBlueprint, PlanDoctrine, WeakLinkArea } from '../lib/blueprintGenerator';
 
 interface AIWorkoutGeneratorProps {
     onGenerate: (plan: WorkoutPlan) => void;
     onClose: () => void;
-    logs?: WorkoutLog[];
+    logs?: any[];
 }
 
-type Archetype = 'hypertrophy' | 'powerlifting' | 'bulletproof';
-type RedFlag = 'shoulder' | 'knee' | 'back' | 'none';
+type RedFlag = 'shoulder' | 'knee' | 'back' | 'elbow_wrist' | 'none';
 type Realm = 'commercial' | 'cable' | 'home';
 
 export default function AIWorkoutGenerator({ onGenerate, onClose, logs = [] }: AIWorkoutGeneratorProps) {
     const { user } = useAuth();
     const [step, setStep] = useState(1);
-    const [archetype, setArchetype] = useState<Archetype>('hypertrophy');
+    const [doctrine, setDoctrine] = useState<PlanDoctrine>('strength_tendon');
     const [scars, setScars] = useState<RedFlag[]>(['none']);
     const [realm, setRealm] = useState<Realm>('commercial');
     const [days, setDays] = useState<number>(4);
@@ -51,123 +50,17 @@ export default function AIWorkoutGenerator({ onGenerate, onClose, logs = [] }: A
         }
     };
 
-    const generatePlan = () => {
-        const planId = `ai-${Date.now()}`;
-        const hasShoulder = scars.includes('shoulder');
-        const hasKnee = scars.includes('knee');
-        const hasBack = scars.includes('back');
-
-        const bw = user?.weight_kg || 75;
-        const bench1RM = user?.big4?.bench || (bw * 1.0);
-        const squat1RM = user?.big4?.squat || (bw * 1.3);
-        const deadlift1RM = user?.big4?.deadlift || (bw * 1.6);
-        const ohp1RM = user?.big4?.ohp || (bw * 0.6);
-
-        // Filter exercise candidates based on realm and joint scars
-        const candidateExercises = EXERCISE_DATABASE.filter(ex => {
-            // Equipment check
-            if (realm === 'cable' && (ex.modality === 'barbell' || ex.modality === 'smith')) return false;
-            if (realm === 'home' && (ex.modality === 'machine' || ex.modality === 'cable')) return false;
-
-            // Joint protection check
-            if (hasShoulder && (ex.id === 'standing-barbell-ohp' || ex.id === 'barbell-bench-press' || ex.id === 'dips-chest')) return false;
-            if (hasKnee && (ex.id === 'barbell-back-squat')) return false;
-            if (hasBack && (ex.id === 'conventional-deadlift' || ex.id === 'barbell-row')) return false;
-
-            return true;
+    const handleGenerate = () => {
+        const weakLinks: WeakLinkArea[] = scars as WeakLinkArea[];
+        const plan = generate8WeekTendonBlueprint({
+            user,
+            doctrine,
+            weakLinks,
+            daysPerWeek: days,
+            weekNumber: 1
         });
-
-        // Assemble balanced routine targeting primary movement patterns + lagging volume
-        const selectedExercises: WorkoutExercise[] = [];
-
-        const addCandidate = (id: string, sets: number, reps: number, calcWeight: number, notes?: string) => {
-            const found = candidateExercises.find(e => e.id === id) || EXERCISE_DATABASE.find(e => e.id === id);
-            if (!found) return;
-            selectedExercises.push({
-                id: `${planId}-${selectedExercises.length + 1}`,
-                name: found.name,
-                sets,
-                reps,
-                weight: Math.max(0, Math.round(calcWeight / found.defaultIncrement) * found.defaultIncrement),
-                modality: found.modality,
-                notes: notes || found.description
-            });
-        };
-
-        let protocolName = 'AI ';
-        let target: BodyPart = 'Full Body';
-
-        if (archetype === 'hypertrophy') {
-            protocolName += 'Autoregulated Volume Optimizer';
-            target = 'Full Body';
-
-            // Knee friendly / Hamstring priority
-            if (hasKnee) {
-                addCandidate('seated-leg-curl', 4, 12, squat1RM * 0.32, 'Pre-exhausts knee capsule · 3s eccentric');
-                addCandidate('romanian-deadlift', 4, 8, deadlift1RM * 0.65, 'Hinge focus, soft knees, zero shear');
-                addCandidate('leg-press-45', 3, 10, squat1RM * 0.90, 'High foot placement for glute/hamstring recruitment');
-            } else {
-                addCandidate('barbell-back-squat', 4, 6, squat1RM * 0.75, 'Controlled 2s eccentric · Explode out of hole');
-                addCandidate('seated-leg-curl', 3, 12, squat1RM * 0.30, 'Deep knee flexion pump');
-            }
-
-            // Shoulder friendly / Chest priority
-            if (hasShoulder) {
-                addCandidate('incline-dumbbell-press', 4, 10, bench1RM * 0.32, 'Neutral 30° tuck · Zero subacromial friction');
-                addCandidate('cable-chest-fly', 3, 12, bench1RM * 0.18, 'Constant tension throughout full range');
-                addCandidate('cable-face-pull', 4, 15, ohp1RM * 0.25, 'Rotator cuff stabilization & rear delts');
-            } else {
-                addCandidate('incline-barbell-bench-press', 4, 8, bench1RM * 0.70, 'Clavicular pec focus · 2s controlled descent');
-                addCandidate('cable-chest-fly', 3, 12, bench1RM * 0.18, 'Peak squeeze at horizontal abduction');
-            }
-
-            // Back friendly / Pull priority
-            if (hasBack) {
-                addCandidate('chest-supported-t-bar-row', 4, 10, deadlift1RM * 0.40, 'Zero spinal axial loading');
-                addCandidate('lat-pulldown', 4, 10, deadlift1RM * 0.40, 'Vertical pull · Drive elbows into back pockets');
-            } else {
-                addCandidate('barbell-row', 4, 8, deadlift1RM * 0.55, 'Strict 45° torso angle');
-                addCandidate('pull-ups', 3, 8, bw > 85 ? 0 : 5, 'Full dead hang stretch');
-            }
-
-            addCandidate('cable-lateral-raise', 4, 15, ohp1RM * 0.15, 'Lagging lateral delt stimulus');
-            addCandidate('standing-calf-raise', 3, 15, bw * 0.8, 'Full 3s bottom calf stretch');
-
-        } else if (archetype === 'powerlifting') {
-            protocolName += 'Big 4 Peaking Split';
-            target = 'Full Body';
-
-            addCandidate('barbell-back-squat', 5, 5, squat1RM * 0.80, 'Competition depth · Aggressive brace');
-            addCandidate('barbell-bench-press', 5, 5, bench1RM * 0.80, 'Strict paused lockout on chest');
-            addCandidate('conventional-deadlift', 4, 3, deadlift1RM * 0.82, 'Sub-maximal explosive speed pull');
-            addCandidate('standing-barbell-ohp', 4, 6, ohp1RM * 0.75, 'Strict overhead press');
-            addCandidate('barbell-row', 4, 8, deadlift1RM * 0.50, 'Scapular stability for bench platform');
-
-        } else {
-            protocolName += 'Combat Longevity & Bulletproof Protocol';
-            target = 'Full Body';
-
-            addCandidate('seated-leg-curl', 4, 15, squat1RM * 0.30, 'Tendon primer · Slow negative');
-            addCandidate('incline-dumbbell-press', 4, 10, bench1RM * 0.30, 'Joint-safe neutral grip');
-            addCandidate('chest-supported-t-bar-row', 4, 12, deadlift1RM * 0.35, 'Decompresses lumbar spine');
-            addCandidate('cable-face-pull', 4, 20, ohp1RM * 0.20, 'Posterior rotator protection');
-            addCandidate('cable-lateral-raise', 4, 15, ohp1RM * 0.15, 'Zero-shear side delt tension');
-            addCandidate('hanging-leg-raise', 3, 12, 0, 'Spinal decompression + pelvic control');
-        }
-
-        const generatedPlan: WorkoutPlan = {
-            id: planId,
-            name: protocolName,
-            author_id: user?.id || 'ai-coach',
-            target,
-            exercises: selectedExercises,
-            shared: false,
-            created_at: new Date().toISOString()
-        };
-
-        onGenerate(generatedPlan);
+        onGenerate(plan);
     };
-
     return (
         <div className="p-6 bg-oled max-w-lg mx-auto">
             <div className="flex items-center justify-between pb-4 border-b border-gray-800">
@@ -177,7 +70,7 @@ export default function AIWorkoutGenerator({ onGenerate, onClose, logs = [] }: A
                     </div>
                     <div>
                         <h2 className="text-lg font-black text-white uppercase tracking-wider">AI Head Coach</h2>
-                        <p className="text-xs text-gray-400">Algorithmic Program Synthesizer</p>
+                        <p className="text-xs text-gray-400">8-Week Tendon & Strength Masterplan Synthesizer</p>
                     </div>
                 </div>
                 <button onClick={onClose} className="p-1 rounded-full text-gray-500 hover:text-white">
@@ -211,46 +104,64 @@ export default function AIWorkoutGenerator({ onGenerate, onClose, logs = [] }: A
                         exit={{ opacity: 0, x: -20 }}
                         className="space-y-4 mt-5"
                     >
-                        <p className="text-xs font-black uppercase text-lime tracking-wider">Step 1 of 3: Training Doctrine</p>
+                        <p className="text-xs font-black uppercase text-lime tracking-wider">Step 1 of 3: Master Blueprint Doctrine</p>
 
                         <div className="space-y-2.5">
                             {[
                                 {
-                                    id: 'hypertrophy' as Archetype,
-                                    name: 'Hypertrophy & Volume Balance',
-                                    desc: 'Reads Muscle Heatmap to prioritize lagging muscle groups with optimal 10-14 set stimulus.'
+                                    id: 'strength_tendon' as PlanDoctrine,
+                                    name: '8-Week Raw Strength & Tendon Armor',
+                                    badge: 'TENDON FOCUS',
+                                    desc: 'Trains the neglected stabilizers: patellar isometrics, JM press, rotator cuff, and adductor stability so joints keep pace with heavy Big 4 loads.'
                                 },
                                 {
-                                    id: 'powerlifting' as Archetype,
-                                    name: 'Powerlifting Big 4 Peaking',
-                                    desc: 'Heavy linear progressive overload for Squat, Bench, Deadlift, and Overhead Press.'
+                                    id: 'aesthetic_armor' as PlanDoctrine,
+                                    name: '8-Week Dense Aesthetic Armor',
+                                    badge: '3D PHYSIQUE',
+                                    desc: 'Builds the powerhouse muscles normal PPL ignores: Neck density, forearms & brachialis, tear-drop VMO, and 3D rear delts.'
                                 },
                                 {
-                                    id: 'bulletproof' as Archetype,
-                                    name: 'Bulletproof Longevity & Joints',
-                                    desc: 'Eliminates joint shear. Emphasizes cables, neutral dumbbell grips, and isometric primers.'
+                                    id: 'longevity_rehab' as PlanDoctrine,
+                                    name: '8-Week Bulletproof Longevity Protocol',
+                                    badge: 'JOINT HEALING',
+                                    desc: 'Eliminates joint friction. 3-4s slow eccentrics, Rio et al. tendon analgesia holds, and decompression carries.'
                                 }
                             ].map(item => (
                                 <button
                                     key={item.id}
-                                    onClick={() => setArchetype(item.id)}
+                                    onClick={() => setDoctrine(item.id)}
                                     className={`w-full p-4 rounded-2xl border text-left transition-all ${
-                                        archetype === item.id
+                                        doctrine === item.id
                                             ? 'bg-lime/10 border-lime shadow-[0_0_15px_rgba(50,255,50,0.15)]'
                                             : 'bg-gray-900 border-gray-800 hover:border-gray-700'
                                     }`}
                                 >
-                                    <p className={`font-black text-sm ${archetype === item.id ? 'text-lime' : 'text-white'}`}>{item.name}</p>
-                                    <p className="text-xs text-gray-400 mt-1 leading-relaxed">{item.desc}</p>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className={`font-black text-sm ${doctrine === item.id ? 'text-lime' : 'text-white'}`}>{item.name}</p>
+                                        <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-black text-lime border border-lime/30">
+                                            {item.badge}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-gray-400 leading-relaxed">{item.desc}</p>
                                 </button>
                             ))}
+                        </div>
+
+                        {/* Curriculum Preview Box */}
+                        <div className="p-3 bg-gray-950 rounded-2xl border border-gray-800 text-xs">
+                            <p className="font-bold text-gray-300 mb-1 flex items-center gap-1.5">
+                                <Flame size={14} className="text-lime" /> 8-Week Periodization Arc:
+                            </p>
+                            <p className="text-[11px] text-gray-400">
+                                Weeks 1-2: Tendon Priming ➔ Weeks 3-5: Progressive Compound Tension ➔ Week 6: Connective Deload ➔ Weeks 7-8: Peak 1RM Testing.
+                            </p>
                         </div>
 
                         <button
                             onClick={() => setStep(2)}
                             className="w-full mt-4 py-3.5 bg-lime text-oled font-black rounded-xl hover:bg-lime/90 flex items-center justify-center gap-2 transition active:scale-95"
                         >
-                            Next: Joint Profile <ArrowRight size={16} />
+                            Next: Weak-Point Scan <ArrowRight size={16} />
                         </button>
                     </motion.div>
                 )}
@@ -269,9 +180,10 @@ export default function AIWorkoutGenerator({ onGenerate, onClose, logs = [] }: A
                         <div className="space-y-2">
                             {[
                                 { id: 'none' as RedFlag, name: '100% Iron Frame (No Pain)', desc: 'Full range of motion, heavy barbells enabled.' },
-                                { id: 'shoulder' as RedFlag, name: 'Shoulder Impingement / AC Joint', desc: 'Swaps wide flat barbell bench to neutral dumbbell press & face pulls.' },
-                                { id: 'knee' as RedFlag, name: 'Patellar Tendon / Knee Pain', desc: 'Pre-exhausts with hamstring curls, switches to vertical-shin leg presses.' },
-                                { id: 'back' as RedFlag, name: 'Lower Back / Lumbar Shear', desc: 'Removes bent barbell rows & conventional deadlifts in favor of supported T-bars.' }
+                                { id: 'shoulder' as RedFlag, name: 'Shoulder Impingement / AC Joint', desc: 'Adds Lu raises & serratus protraction; neutral dumbbell presses.' },
+                                { id: 'knee' as RedFlag, name: 'Patellar Tendon / Knee Pain', desc: 'Pre-exhausts with 45s Spanish squats & Poliquin step-downs for VMO.' },
+                                { id: 'back' as RedFlag, name: 'Lower Back / Spinal Shear', desc: 'Adds loaded Jefferson curls & heavy suitcase farmer carries.' },
+                                { id: 'elbow_wrist' as RedFlag, name: 'Elbow / Wrist Tendon Strain', desc: 'Adds JM press, Zottman curls & forearm tendon remodeling.' }
                             ].map(item => {
                                 const isSelected = scars.includes(item.id);
                                 return (
@@ -360,10 +272,10 @@ export default function AIWorkoutGenerator({ onGenerate, onClose, logs = [] }: A
                                 Back
                             </button>
                             <button
-                                onClick={generatePlan}
+                                onClick={handleGenerate}
                                 className="flex-1 py-3.5 bg-lime text-oled font-black rounded-xl hover:bg-lime/90 flex items-center justify-center gap-2 shadow-[0_0_15px_#32FF32] transition active:scale-95"
                             >
-                                <Zap size={16} /> Synthesize Protocol!
+                                <Zap size={16} /> Synthesize 8-Week Plan!
                             </button>
                         </div>
                     </motion.div>

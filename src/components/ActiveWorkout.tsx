@@ -9,6 +9,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { safeStorage } from '../lib/safeStorage';
 import { getModalityForExercise } from '../lib/exercises';
 import PRCelebration from './PRCelebration';
+import CombatPhysioModal from './CombatPhysioModal';
 
 // Modular Components
 import ActiveWorkoutHeader, { DifficultyDial } from './workouts/ActiveWorkoutHeader';
@@ -51,6 +52,23 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
     const [showRestTimer, setShowRestTimer] = useState(false);
     const [restDuration, setRestDuration] = useState(90);
     const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+    const [showPhysioModal, setShowPhysioModal] = useState(false);
+
+    const handlePhysioSwap = (oldExName: string, newExName: string) => {
+        setExercises(prev => prev.map(ex => {
+            const match = ex.name.toLowerCase().includes(oldExName.toLowerCase()) || oldExName.toLowerCase().includes(ex.name.toLowerCase());
+            if (match) {
+                return {
+                    ...ex,
+                    name: newExName,
+                    modality: getModalityForExercise(newExName),
+                    notes: `⚡ Physio Prescribed: Joint-Safe Swap for ${oldExName}`
+                };
+            }
+            return ex;
+        }));
+        setShowPhysioModal(false);
+    };
 
     const handleConfirmDiscard = () => {
         safeStorage.removeItem(`active_workout_${plan.id}`);
@@ -421,6 +439,7 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
                 canFinish={completeAll}
                 difficulty={difficulty}
                 onDifficultyChange={handleDifficultyChange}
+                onOpenPhysio={() => setShowPhysioModal(true)}
             />
 
             <ActiveWorkoutExerciseList
@@ -478,6 +497,11 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
                         onClose={() => setSwapModalExercise(null)}
                     />
                 )}
+                <CombatPhysioModal
+                    isOpen={showPhysioModal}
+                    onClose={() => setShowPhysioModal(false)}
+                    onApplySwap={handlePhysioSwap}
+                />
                 {showDiscardConfirm && (
                     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
                         <motion.div

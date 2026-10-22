@@ -9,6 +9,7 @@ import { getRankFromLifts } from '../lib/gamification';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { safeStorage } from '../lib/safeStorage';
 import { joinSquadByCode } from '../lib/squads';
+import { generate8WeekTendonBlueprint } from '../lib/blueprintGenerator';
 
 // Modular Components
 import OnboardingProgress from '../components/onboarding/OnboardingProgress';
@@ -117,6 +118,29 @@ export default function Onboarding() {
             } catch (err) {
                 console.warn('Could not send owner welcome message:', err);
             }
+        }
+
+        // Auto-synthesize custom 8-Week Tendon & Strength Masterplan
+        try {
+            const activeDoctrine = (discipline === 'Powerlifting' || data.goals.includes('Train for Competition'))
+                ? 'strength_tendon'
+                : (discipline === 'Bodybuilding' || data.goals.includes('Lose Weight'))
+                    ? 'aesthetic_armor'
+                    : 'strength_tendon';
+
+            const activeUser = (newUserProfile || user || { weight_kg: weightKg, big4: lifts }) as User;
+            const customBlueprint = generate8WeekTendonBlueprint({
+                user: activeUser,
+                doctrine: activeDoctrine,
+                weekNumber: 1
+            });
+
+            const existingPlansJson = safeStorage.getItem('ironmatch_plans');
+            const currentPlans = existingPlansJson ? JSON.parse(existingPlansJson) : [];
+            // Prepend new 8-week blueprint as their primary active routine
+            safeStorage.setItem('ironmatch_plans', JSON.stringify([customBlueprint, ...currentPlans]));
+        } catch (planErr) {
+            console.warn('Failed to auto-generate 8-week blueprint:', planErr);
         }
 
         // Auto-join pending Duo Squad if user came via a 1-click WhatsApp invite link
