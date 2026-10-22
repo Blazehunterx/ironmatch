@@ -494,3 +494,15 @@ export function getWhiteboardRecords(scope: 'global' | 'national' | 'facility', 
     }
     return records;
 }
+
+export function generateSquadInviteUrl(squad: GymSquad): string {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://ironmatch.app';
+    return `${origin}/join?squad=${encodeURIComponent(squad.join_code)}&tag=${encodeURIComponent(squad.tag)}`;
+}
+
+export function generateWhatsAppInviteText(squad: GymSquad): string {
+    const inviteUrl = generateSquadInviteUrl(squad);
+    const flag = squad.primary_country === 'NL' ? '🇳🇱' : '🌐';
+    const squadType = squad.max_members === 2 ? 'Ranked Duo' : '4-Man Squad';
+    return `🔥 Bro! Pair up with me on IronMatch in our ${flag} ${squadType} [${squad.tag}].\n\nTap this 1-click link to auto-join my squad & climb the Netherlands/Global gym leaderboard:\n${inviteUrl}`;
+}

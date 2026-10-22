@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Settings, Crown } from 'lucide-react';
+import { LogOut, Settings, Crown, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DayOfWeek, TimeBlock } from '../types/database';
-import { isSupabaseConfigured } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { compressImage } from '../lib/imageCompression';
 import { uploadToStorage } from '../lib/storageUpload';
 import React from 'react';
@@ -77,6 +77,88 @@ export default function Profile() {
         }
     };
 
+    const [isExportingCSV, setIsExportingCSV] = useState(false);
+
+    const handleExportCSV = async () => {
+        setIsExportingCSV(true);
+        try {
+            let logs: any[] = [];
+            if (isSupabaseConfigured) {
+                const { data } = await supabase
+                    .from('workout_logs')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false });
+                if (data) logs = data;
+            }
+
+            const headers = ['Date', 'Duration_Min', 'Exercise_Name', 'Set_Number', 'Weight', 'Unit', 'Reps', 'RPE', 'Completed'];
+            const rows: string[] = [headers.join(',')];
+
+            if (logs.length > 0) {
+                for (const log of logs) {
+                    const date = log.created_at ? new Date(log.created_at).toISOString().split('T')[0] : '';
+                    const duration = log.duration_min || '';
+                    const exercises = log.exercises || [];
+
+                    for (const ex of exercises) {
+                        const exName = `"${(ex.name || 'Exercise').replace(/"/g, '""')}"`;
+                        if (Array.isArray(ex.setDetails) && ex.setDetails.length > 0) {
+                            for (const s of ex.setDetails) {
+                                rows.push([
+                                    date,
+                                    duration,
+                                    exName,
+                                    s.setNumber || 1,
+                                    s.weight || 0,
+                                    user.unit_preference || 'kg',
+                                    s.reps || 0,
+                                    s.rpe || '',
+                                    s.completed ? 'YES' : 'NO'
+                                ].join(','));
+                            }
+                        } else {
+                            rows.push([
+                                date,
+                                duration,
+                                exName,
+                                1,
+                                ex.weight || 0,
+                                user.unit_preference || 'kg',
+                                ex.reps || 0,
+                                '',
+                                'YES'
+                            ].join(','));
+                        }
+                    }
+                }
+            } else {
+                const date = new Date().toISOString().split('T')[0];
+                const u = user.unit_preference || 'kg';
+                rows.push([date, '0', '"Barbell Bench Press (Baseline 1RM)"', 1, user.big4?.bench || 0, u, 1, '10', 'YES'].join(','));
+                rows.push([date, '0', '"Barbell Back Squat (Baseline 1RM)"', 1, user.big4?.squat || 0, u, 1, '10', 'YES'].join(','));
+                rows.push([date, '0', '"Barbell Deadlift (Baseline 1RM)"', 1, user.big4?.deadlift || 0, u, 1, '10', 'YES'].join(','));
+                rows.push([date, '0', '"Overhead Press (Baseline 1RM)"', 1, user.big4?.ohp || 0, u, 1, '10', 'YES'].join(','));
+            }
+
+            const csvContent = rows.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `IronMatch_Training_History_${(user.name || 'Lifter').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('CSV Export Error:', err);
+            alert('Could not export workout history. Please try again.');
+        } finally {
+            setIsExportingCSV(false);
+        }
+    };
+
     return (
         <div className="flex flex-col min-h-screen px-4 pt-8 pb-24 relative overflow-y-auto">
             <ProfileHeader 
@@ -142,6 +224,31 @@ export default function Profile() {
                 )}
 
                 <div className="space-y-3 pt-4">
+                    {/* 1-Tap CSV Training History Export */}
+                    <div className="p-4 rounded-2xl bg-gray-950 border border-gray-800 flex items-center justify-between gap-3 shadow-sm hover:border-lime/30 transition">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-lime/10 border border-lime/30 flex items-center justify-center text-lime font-black shrink-0">
+                                <Download size={18} />
+                            </div>
+                            <div className="min-w-0">
+                                <h4 className="text-xs font-black uppercase text-white tracking-wider truncate">
+                                    Export History (.CSV)
+                                </h4>
+                                <p className="text-[10px] text-gray-400 truncate">
+                                    1-tap export for Google Sheets & coaches
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleExportCSV}
+                            disabled={isExportingCSV}
+                            className="px-3.5 py-2 rounded-xl bg-gray-900 hover:bg-lime hover:text-oled border border-lime/30 text-xs font-black uppercase tracking-wider text-lime hover:text-black transition active:scale-95 flex items-center gap-1.5 shrink-0 shadow-sm"
+                        >
+                            {isExportingCSV ? 'Exporting...' : 'Download'}
+                        </button>
+                    </div>
+
                     {user.is_admin && (
                         <button onClick={() => window.location.href = '/admin'} className="w-full py-4 bg-purple-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 active:scale-95 transition-all">
                             <Settings size={20} /> OPEN ADMIN BACKEND

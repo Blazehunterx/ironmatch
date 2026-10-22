@@ -21,6 +21,7 @@ import Onboarding from './pages/Onboarding';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Admin from './pages/Admin';
+import JoinSquad from './pages/JoinSquad';
 
 function AppRoutes() {
     const { user } = useAuth();
@@ -31,6 +32,7 @@ function AppRoutes() {
                     {/* Public Routes */}
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Signup />} />
+                    <Route path="/join" element={<JoinSquad />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
 

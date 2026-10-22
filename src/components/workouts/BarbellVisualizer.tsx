@@ -19,12 +19,12 @@ export function BarbellVisualizer({ initialKg = 60 }: { initialKg?: number }) {
   const [total, setTotal] = useState(initialKg);
   const barW = BAR_WEIGHT[bar][unit];
   const { plates, remainder } = useMemo(() => platesPerSide(total, barW, unit), [total, barW, unit]);
-  const steps = unit === "kg" ? [-10, -2.5, 2.5, 10] : [-10, -5, 5, 10];
+  const steps = unit === "kg" ? [-5, -1, 1, 5] : [-10, -2.5, 2.5, 10];
 
   const changeUnit = (u: Unit) => {
     if (u === unit) return;
     const conv = u === "lbs" ? total * 2.20462 : total / 2.20462;
-    const step = u === "lbs" ? 5 : 2.5;
+    const step = u === "lbs" ? 2.5 : 1;
     setTotal(Math.max(BAR_WEIGHT[bar][u], Math.round(conv / step) * step));
     setUnit(u);
   };
@@ -39,10 +39,32 @@ export function BarbellVisualizer({ initialKg = 60 }: { initialKg?: number }) {
 
   const knurl = Array.from({ length: 34 }, (_, i) => 150 + i * 6);
 
+  const barOptions: [BarType, string][] = [
+    ["ez", "EZ 10kg"],
+    ["women", "15kg"],
+    ["men", "Olympic 20kg"],
+    ["ssb", "SSB 25kg"]
+  ];
+
   return (
     <section className="oled-panel w-full max-w-full overflow-hidden rounded-2xl border border-white/10 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <Toggle options={[["men", "Men's 20kg"], ["women", "Women's 15kg"]]} value={bar} onChange={v => changeBar(v as BarType)} />
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5">
+        <div className="flex flex-wrap gap-1 p-1 bg-black/60 rounded-xl border border-white/10 w-full sm:w-auto">
+          {barOptions.map(([bKey, bLabel]) => (
+            <button
+              key={bKey}
+              type="button"
+              onClick={() => changeBar(bKey)}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                bar === bKey
+                  ? "bg-lime text-black font-extrabold shadow-[0_0_10px_rgba(50,255,50,0.3)]"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              {bLabel}
+            </button>
+          ))}
+        </div>
         <Toggle options={[["kg", "kg"], ["lbs", "lbs"]]} value={unit} onChange={v => changeUnit(v as Unit)} />
       </div>
 

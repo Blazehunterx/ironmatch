@@ -435,12 +435,25 @@ export default function ActiveWorkoutExerciseList({
 
                                         {/* RPE & Autoregulation Overload Engine */}
                                         <div className="pt-2 border-t border-gray-800/60 space-y-2">
-                                            <div className="flex items-center justify-between">
+                                            <div className="flex items-center justify-between flex-wrap gap-1">
                                                 <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider flex items-center gap-1">
-                                                    <Zap size={11} className="text-lime" /> RPE & Fatigue Calibration:
+                                                    <Zap size={11} className="text-lime" /> Effort / Reps in Tank:
                                                 </span>
-                                                <span className="text-[9px] font-mono font-bold text-lime">
-                                                    {activeSet.rpe ? `@${activeSet.rpe.toFixed(1)}` : '@8.0 (Target)'}
+                                                <span className="text-[9px] font-mono font-bold text-lime flex items-center gap-1.5">
+                                                    <span>{activeSet.rpe ? `@${activeSet.rpe.toFixed(1)}` : '@8.0'}</span>
+                                                    <span className="bg-lime/20 text-lime text-[8px] font-sans px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
+                                                        {(() => {
+                                                            const cur = activeSet.rpe || 8.0;
+                                                            if (cur >= 10) return '0 left · Absolute Failure';
+                                                            if (cur >= 9.5) return 'Grind · ~0 left';
+                                                            if (cur >= 9.0) return '1 rep in tank';
+                                                            if (cur >= 8.5) return '1-2 in tank';
+                                                            if (cur >= 8.0) return '2 in tank (Optimal)';
+                                                            if (cur >= 7.5) return '2-3 in tank';
+                                                            if (cur >= 7.0) return '3 in tank';
+                                                            return '4+ left (Warmup)';
+                                                        })()}
+                                                    </span>
                                                 </span>
                                             </div>
 
@@ -448,6 +461,7 @@ export default function ActiveWorkoutExerciseList({
                                             <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
                                                 {RPE_SCALE.map((tier) => {
                                                     const isSelected = (activeSet.rpe || 8.0) === tier.value;
+                                                    const tankText = tier.rir === 0 ? 'Failure' : tier.rir === 1 ? '1 left' : tier.rir === 2 ? '2 in tank' : tier.rir === 3 ? '3 in tank' : `${tier.rir}+ left`;
                                                     return (
                                                         <button
                                                             key={tier.value}
@@ -456,14 +470,17 @@ export default function ActiveWorkoutExerciseList({
                                                                 e.stopPropagation();
                                                                 updateSet(ex, activeSetIndex, { rpe: tier.value });
                                                             }}
-                                                            className={`px-2 py-1 rounded-lg text-[9px] font-mono font-bold whitespace-nowrap transition-all border ${
+                                                            className={`px-2.5 py-1 rounded-xl text-center transition-all border shrink-0 ${
                                                                 isSelected
-                                                                    ? 'bg-lime text-black border-lime shadow-[0_0_10px_rgba(50,255,50,0.3)]'
-                                                                    : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
+                                                                    ? 'bg-lime text-black border-lime shadow-[0_0_12px_rgba(50,255,50,0.35)]'
+                                                                    : 'bg-gray-900 border-gray-800 text-gray-300 hover:text-white hover:border-gray-700'
                                                             }`}
                                                             title={tier.description}
                                                         >
-                                                            {tier.label}
+                                                            <span className="text-[10px] font-mono font-black block">{tier.label}</span>
+                                                            <span className={`text-[8px] font-bold block ${isSelected ? 'text-black/90 font-extrabold' : 'text-gray-400'}`}>
+                                                                {tankText}
+                                                            </span>
                                                         </button>
                                                     );
                                                 })}

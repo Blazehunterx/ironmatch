@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Goal, BodyPart, FitnessLevel, FitnessDiscipline, User } from '../types/database';
 import { getRankFromLifts } from '../lib/gamification';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { safeStorage } from '../lib/safeStorage';
+import { joinSquadByCode } from '../lib/squads';
 
 // Modular Components
 import OnboardingProgress from '../components/onboarding/OnboardingProgress';
@@ -116,6 +118,21 @@ export default function Onboarding() {
                 console.warn('Could not send owner welcome message:', err);
             }
         }
+
+        // Auto-join pending Duo Squad if user came via a 1-click WhatsApp invite link
+        const pendingSquadCode = safeStorage.getItem('pending_squad_code');
+        if (pendingSquadCode && (user || newUserProfile)) {
+            try {
+                const targetUser = (newUserProfile || user)!;
+                joinSquadByCode(targetUser, pendingSquadCode);
+                safeStorage.removeItem('pending_squad_code');
+                navigate('/arena');
+                return;
+            } catch (squadErr) {
+                console.warn('Failed to auto-join pending squad:', squadErr);
+            }
+        }
+
         navigate('/');
     };
 

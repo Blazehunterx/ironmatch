@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Shield, Copy, Check, Users, LogOut, Share2 } from 'lucide-react';
+import { Shield, Copy, Check, Users, LogOut, Share2, Link as LinkIcon } from 'lucide-react';
 import { GymSquad, User } from '../../types/database';
+import { generateSquadInviteUrl, generateWhatsAppInviteText } from '../../lib/squads';
 
 interface SquadCardProps {
     squad: GymSquad;
@@ -10,6 +11,7 @@ interface SquadCardProps {
 
 export default function SquadCard({ squad, onLeaveSquad }: SquadCardProps) {
     const [copied, setCopied] = useState(false);
+    const [copiedLink, setCopiedLink] = useState(false);
 
     const handleCopyCode = () => {
         navigator.clipboard.writeText(squad.join_code);
@@ -17,8 +19,15 @@ export default function SquadCard({ squad, onLeaveSquad }: SquadCardProps) {
         setTimeout(() => setCopied(false), 2000);
     };
 
+    const handleCopyLink = () => {
+        const link = generateSquadInviteUrl(squad);
+        navigator.clipboard.writeText(link);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+    };
+
     const handleShareWhatsApp = () => {
-        const text = `Join my IronMatch Gym Squad [${squad.tag}]! Code: ${squad.join_code} - Compete in National & Global Ranked.`;
+        const text = generateWhatsAppInviteText(squad);
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
 
@@ -72,20 +81,29 @@ export default function SquadCard({ squad, onLeaveSquad }: SquadCardProps) {
                         {squad.join_code}
                     </span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                        onClick={handleCopyLink}
+                        className="px-2.5 py-1.5 rounded-xl bg-lime/10 border border-lime/30 hover:bg-lime/20 text-xs font-bold text-lime flex items-center gap-1 active:scale-95 transition"
+                        title="Copy 1-Click Join Link"
+                    >
+                        {copiedLink ? <Check size={13} className="text-lime" /> : <LinkIcon size={13} />}
+                        <span>{copiedLink ? 'Link Copied!' : '1-Click Link'}</span>
+                    </button>
                     <button
                         onClick={handleCopyCode}
-                        className="px-3 py-1.5 rounded-xl bg-gray-800 border border-gray-700 hover:bg-gray-700 text-xs font-bold text-gray-200 flex items-center gap-1 active:scale-95 transition"
+                        className="px-2.5 py-1.5 rounded-xl bg-gray-800 border border-gray-700 hover:bg-gray-700 text-xs font-bold text-gray-200 flex items-center gap-1 active:scale-95 transition"
                     >
                         {copied ? <Check size={13} className="text-lime" /> : <Copy size={13} />}
-                        <span>{copied ? 'Copied' : 'Copy'}</span>
+                        <span>{copied ? 'Code Copied' : 'Code'}</span>
                     </button>
                     <button
                         onClick={handleShareWhatsApp}
-                        className="p-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 transition active:scale-95"
+                        className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 transition active:scale-95 flex items-center gap-1 text-xs font-bold"
                         title="Share on WhatsApp"
                     >
-                        <Share2 size={16} />
+                        <Share2 size={13} />
+                        <span>WhatsApp</span>
                     </button>
                 </div>
             </div>

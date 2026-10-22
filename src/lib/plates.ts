@@ -1,9 +1,9 @@
 export type Unit = "kg" | "lbs";
-export type BarType = "men" | "women";
+export type BarType = "men" | "women" | "ez" | "ssb";
 
 export interface PlateSpec { kg: number; lbs: number; color: string; h: number; w: number }
 
-/** Olympic plates, heaviest first. h/w are relative SVG units. */
+/** Olympic & Fractional plates, heaviest first. h/w are relative SVG units. */
 export const PLATES: PlateSpec[] = [
   { kg: 25, lbs: 55, color: "var(--plate-25)", h: 150, w: 22 },
   { kg: 20, lbs: 45, color: "var(--plate-20)", h: 150, w: 19 },
@@ -12,11 +12,14 @@ export const PLATES: PlateSpec[] = [
   { kg: 5, lbs: 10, color: "var(--plate-5)", h: 75, w: 11 },
   { kg: 2.5, lbs: 5, color: "var(--plate-2-5)", h: 58, w: 9 },
   { kg: 1.25, lbs: 2.5, color: "var(--plate-1-25)", h: 46, w: 7 },
+  { kg: 0.5, lbs: 1.1, color: "var(--plate-0-5, #94A3B8)", h: 36, w: 5 },
 ];
 
 export const BAR_WEIGHT: Record<BarType, Record<Unit, number>> = {
-  men: { kg: 20, lbs: 45 },
+  ez: { kg: 10, lbs: 22 },
   women: { kg: 15, lbs: 35 },
+  men: { kg: 20, lbs: 45 },
+  ssb: { kg: 25, lbs: 55 },
 };
 
 /** Greedy plate breakdown for one side. Returns plates heaviest-first and any unloadable remainder. */
