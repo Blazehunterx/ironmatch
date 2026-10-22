@@ -78,7 +78,7 @@ const PROTOCOLS: Record<JointCategory, InjuryProtocol> = {
     }
 };
 
-export default function CombatPhysioModal({ isOpen, onClose }: CombatPhysioModalProps) {
+export default function CombatPhysioModal({ isOpen, onClose, onApplySwap }: CombatPhysioModalProps) {
     const [selectedJoint, setSelectedJoint] = useState<JointCategory>('shoulder');
     const [timeLeft, setTimeLeft] = useState(45);
     const [isRunning, setIsRunning] = useState(false);
@@ -264,6 +264,15 @@ export default function CombatPhysioModal({ isOpen, onClose }: CombatPhysioModal
                                     </span>
                                 </div>
                                 <p className="text-[11px] text-gray-400 italic">{swap.reason}</p>
+                                {onApplySwap && (
+                                    <button
+                                        type="button"
+                                        onClick={() => onApplySwap(swap.avoid, swap.useInstead)}
+                                        className="w-full mt-2 py-1.5 bg-lime/15 border border-lime/40 hover:bg-lime/25 text-lime font-black rounded-lg text-[11px] flex items-center justify-center gap-1 transition active:scale-98 shadow-sm"
+                                    >
+                                        Apply Swap to Session ➔
+                                    </button>
+                                )}
                             </div>
                         ))}
                     </div>
