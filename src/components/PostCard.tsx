@@ -24,7 +24,7 @@ const PostCard = React.memo(({ post, onSelect, onToggleSpot, currentUserId }: Po
             <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-gray-800 border border-gray-700 overflow-hidden shrink-0">
-                        <img src={post.profiles?.profile_image_url || 'https://i.pravatar.cc/100'} alt="" className="w-full h-full object-cover" />
+                        <img src={post.profiles?.profile_image_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(post.profiles?.name || 'IL')}`} alt="" className="w-full h-full object-cover" />
                     </div>
                     <div>
                         <div className="flex items-center gap-1">

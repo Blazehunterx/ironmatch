@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { LogOut, Settings, Crown, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DayOfWeek, TimeBlock } from '../types/database';
@@ -23,6 +24,7 @@ import IronPassModal from '../components/monetization/IronPassModal';
 
 export default function Profile() {
     const { user, logout, updateUser } = useAuth();
+    const { showToast } = useToast();
 
     // Modals & Shop state
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -150,9 +152,10 @@ export default function Profile() {
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
+            showToast('Training history exported (.CSV)', 'success');
         } catch (err) {
             console.error('CSV Export Error:', err);
-            alert('Could not export workout history. Please try again.');
+            showToast('Could not export workout history.', 'error');
         } finally {
             setIsExportingCSV(false);
         }
@@ -274,10 +277,10 @@ export default function Profile() {
                     try {
                         await updateUser({ big4: editBig4 });
                         setIsSettingsOpen(false);
-                        // Optional: Add a subtle toast or success state if needed
+                        showToast('Strength calibration saved!', 'success');
                     } catch (err) {
                         console.error('Save error:', err);
-                        alert('Failed to save stats. Please check your connection.');
+                        showToast('Failed to save stats. Check your connection.', 'error');
                     }
                 }}
             />
@@ -291,8 +294,9 @@ export default function Profile() {
                         const cdnUrl = await uploadToStorage(croppedData, 'avatars', user.id);
                         await updateUser({ profile_image_url: cdnUrl || croppedData });
                         setIsEditingImage(false);
+                        showToast('Profile photo updated!', 'success');
                     } catch (err) {
-                        alert('Failed to save profile image.');
+                        showToast('Failed to save profile image.', 'error');
                     }
                 }}
             />

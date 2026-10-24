@@ -1,8 +1,10 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Zap, Flame } from 'lucide-react';
+import { Zap, Flame, Dumbbell } from 'lucide-react';
 import { User } from '../../types/database';
 import { Big4Lifts, getRankFromLifts, getNextRank, getRankProgress, getBig4Total } from '../../lib/gamification';
+import { TierBadge } from '../profile/RankBadge';
 
 interface ArenaHeaderProps {
     user: User | null;
@@ -15,6 +17,7 @@ const ArenaHeader: React.FC<ArenaHeaderProps> = ({ user }) => {
     const nextRank = getNextRank(lifts, unit);
     const progress = getRankProgress(lifts, unit);
     const total = getBig4Total(lifts);
+    const streakDays = user?.reliability_streak || 1;
 
     const neededToNextRank = nextRank ? Math.max(0, Math.round(
         unit === 'kg' 
@@ -40,7 +43,7 @@ const ArenaHeader: React.FC<ArenaHeaderProps> = ({ user }) => {
                     </div>
                     <div className="flex items-center gap-1.5 bg-[#0D0D0D] border border-white/10 rounded-xl px-3 py-2">
                         <Flame size={13} className="text-orange-400" />
-                        <span className="text-xs font-bold text-white">7d</span>
+                        <span className="text-xs font-bold text-white">{streakDays}d</span>
                     </div>
                 </div>
             </div>
@@ -51,14 +54,14 @@ const ArenaHeader: React.FC<ArenaHeaderProps> = ({ user }) => {
             >
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                        <span className="text-4xl">{rank.icon}</span>
+                        <TierBadge tier={(rank.name as any) || 'Freshman'} size="md" />
                         <div>
                             <h3 className="font-black text-lg" style={{ color: rank.color }}>{rank.name}</h3>
                             <p className="text-[10px] text-gray-400">{rank.description}</p>
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-xl font-black text-white">{Math.round(total)}<span className="text-xs text-gray-400 ml-1">{unit}</span></p>
+                        <p className="text-xl font-black text-white font-mono">{Math.round(total)}<span className="text-xs text-gray-400 ml-1">{unit}</span></p>
                         <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Big 4 Total</p>
                     </div>
                 </div>
@@ -76,7 +79,7 @@ const ArenaHeader: React.FC<ArenaHeaderProps> = ({ user }) => {
                         <div className="flex justify-between items-center text-[10px]">
                             <span className="text-gray-500">{rank.name} ({currentMinRankDisplay} {unit})</span>
                             <span className="font-bold" style={{ color: nextRank.color }}>
-                                {nextRank.icon} {nextRank.name} — {neededToNextRank} {unit} to advance
+                                {nextRank.name} — {neededToNextRank} {unit} to advance
                             </span>
                         </div>
                     </>
@@ -86,19 +89,21 @@ const ArenaHeader: React.FC<ArenaHeaderProps> = ({ user }) => {
                 <div className="mt-3 pt-3 border-t border-white/10">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">YOUR BIG 4 (1RM)</span>
-                        <span className="text-[9px] text-gray-500 font-bold">Edit in Profile</span>
+                        <Link to="/profile" className="text-[9px] text-lime hover:underline font-bold">Edit in Profile →</Link>
                     </div>
                     <div className="grid grid-cols-4 gap-2">
                         {[
-                            { label: 'Bench', value: lifts.bench, icon: '🪑' },
-                            { label: 'Squat', value: lifts.squat, icon: '🏋️' },
-                            { label: 'Dead', value: lifts.deadlift, icon: '⬆️' },
-                            { label: 'OHP', value: lifts.ohp, icon: '🙌' },
+                            { label: 'Bench', code: 'BP', value: lifts.bench },
+                            { label: 'Squat', code: 'SQ', value: lifts.squat },
+                            { label: 'Dead', code: 'DL', value: lifts.deadlift },
+                            { label: 'OHP', code: 'OHP', value: lifts.ohp },
                         ].map(l => (
-                            <div key={l.label} className="bg-black/50 border border-white/5 rounded-xl p-2 text-center">
-                                <span className="text-sm">{l.icon}</span>
-                                <p className="text-sm font-black text-white">{l.value}</p>
-                                <p className="text-[8px] text-gray-400 font-bold uppercase">{l.label}</p>
+                            <div key={l.label} className="bg-black/50 border border-white/5 rounded-xl p-2.5 text-center">
+                                <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-lime/10 border border-lime/20 text-[9px] font-mono font-black text-lime mb-1">
+                                    <Dumbbell size={9} /> {l.code}
+                                </div>
+                                <p className="text-sm font-black text-white font-mono">{l.value}</p>
+                                <p className="text-[8px] font-bold text-gray-500 uppercase tracking-wider">{l.label}</p>
                             </div>
                         ))}
                     </div>

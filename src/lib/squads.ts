@@ -391,7 +391,7 @@ export function createSquad(
             {
                 user_id: captain.id,
                 name: captain.name,
-                avatar_url: captain.profile_image_url || 'https://i.pravatar.cc/150',
+                avatar_url: captain.profile_image_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(captain.name || 'SQ')}`,
                 country: primaryCountry,
                 gym_name: captain.home_gym_name || 'Home Gym',
                 weight_kg: captain.weight_kg || 75,
@@ -431,8 +431,8 @@ export function joinSquadByCode(user: User, code: string): { success: boolean; s
     const newMember: SquadMember = {
         user_id: user.id,
         name: user.name,
-        avatar_url: user.profile_image_url || 'https://i.pravatar.cc/150',
-        country: user.country || 'NL',
+        avatar_url: user.profile_image_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name || 'SQ')}`,
+        country: user.country || 'US',
         gym_name: user.home_gym_name || 'Home Gym',
         weight_kg: user.weight_kg || 75,
         big4: user.big4,

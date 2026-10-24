@@ -650,7 +650,10 @@ export default function Workouts() {
 
                 <AnimatePresence>
                     {showLevelUp && (
-                        <LevelUpOverlay level={4} onClose={() => setShowLevelUp(false)} />
+                        <LevelUpOverlay
+                            level={Math.max(2, Math.floor(((user?.xp || 500) + 150) / 500) + 1)}
+                            onClose={() => setShowLevelUp(false)}
+                        />
                     )}
                 </AnimatePresence>
             </div>

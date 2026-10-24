@@ -22,10 +22,10 @@ const Big4Step: React.FC<Big4StepProps> = ({
     const [showPlacementModal, setShowPlacementModal] = useState(false);
 
     const liftConfigs = [
-        { key: 'bench' as const, label: 'Bench Press', icon: '🪑' },
-        { key: 'squat' as const, label: 'Squat', icon: '🏋️' },
-        { key: 'deadlift' as const, label: 'Deadlift', icon: '⬆️' },
-        { key: 'ohp' as const, label: 'Overhead Press', icon: '🙌' },
+        { key: 'bench' as const, label: 'Bench Press', icon: 'BP' },
+        { key: 'squat' as const, label: 'Squat', icon: 'SQ' },
+        { key: 'deadlift' as const, label: 'Deadlift', icon: 'DL' },
+        { key: 'ohp' as const, label: 'Overhead Press', icon: 'OHP' },
     ];
 
     const handleLiftChange = (key: keyof Big4Lifts, value: number) => {

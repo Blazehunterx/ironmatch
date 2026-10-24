@@ -39,7 +39,7 @@ export default function GymFloorRoster({
             id: `beacon-${Date.now()}`,
             user_id: currentUser.id,
             user_name: currentUser.name,
-            avatar_url: currentUser.profile_image_url || 'https://i.pravatar.cc/100',
+            avatar_url: currentUser.profile_image_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(currentUser.name || 'IL')}`,
             gym_id: gymId,
             gym_name: gymName,
             exercise: spotExercise,

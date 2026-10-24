@@ -6,6 +6,7 @@ import { User } from '../types/database';
 import { Search as SearchIcon, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatThread from '../components/ChatThread';
+import { mockUsers } from '../lib/mock';
 
 // Modular Components
 import MessageList from '../components/messages/MessageList';
@@ -20,7 +21,28 @@ export default function Messages() {
     const [newChatSearch, setNewChatSearch] = useState('');
 
     const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+    const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+
+    useEffect(() => {
+        const loadSuggested = async () => {
+            try {
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .neq('id', user?.id || '')
+                    .limit(6);
+                if (data && data.length > 0) {
+                    setSuggestedUsers(data as User[]);
+                } else {
+                    setSuggestedUsers(mockUsers.filter(m => m.id !== user?.id) as any[]);
+                }
+            } catch {
+                setSuggestedUsers(mockUsers.filter(m => m.id !== user?.id) as any[]);
+            }
+        };
+        loadSuggested();
+    }, [user?.id]);
 
     useEffect(() => {
         if (!showNewChat || !newChatSearch.trim()) {
@@ -51,8 +73,14 @@ export default function Messages() {
         c.user.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const handleQuickConnect = (targetUser: User, initialMessage: string) => {
+        addConversation(targetUser, true);
+        sendMessage(targetUser.id, initialMessage);
+        setActiveChatUserId(targetUser.id);
+    };
+
     return (
-        <div className="flex flex-col min-h-screen pb-24 relative">
+        <div className="flex flex-col min-h-screen pb-24 relative max-w-md mx-auto w-full">
             <AnimatePresence mode="wait">
                 {activeChatUserId ? (() => {
                     const conv = conversations.find(c => c.user.id === activeChatUserId);
@@ -76,7 +104,10 @@ export default function Messages() {
                         className="px-4 py-6"
                     >
                         <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-3xl font-bold text-white">Messages</h2>
+                            <div>
+                                <h2 className="text-3xl font-black text-white">Messages</h2>
+                                <p className="text-xs text-gray-400">Coordinate spots, duels & live gym sessions</p>
+                            </div>
                             <button
                                 onClick={() => setShowNewChat(true)}
                                 className="p-2.5 rounded-xl bg-lime text-oled hover:bg-lime/90 active:scale-95 transition-all"
@@ -97,7 +128,9 @@ export default function Messages() {
 
                         <MessageList 
                             filtered={filtered} 
-                            onChatSelect={setActiveChatUserId} 
+                            onChatSelect={setActiveChatUserId}
+                            suggestedUsers={suggestedUsers}
+                            onQuickConnect={handleQuickConnect}
                         />
                     </motion.div>
                 )}
@@ -120,4 +153,3 @@ export default function Messages() {
         </div>
     );
 }
-

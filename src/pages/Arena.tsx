@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useGyms } from '../context/GymContext';
+import { useToast } from '../context/ToastContext';
 import {
     getActiveWeeklyQuests, HIDDEN_QUESTS, HIDDEN_QUEST_REVEALS,
     Duel, GymWarEntry
@@ -31,6 +32,7 @@ type Tab = ArenaTab;
 
 export default function Arena() {
     const { user } = useAuth();
+    const { showToast } = useToast();
     const [activeTab, setActiveTab] = useState<Tab>('wars');
     const [showDuelCreator, setShowDuelCreator] = useState(false);
     const [showPlacementModal, setShowPlacementModal] = useState(false);
@@ -367,7 +369,7 @@ export default function Arena() {
                         const { error } = await supabase.from('duels').insert(newDuelData);
                         if (error) {
                             console.error('Error creating duel:', error);
-                            alert('Failed to send challenge. Please try again.');
+                            showToast('Failed to send challenge. Please try again.', 'error');
                             return;
                         }
                         fetchDuels();
@@ -393,7 +395,7 @@ export default function Arena() {
                         }, ...prev]);
                     }
                     setShowDuelCreator(false);
-                    alert('Challenge sent!');
+                    showToast('Ranked Duel challenge sent! ⚡', 'success');
                 }}
             />
 

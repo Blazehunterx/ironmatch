@@ -161,7 +161,7 @@ export default function Notifications() {
                                     >
                                         <div className="flex items-start gap-3 mb-3">
                                             <img
-                                                src={notif.from.profile_image_url || 'https://i.pravatar.cc/100'}
+                                                src={notif.from.profile_image_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(notif.from.name || 'IL')}`}
                                                 alt={notif.from.name}
                                                 className="w-11 h-11 rounded-full border border-gray-700 object-cover shrink-0"
                                             />
@@ -222,7 +222,7 @@ export default function Notifications() {
                                         className="flex items-center gap-3 p-3 rounded-2xl bg-gray-900/40 border border-gray-800 hover:bg-gray-900 cursor-pointer transition-colors"
                                     >
                                         <img
-                                            src={notif.from.profile_image_url || 'https://i.pravatar.cc/100'}
+                                            src={notif.from.profile_image_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(notif.from.name || 'IL')}`}
                                             alt={notif.from.name}
                                             className="w-10 h-10 rounded-full border border-gray-800 object-cover"
                                         />
