@@ -4,7 +4,7 @@ export const SCIENCE_PACKS: WorkoutPlan[] = [
     {
         id: "sn1", 
         name: "Fundamental Hypertrophy (Novice)", 
-        author_id: "jeff_nippard_inspired", 
+        author_id: "ironmatch_science_lab", 
         target: "Full Body", 
         exercises: [
             { id: "sn1e1", name: "Squat", sets: 3, reps: 5 },
@@ -19,7 +19,7 @@ export const SCIENCE_PACKS: WorkoutPlan[] = [
     {
         id: "sn2", 
         name: "Scientific Push (Hypertrophy)", 
-        author_id: "jeff_nippard_inspired", 
+        author_id: "ironmatch_science_lab", 
         target: "Chest", 
         exercises: [
             { id: "sn2e1", name: "Incline Dumbbell Press", sets: 3, reps: 10 },
@@ -34,7 +34,7 @@ export const SCIENCE_PACKS: WorkoutPlan[] = [
     {
         id: "sn3", 
         name: "Evidence-Based Pull (Width & Thickness)", 
-        author_id: "jeff_nippard_inspired", 
+        author_id: "ironmatch_science_lab", 
         target: "Back", 
         exercises: [
             { id: "sn3e1", name: "Weighted Pull-ups", sets: 3, reps: 8 },

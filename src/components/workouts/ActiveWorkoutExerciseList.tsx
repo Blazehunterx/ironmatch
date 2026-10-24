@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Dumbbell, ShieldAlert, Sparkles, Plus, Minus, CheckCircle2, Zap, TrendingUp, History } from 'lucide-react';
+import { Check, Dumbbell, ShieldAlert, Sparkles, Plus, Minus, CheckCircle2, Zap, TrendingUp, History, Search, X } from 'lucide-react';
 import { WorkoutExercise, SetDetail } from '../../types/database';
 import { RPE_SCALE, calculateOverloadRecommendation } from '../../lib/autoregulation';
-import { getModalityForExercise } from '../../lib/exercises';
+import { EXERCISE_DATABASE, ExerciseDefinition, getModalityForExercise } from '../../lib/exercises';
 
 interface ActiveWorkoutExerciseListProps {
     exercises: WorkoutExercise[];
@@ -11,11 +11,15 @@ interface ActiveWorkoutExerciseListProps {
     setCurrentIdx: (idx: number) => void;
     toggleComplete: (id: string) => void;
     onUpdateExercise?: (updated: WorkoutExercise) => void;
+    onAddExercise?: (newEx: { name: string; sets: number; reps: number; weight: number; modality?: any; notes?: string }) => void;
     onOpenSwap?: (exercise: WorkoutExercise) => void;
     onOpenPlateCalc?: (weight: number) => void;
     onTriggerRest?: (seconds?: number) => void;
     unit?: 'kg' | 'lbs';
 }
+
+const isTimedExercise = (ex: WorkoutExercise): boolean =>
+    /isometric|hold|plank|walk|carry|deadhang|wall slide|45s|30s/i.test(`${ex.name} ${ex.notes || ''}`);
 
 export default function ActiveWorkoutExerciseList({
     exercises,
@@ -23,12 +27,16 @@ export default function ActiveWorkoutExerciseList({
     setCurrentIdx,
     toggleComplete,
     onUpdateExercise,
+    onAddExercise,
     onOpenSwap,
     onOpenPlateCalc,
     onTriggerRest,
     unit = 'kg'
 }: ActiveWorkoutExerciseListProps) {
     const [selectedSetIdx, setSelectedSetIdx] = useState<number>(0);
+    const [showAddPicker, setShowAddPicker] = useState<boolean>(exercises.length === 0);
+    const [searchQuery, setSearchQuery] = useState<string>('');
+    const [categoryFilter, setCategoryFilter] = useState<string>('All');
 
     const playClickTone = () => {
         try {
@@ -148,6 +156,7 @@ export default function ActiveWorkoutExerciseList({
                 const sets = getSets(ex);
                 const activeSetIndex = Math.min(selectedSetIdx, sets.length - 1);
                 const activeSet = sets[activeSetIndex] || sets[0];
+                const isTimed = isTimedExercise(ex);
 
                 return (
                     <motion.div
@@ -202,13 +211,13 @@ export default function ActiveWorkoutExerciseList({
                                 <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5 flex-wrap">
                                     <span>{sets.length} sets</span>
                                     <span>·</span>
-                                    <span>{ex.reps} target reps</span>
+                                    <span>{isTimed ? `${ex.reps}s target hold` : `${ex.reps} target reps`}</span>
                                     {ex.previousPerformance && (
                                         <>
                                             <span>·</span>
                                             <span className="text-gray-300 font-mono flex items-center gap-1">
                                                 <History size={10} className="text-lime" />
-                                                Last: {ex.previousPerformance.weight}{unit} × {ex.previousPerformance.reps}
+                                                Last: {ex.previousPerformance.weight}{unit} × {ex.previousPerformance.reps}{isTimed ? 's' : ''}
                                             </span>
                                         </>
                                     )}
@@ -293,7 +302,7 @@ export default function ActiveWorkoutExerciseList({
                                                     </span>
                                                     {s.completed && <CheckCircle2 size={10} className="text-lime" />}
                                                 </div>
-                                                <span className="text-xs font-black text-white block">{s.reps}r</span>
+                                                <span className="text-xs font-black text-white block">{s.reps}{isTimed ? 's' : 'r'}</span>
                                                 <span className="text-[9px] text-lime font-mono block font-bold">
                                                     {s.weight ? `${s.weight}${unit}` : 'BW'}
                                                 </span>
@@ -349,18 +358,23 @@ export default function ActiveWorkoutExerciseList({
                                         )}
 
                                         <div className="grid grid-cols-2 gap-2">
-                                            {/* Reps Stepper */}
+                                            {/* Reps / Seconds Stepper */}
                                             <div className="p-2 bg-gray-900 rounded-xl border border-gray-800 flex items-center justify-between">
                                                 <div>
-                                                    <span className="text-[8px] text-gray-500 uppercase font-black block">Reps</span>
-                                                    <span className="text-base font-black text-white font-mono">{activeSet.reps}</span>
+                                                    <span className="text-[8px] text-gray-500 uppercase font-black block">
+                                                        {isTimed ? 'Hold (sec)' : 'Reps'}
+                                                    </span>
+                                                    <span className="text-base font-black text-white font-mono">
+                                                        {activeSet.reps}{isTimed ? 's' : ''}
+                                                    </span>
                                                 </div>
                                                 <div className="flex items-center gap-1">
                                                     <button
                                                         type="button"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            updateSet(ex, activeSetIndex, { reps: Math.max(1, activeSet.reps - 1) });
+                                                            const step = isTimed ? 5 : 1;
+                                                            updateSet(ex, activeSetIndex, { reps: Math.max(step, activeSet.reps - step) });
                                                         }}
                                                         className="w-7 h-7 rounded-lg bg-gray-800 border border-gray-700 text-white font-bold flex items-center justify-center active:scale-95 text-xs"
                                                     >
@@ -370,7 +384,8 @@ export default function ActiveWorkoutExerciseList({
                                                         type="button"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            updateSet(ex, activeSetIndex, { reps: activeSet.reps + 1 });
+                                                            const step = isTimed ? 5 : 1;
+                                                            updateSet(ex, activeSetIndex, { reps: activeSet.reps + step });
                                                         }}
                                                         className="w-7 h-7 rounded-lg bg-gray-800 border border-gray-700 text-white font-bold flex items-center justify-center active:scale-95 text-xs"
                                                     >
@@ -547,6 +562,130 @@ export default function ActiveWorkoutExerciseList({
                     </motion.div>
                 );
             })}
+
+            {/* Mid-Workout Add Exercise Controls */}
+            {onAddExercise && (
+                <div className="pt-2">
+                    {!showAddPicker ? (
+                        <button
+                            type="button"
+                            onClick={() => setShowAddPicker(true)}
+                            className="w-full py-3.5 rounded-2xl border border-dashed border-white/15 hover:border-lime/50 bg-[#0D0D0D] text-gray-300 hover:text-lime text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition active:scale-[0.99]"
+                        >
+                            <Plus size={15} className="text-lime" /> Add Exercise to Session
+                        </button>
+                    ) : (
+                        <div className="p-4 rounded-2xl bg-[#0D0D0D] border border-lime/30 space-y-3 shadow-xl">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-black uppercase tracking-wider text-lime flex items-center gap-1.5">
+                                    <Dumbbell size={14} /> Add Exercise to Workout
+                                </span>
+                                {exercises.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddPicker(false)}
+                                        className="p-1 text-gray-400 hover:text-white rounded-lg"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Search Bar */}
+                            <div className="relative">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Search barbell, dumbbell, cable, or tendon lift..."
+                                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-black border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-lime"
+                                />
+                            </div>
+
+                            {/* Category Filter Pills */}
+                            <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                                {['All', 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'].map(cat => (
+                                    <button
+                                        key={cat}
+                                        type="button"
+                                        onClick={() => setCategoryFilter(cat)}
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0 transition ${
+                                            categoryFilter === cat
+                                                ? 'bg-lime text-black'
+                                                : 'bg-white/5 text-gray-400 hover:text-white'
+                                        }`}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Filtered Exercise List */}
+                            <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+                                {EXERCISE_DATABASE.filter((item: ExerciseDefinition) => {
+                                    const matchesCat = categoryFilter === 'All' || item.category === categoryFilter;
+                                    const matchesSearch = !searchQuery.trim() || item.name.toLowerCase().includes(searchQuery.toLowerCase());
+                                    return matchesCat && matchesSearch;
+                                }).map((item: ExerciseDefinition) => {
+                                    const isTimedItem = /isometric|hold|plank|walk|slide/i.test(item.name);
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            onClick={() => {
+                                                onAddExercise({
+                                                    name: item.name,
+                                                    sets: 3,
+                                                    reps: isTimedItem ? 45 : 8,
+                                                    weight: item.modality === 'bodyweight' ? 0 : 40,
+                                                    modality: item.modality,
+                                                    notes: item.description
+                                                });
+                                                setSearchQuery('');
+                                                setShowAddPicker(false);
+                                            }}
+                                            className="w-full p-2.5 rounded-xl bg-black/70 hover:bg-white/[0.04] border border-white/5 hover:border-lime/30 flex items-center justify-between text-left transition"
+                                        >
+                                            <div className="min-w-0 pr-2">
+                                                <div className="text-xs font-bold text-white truncate">{item.name}</div>
+                                                <div className="text-[10px] text-gray-500 font-mono uppercase">
+                                                    {item.category} · {item.modality}
+                                                </div>
+                                            </div>
+                                            <span className="px-2 py-1 rounded-lg bg-lime/10 border border-lime/30 text-lime text-[10px] font-black uppercase shrink-0">
+                                                + Add
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+
+                                {searchQuery.trim().length > 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const customName = searchQuery.trim();
+                                            onAddExercise({
+                                                name: customName,
+                                                sets: 3,
+                                                reps: 10,
+                                                weight: 20,
+                                                modality: getModalityForExercise(customName)
+                                            });
+                                            setSearchQuery('');
+                                            setShowAddPicker(false);
+                                        }}
+                                        className="w-full p-2.5 rounded-xl bg-lime/10 border border-lime/30 text-lime text-xs font-black flex items-center justify-between"
+                                    >
+                                        <span>Add Custom: "{searchQuery.trim()}"</span>
+                                        <span>+ Add</span>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

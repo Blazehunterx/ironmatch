@@ -82,81 +82,81 @@ export const COSMETIC_ITEMS: CosmeticItem[] = [
     // Graph Skins
     {
         id: 'gs1',
-        name: 'The Grand Line',
+        name: 'Oceanic Gold',
         type: 'graph_skin',
-        description: 'One Piece theme: Deep ocean blues and Haki gold.',
+        description: 'Deep ocean blue gradient with high-contrast gold highlights.',
         xpRequirement: 2500,
         previewValue: 'one_piece'
     },
     {
         id: 'gs2',
-        name: 'Super Saiyan Aura',
+        name: 'Solar Voltage',
         type: 'graph_skin',
-        description: 'Dragon Ball theme: Electric yellow and energy flares.',
+        description: 'High-voltage electric yellow and orange thermal flare.',
         xpRequirement: 5000,
         previewValue: 'dbz'
     },
     {
         id: 'gs3',
-        name: 'Uchiha Legacy',
+        name: 'Crimson Obsidian',
         type: 'graph_skin',
-        description: 'Naruto theme: Sharingan crimson and shadow black.',
+        description: 'Deep crimson telemetry line over pure pitch obsidian.',
         xpRequirement: 7500,
         previewValue: 'naruto'
     },
     {
         id: 'gs4',
-        name: 'Wings of Liberty',
+        name: 'Tactical Titanium',
         type: 'graph_skin',
-        description: 'AoT theme: Military steel and forest green.',
+        description: 'Brushed gunmetal steel and tactical emerald accents.',
         xpRequirement: 10000,
         previewValue: 'aot'
     },
     {
         id: 'gs5',
-        name: 'Soul Reaper',
+        name: 'Monochrome Stark',
         type: 'graph_skin',
-        description: 'Bleach theme: Spiritual black & white with Getsuga aura.',
+        description: 'Pure Stark white telemetry curve over deep carbon black.',
         xpRequirement: 12500,
         previewValue: 'bleach'
     },
     {
         id: 'gs6',
-        name: 'Water Breathing',
+        name: 'Hydro Steel',
         type: 'graph_skin',
-        description: 'Demon Slayer theme: Deep blue water and Nichirin steel.',
+        description: 'Cobalt blue wave gradient with brushed steel markers.',
         xpRequirement: 15000,
         previewValue: 'demon_slayer'
     },
     {
         id: 'gs7',
-        name: 'Infinity Limitless',
+        name: 'Ultraviolet Pulse',
         type: 'graph_skin',
-        description: 'JJK theme: Void purple and infinite blue.',
+        description: 'Deep ultraviolet and electric cobalt telemetry skin.',
         xpRequirement: 17500,
         previewValue: 'jjk'
     },
     {
         id: 'gs8',
-        name: 'One For All',
+        name: 'Emerald Kinetic',
         type: 'graph_skin',
-        description: 'MHA theme: Emerald spark and hero green.',
+        description: 'High-output emerald green with gold peak markers.',
         xpRequirement: 20000,
         previewValue: 'mha'
     },
     {
         id: 'gs9',
-        name: 'Hunter Nen',
+        name: 'Bio-Luminescent',
         type: 'graph_skin',
-        description: 'HxH theme: Forest green and Nen aura.',
+        description: 'Neon bio-green progression curve with subtle glow.',
         xpRequirement: 22500,
         previewValue: 'hxh'
     },
     {
         id: 'gs10',
-        name: 'Shadow Monarch',
+        name: 'Apex Sovereign',
         type: 'graph_skin',
-        description: 'Solo Leveling theme: Dark monarch purple and shadow extraction.',
+        description: 'Royal violet and pitch-black sovereign telemetry theme.',
         xpRequirement: 25000,
         previewValue: 'solo_leveling'
     }

@@ -16,7 +16,7 @@ interface ProfileHeaderProps {
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({
     user, onOpenSettings, onOpenShop, onEditImage, onOpenWardrobe
 }) => {
-    const rank = getRankFromLifts(user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 });
+    const rank = getRankFromLifts(user.big4 || { bench: 0, squat: 0, deadlift: 0, ohp: 0 }, user.unit_preference || 'kg');
 
     return (
         <>

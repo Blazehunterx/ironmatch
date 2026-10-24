@@ -110,10 +110,18 @@ export async function purchaseNativePackage(
     pkgType: 'monthly' | 'annual' | 'lifetime',
     nativePackage?: PurchasesPackage | null
 ): Promise<{ success: boolean; customerInfo?: any; isPro: boolean; error?: string }> {
-    if (!Capacitor.isNativePlatform() || !nativePackage) {
-        // Fallback for web preview or test mode
+    if (!Capacitor.isNativePlatform()) {
+        // Fallback for web preview / headless test mode only
         console.log(`[IAP] Simulating purchase for ${pkgType} in non-native / dev environment`);
         return { success: true, isPro: true };
+    }
+
+    if (!nativePackage) {
+        return {
+            success: false,
+            isPro: false,
+            error: 'Google Play / App Store billing package is not available right now. Please check your store connection and try again.'
+        };
     }
 
     try {

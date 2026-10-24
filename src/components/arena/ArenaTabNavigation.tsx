@@ -18,7 +18,7 @@ const ArenaTabNavigation: React.FC<ArenaTabNavigationProps> = ({ activeTab, onTa
     const tabs: ArenaTabOption[] = [
         { key: 'wars', icon: Shield, label: 'Gym Wars' },
         { key: 'duels', icon: Swords, label: 'Duels' },
-        { key: 'family', icon: Users, label: 'Squads (2-4) 🇳🇱' },
+        { key: 'family', icon: Users, label: 'Squads' },
         { key: 'quests', icon: Target, label: 'Quests' },
     ];
 

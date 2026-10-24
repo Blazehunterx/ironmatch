@@ -9,14 +9,14 @@ interface ProgramsTabProps {
 export default function ProgramsTab({ onUseTemplate }: ProgramsTabProps) {
     return (
         <div className="space-y-6">
-            <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/10 border border-blue-500/20 rounded-3xl p-6 relative overflow-hidden">
+            <div className="bg-[#0D0D0D] border border-white/10 rounded-3xl p-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-10 rotate-12">
-                    <GraduationCap size={80} className="text-blue-400" />
+                    <GraduationCap size={80} className="text-lime" />
                 </div>
-                <h4 className="text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Elite Engineering</h4>
-                <h3 className="text-xl font-black text-white mb-2">Jeff Nippard Science Packs</h3>
-                <p className="text-xs text-gray-400 font-medium leading-relaxed max-w-[80%]">
-                    Evidence-based hypertrophy programs designed for maximum efficiency and scientific precision.
+                <h4 className="text-xs font-black text-lime uppercase tracking-widest mb-1">Biomechanical Engineering</h4>
+                <h3 className="text-xl font-black text-white mb-2">Evidence-Based Hypertrophy Protocols</h3>
+                <p className="text-xs text-gray-400 font-medium leading-relaxed max-w-[85%]">
+                    Peer-reviewed mechanical tension & tendon-resilience splits designed for maximum stimulus-to-fatigue efficiency.
                 </p>
             </div>
 

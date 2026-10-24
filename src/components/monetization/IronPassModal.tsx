@@ -74,9 +74,9 @@ export default function IronPassModal({ isOpen, onClose, onSuccess }: IronPassMo
         try {
             // 1. Trigger Native In-App Purchase (Google Play Store on Android / App Store on iOS)
             const purchaseResult = await purchaseNativePackage(selectedPlan, nativePkg);
-            if (!purchaseResult.success) {
+            if (!purchaseResult.success || !purchaseResult.isPro) {
                 if (purchaseResult.error !== 'cancelled') {
-                    alert(purchaseResult.error || 'Payment failed. Please try again.');
+                    alert(purchaseResult.error || 'Payment could not be verified with the App Store. Please try again.');
                 }
                 return;
             }

@@ -24,15 +24,15 @@ export interface RemoteDuelState {
     createdAt: string;
 }
 
-const STORAGE_KEY = 'ironmatch_remote_duels_v2';
+const STORAGE_KEY = 'ironmatch_remote_duels_v3';
 
 export default function RemoteWhatsAppDuel({ user }: RemoteWhatsAppDuelProps) {
     const { showToast } = useToast();
     const [exercise, setExercise] = useState('Weighted Dips');
     const [challengerScore, setChallengerScore] = useState<number>(40);
     const [challengerBW, setChallengerBW] = useState<number>(user?.weight_kg || 80);
-    const [opponentName, setOpponentName] = useState('Brother (Netherlands 🇳🇱)');
-    const [opponentBW, setOpponentBW] = useState<number>(60);
+    const [opponentName, setOpponentName] = useState('Training Partner');
+    const [opponentBW, setOpponentBW] = useState<number>(75);
     const [duels, setDuels] = useState<RemoteDuelState[]>([]);
     const [incomingDuel, setIncomingDuel] = useState<RemoteDuelState | null>(null);
     const [opponentAchievedScore, setOpponentAchievedScore] = useState<string>('');
@@ -79,15 +79,22 @@ export default function RemoteWhatsAppDuel({ user }: RemoteWhatsAppDuelProps) {
         Math.round((challengerScore + challengerBW) * (opponentBW / challengerBW) - opponentBW)
     );
 
+    const getShareBaseUrl = () => {
+        if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && !window.location.hostname.startsWith('127.')) {
+            return window.location.origin + window.location.pathname;
+        }
+        return 'https://ironmatch.app/arena';
+    };
+
     const handleSendChallenge = () => {
         const id = `duel-${Date.now()}`;
         const newDuel: RemoteDuelState = {
             id,
             exercise,
-            challengerName: user?.name || 'Marvin (Bali 🇮🇩)',
+            challengerName: user?.name || 'Iron Lifter',
             challengerScore,
             challengerBW,
-            opponentName,
+            opponentName: opponentName.trim() || 'Training Partner',
             opponentBW,
             fairTarget,
             status: 'pending',
@@ -99,7 +106,7 @@ export default function RemoteWhatsAppDuel({ user }: RemoteWhatsAppDuelProps) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 
         // Generate WhatsApp link
-        const baseUrl = window.location.origin + window.location.pathname;
+        const baseUrl = getShareBaseUrl();
         const duelUrl = `${baseUrl}?duelId=${id}&challenger=${encodeURIComponent(newDuel.challengerName)}&exercise=${encodeURIComponent(exercise)}&score=${challengerScore}&target=${fairTarget}&cBW=${challengerBW}&oBW=${opponentBW}`;
 
         const text = `🥊 IRONMATCH DUEL CHALLENGE!\n` +
@@ -116,7 +123,7 @@ export default function RemoteWhatsAppDuel({ user }: RemoteWhatsAppDuelProps) {
     const handleSendScoreBack = () => {
         if (!incomingDuel || !opponentAchievedScore) return;
         const myScore = parseFloat(opponentAchievedScore);
-        const baseUrl = window.location.origin + window.location.pathname;
+        const baseUrl = getShareBaseUrl();
         const returnUrl = `${baseUrl}?duelId=${incomingDuel.id}&oppScore=${myScore}`;
 
         const isWinner = myScore >= incomingDuel.fairTarget;
@@ -222,8 +229,8 @@ export default function RemoteWhatsAppDuel({ user }: RemoteWhatsAppDuelProps) {
                             <p className="text-xs text-gray-400">Pound-for-pound fair handicap via WhatsApp</p>
                         </div>
                     </div>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-lime/10 text-lime border border-lime/30 font-mono font-bold">
-                        Bali ⇄ NL 🇳🇱
+                    <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-lime/10 text-lime border border-lime/30 font-mono font-bold uppercase tracking-wider">
+                        P4P Scaled
                     </span>
                 </div>
 
@@ -273,7 +280,7 @@ export default function RemoteWhatsAppDuel({ user }: RemoteWhatsAppDuelProps) {
                             type="text"
                             value={opponentName}
                             onChange={e => setOpponentName(e.target.value)}
-                            placeholder="e.g. Brother 🇳🇱"
+                            placeholder="e.g. Alex"
                             className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-lime"
                         />
                     </div>
@@ -319,7 +326,7 @@ export default function RemoteWhatsAppDuel({ user }: RemoteWhatsAppDuelProps) {
                             </div>
                             <span className={`px-2 py-1 rounded font-bold font-mono text-[10px] ${
                                 d.status === 'resolved'
-                                    ? d.winner?.includes('Marvin') || d.winner?.includes('You')
+                                    ? d.winner === d.challengerName || d.winner?.includes('You')
                                         ? 'bg-lime/10 text-lime border border-lime/30'
                                         : 'bg-red-500/10 text-red-400'
                                     : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30'

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Plus, Trophy, Sparkles } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import confetti from 'canvas-confetti';
 
 interface FamilyMember {
@@ -14,52 +15,35 @@ interface FamilyMember {
     highFives: number;
 }
 
-const STORAGE_KEY = 'ironmatch_family_clan_v2';
-
-const DEFAULT_MEMBERS: FamilyMember[] = [
-    {
-        id: 'fam-dad',
-        name: 'Dad',
-        flag: '🇳🇱',
-        weeklyGoal: 3,
-        sessionsCompleted: 2,
-        lastWorkout: 'Yesterday',
-        highFives: 18,
-    },
-    {
-        id: 'fam-bro',
-        name: 'Brother',
-        flag: '🇳🇱',
-        weeklyGoal: 4,
-        sessionsCompleted: 3,
-        lastWorkout: 'Today',
-        highFives: 24,
-    },
-    {
-        id: 'fam-marvin',
-        name: 'Marvin (You)',
-        flag: '🇮🇩',
-        weeklyGoal: 5,
-        sessionsCompleted: 4,
-        lastWorkout: 'Today',
-        highFives: 35,
-    },
-];
+const STORAGE_KEY = 'ironmatch_accountability_circle_v3';
 
 export default function FamilyCircle() {
     const { showToast } = useToast();
+    const { user } = useAuth();
+    const defaultMembers: FamilyMember[] = [
+        {
+            id: user?.id || 'member-self',
+            name: `${user?.name || 'You'} (You)`,
+            flag: '🏋️',
+            weeklyGoal: 4,
+            sessionsCompleted: Math.min(4, user?.reliability_streak ? Math.min(user.reliability_streak, 4) : 1),
+            lastWorkout: 'Today',
+            highFives: 12,
+        }
+    ];
+
     const [members, setMembers] = useState<FamilyMember[]>(() => {
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
-            return raw ? JSON.parse(raw) : DEFAULT_MEMBERS;
+            return raw ? JSON.parse(raw) : defaultMembers;
         } catch {
-            return DEFAULT_MEMBERS;
+            return defaultMembers;
         }
     });
 
     const [showAddModal, setShowAddModal] = useState(false);
     const [newName, setNewName] = useState('');
-    const [newFlag, setNewFlag] = useState('🇳🇱');
+    const [newFlag, setNewFlag] = useState('🏋️');
     const [newGoal, setNewGoal] = useState<number>(3);
 
     const saveMembers = (updated: FamilyMember[]) => {
@@ -129,8 +113,8 @@ export default function FamilyCircle() {
                         <Users size={20} />
                     </div>
                     <div>
-                        <h3 className="text-base font-black text-white">Family Clan Accountability</h3>
-                        <p className="text-xs text-gray-400">Keep Dad & Brother on track across timezones</p>
+                        <h3 className="text-base font-black text-white">Accountability Circle</h3>
+                        <p className="text-xs text-gray-400">Track weekly training goals with friends & family</p>
                     </div>
                 </div>
                 <button

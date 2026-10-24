@@ -19,7 +19,7 @@ type CategoryFilter = 'all' | 'bali_warung' | 'protein' | 'seafood' | 'dairy_egg
 
 const CATEGORIES: { id: CategoryFilter; label: string; icon: string }[] = [
     { id: 'all', label: 'All Foods', icon: '🍽️' },
-    { id: 'bali_warung', label: 'Bali Warung', icon: '🇮🇩' },
+    { id: 'bali_warung', label: 'Whole Meal Bowls', icon: '🍱' },
     { id: 'protein', label: 'Meat & Poultry', icon: '🍗' },
     { id: 'seafood', label: 'Seafood', icon: '🐟' },
     { id: 'dairy_eggs', label: 'Dairy & Eggs', icon: '🥛' },
@@ -375,8 +375,8 @@ export default function Nutrition() {
                                     <div className="min-w-0 pr-3 flex-1">
                                         <div className="flex items-center gap-1.5">
                                             {food.isBaliStaple && (
-                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-950/60 border border-red-800 text-red-300 font-bold shrink-0">
-                                                    🇮🇩 Bali Warung
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-lime/10 border border-lime/30 text-lime font-bold shrink-0">
+                                                    🍱 Whole Food
                                                 </span>
                                             )}
                                             <h4 className="text-sm font-bold text-white truncate group-hover:text-lime transition-colors">

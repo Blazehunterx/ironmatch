@@ -17,13 +17,12 @@ export interface Rank {
 }
 
 export const RANKS: Rank[] = [
-    { name: 'Freshman', tier: 'below', icon: '🌱', color: '#6B7280', minTotal: 0, description: 'Just getting started' },
-    { name: 'Grinder', tier: 'below', icon: '⚙️', color: '#9CA3AF', minTotal: 440, description: 'Building the foundation' },
-    { name: 'Contender', tier: 'below', icon: '🥊', color: '#3B82F6', minTotal: 770, description: 'Ready to compete' },
-    { name: 'Athlete', tier: 'average', icon: '🏋️', color: '#10B981', minTotal: 1045, description: 'Solid all-around lifter' },
-    { name: 'Beast', tier: 'above', icon: '🔥', color: '#F59E0B', minTotal: 1320, description: 'Stronger than most' },
-    { name: 'Elite', tier: 'above', icon: '💎', color: '#8B5CF6', minTotal: 1595, description: 'Top-tier strength' },
-    { name: 'Legend', tier: 'above', icon: '👑', color: '#EF4444', minTotal: 1870, description: 'Peak human performance' },
+    { name: 'Freshman', tier: 'below', icon: '🌱', color: '#9CA3AF', minTotal: 0, description: 'Building base strength & neurological adaptations' },
+    { name: 'Grinder', tier: 'below', icon: '⚙️', color: '#E3A869', minTotal: 440, description: 'Consistent progression through linear overload' },
+    { name: 'Contender', tier: 'below', icon: '🥊', color: '#3B82F6', minTotal: 770, description: 'Intermediate lifter with formidable compound strength' },
+    { name: 'Athlete', tier: 'average', icon: '🏋️', color: '#32FF32', minTotal: 1045, description: 'Advanced total approaching 3x bodyweight coefficients' },
+    { name: 'Beast', tier: 'above', icon: '🔥', color: '#F59E0B', minTotal: 1320, description: 'Elite raw power surpassing regional standards' },
+    { name: 'Legend', tier: 'above', icon: '👑', color: '#8B5CF6', minTotal: 1595, description: 'Peak human performance & hall of fame strength' },
 ];
 
 export interface Big4Lifts {

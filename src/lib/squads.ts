@@ -46,8 +46,8 @@ export const INITIAL_SQUADS: GymSquad[] = [
                 role: 'member'
             },
             {
-                user_id: 'user-marvin-cross',
-                name: 'Marvin (Nomad)',
+                user_id: 'user-marcus-cross',
+                name: 'Marcus Sterling',
                 avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
                 country: 'ID',
                 gym_name: 'Body Factory Bali',
@@ -496,13 +496,15 @@ export function getWhiteboardRecords(scope: 'global' | 'national' | 'facility', 
 }
 
 export function generateSquadInviteUrl(squad: GymSquad): string {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://ironmatch.app';
+    const origin =
+        typeof window !== 'undefined' && window.location.hostname !== 'localhost' && !window.location.hostname.startsWith('127.')
+            ? window.location.origin
+            : 'https://ironmatch.app';
     return `${origin}/join?squad=${encodeURIComponent(squad.join_code)}&tag=${encodeURIComponent(squad.tag)}`;
 }
 
 export function generateWhatsAppInviteText(squad: GymSquad): string {
     const inviteUrl = generateSquadInviteUrl(squad);
-    const flag = squad.primary_country === 'NL' ? '🇳🇱' : '🌐';
-    const squadType = squad.max_members === 2 ? 'Ranked Duo' : '4-Man Squad';
-    return `🔥 Bro! Pair up with me on IronMatch in our ${flag} ${squadType} [${squad.tag}].\n\nTap this 1-click link to auto-join my squad & climb the Netherlands/Global gym leaderboard:\n${inviteUrl}`;
+    const squadType = squad.max_members === 2 ? 'Ranked Duo' : '4-Person Squad';
+    return `🔥 Join my ${squadType} [${squad.tag}] on IronMatch!\n\nTap this link to join our squad & climb the global strength leaderboard:\n${inviteUrl}`;
 }

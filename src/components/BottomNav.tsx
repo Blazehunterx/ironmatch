@@ -32,7 +32,7 @@ export default function BottomNav() {
                         >
                             <div className="relative">
                                 <Icon size={21} className={isActive ? 'stroke-[2.5px] drop-shadow-[0_0_8px_rgba(50,255,50,0.4)]' : 'stroke-[1.8px]'} />
-                                {item.badge && item.badge > 0 && (
+                                {(item.badge ?? 0) > 0 && (
                                     <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 shadow-md">
                                         {item.badge}
                                     </span>

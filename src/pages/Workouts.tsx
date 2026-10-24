@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { WorkoutPlan, WorkoutLog, GroupSession } from '../types/database';
-import { Sparkles, ShieldAlert, Play } from 'lucide-react';
+import { Sparkles, ShieldAlert, Play, Plus, Crown } from 'lucide-react';
 import { safeStorage } from '../lib/safeStorage';
+import { generate8WeekTendonBlueprint, BLUEPRINT_SPLIT_DAYS } from '../lib/blueprintGenerator';
 
 import LevelUpOverlay from '../components/LevelUpOverlay';
 import JoinSessionModal from '../components/JoinSessionModal';
@@ -20,6 +21,7 @@ import StarterTemplateCard from '../components/workouts/StarterTemplateCard';
 import { BarbellVisualizer } from '../components/workouts/BarbellVisualizer';
 import { MuscleHeatmap } from '../components/workouts/MuscleHeatmap';
 import { STARTER_TEMPLATES } from '../constants/starterTemplates';
+import IronPassModal from '../components/monetization/IronPassModal';
 
 // Modular Components
 import WorkoutsHeader from '../components/workouts/WorkoutsHeader';
@@ -53,7 +55,9 @@ export default function Workouts() {
     const [showJoinModal, setShowJoinModal] = useState(false);
     const [showPlateLoader, setShowPlateLoader] = useState(false);
     const [showAnatomyRadar, setShowAnatomyRadar] = useState(false);
+    const [showProModal, setShowProModal] = useState(false);
     const [activeGroupSession, setActiveGroupSession] = useState<GroupSession | null>(null);
+    const hasProAccess = !!(user?.is_pro || user?.is_admin);
 
     const [plans, setPlans] = useState<WorkoutPlan[]>([]);
     const [communityPlans, setCommunityPlans] = useState<any[]>([]);
@@ -104,12 +108,30 @@ export default function Workouts() {
 
     const fetchLogs = async () => {
         if (!user) return;
-        const { data } = await supabase
-            .from('workout_logs')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
-        if (data) setLogs(data);
+        let localLogs: WorkoutLog[] = [];
+        try {
+            const raw = safeStorage.getItem(`ironmatch_workout_logs_${user.id}`);
+            if (raw) localLogs = JSON.parse(raw);
+        } catch {}
+
+        try {
+            const { data } = await supabase
+                .from('workout_logs')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false });
+            const merged = [...localLogs, ...(data || [])];
+            const seen = new Set<string>();
+            const unique = merged.filter(l => {
+                const key = l.id || `${l.started_at}-${l.plan_id}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+            setLogs(unique);
+        } catch {
+            if (localLogs.length > 0) setLogs(localLogs);
+        }
     };
 
     useEffect(() => {
@@ -215,25 +237,8 @@ export default function Workouts() {
     };
 
     const handleCompleteWorkout = async (log: WorkoutLog) => {
-        try {
-            const { data } = await supabase
-                .from('workout_logs')
-                .insert({
-                    user_id: user?.id,
-                    plan_id: log.plan_id,
-                    exercises: log.exercises,
-                    started_at: log.started_at,
-                    completed_at: log.completed_at,
-                    duration_min: log.duration_min
-                })
-                .select()
-                .single();
-
-            if (data) setLogs(prev => [data, ...prev]);
-            else setLogs(prev => [log, ...prev]);
-        } catch {
-            setLogs(prev => [log, ...prev]);
-        }
+        // ActiveWorkout.tsx already persists the completed workout log to Supabase & local storage
+        setLogs(prev => [log, ...prev]);
 
         // Auto-advance Blueprint progression
         setBlueprintProg(prev => {
@@ -286,7 +291,27 @@ export default function Workouts() {
         );
     }
 
-    const active8WeekPlan = plans.find(p => p.weeks && p.weeks > 0) || (plans.length > 0 ? plans[0] : null);
+    const rawBig4Total = ((user?.big4?.bench || 0) + (user?.big4?.squat || 0) + (user?.big4?.deadlift || 0) + (user?.big4?.ohp || 0)) || 380;
+    const totalKg = user?.unit_preference === 'lbs' ? Math.round(rawBig4Total / 2.20462) : rawBig4Total;
+    const activeDaySplit = BLUEPRINT_SPLIT_DAYS[(blueprintProg.currentDay || 1) - 1] || BLUEPRINT_SPLIT_DAYS[0];
+
+    const launchBlueprintDay = (dayNum: number) => {
+        let savedConfig: any = {};
+        try {
+            const raw = safeStorage.getItem(`ironmatch_blueprint_config_${user?.id || 'guest'}`);
+            if (raw) savedConfig = JSON.parse(raw);
+        } catch {}
+        const generated = generate8WeekTendonBlueprint({
+            user,
+            doctrine: savedConfig.doctrine || 'strength_tendon',
+            weakLinks: savedConfig.weakLinks || ['none'],
+            realm: savedConfig.realm || 'commercial',
+            daysPerWeek: savedConfig.daysPerWeek || 4,
+            weekNumber: blueprintProg.currentWeek || 1,
+            dayNumber: dayNum
+        });
+        setActiveWorkout(generated);
+    };
 
     return (
         <div className="flex flex-col min-h-screen pb-24 max-w-md mx-auto">
@@ -295,7 +320,7 @@ export default function Workouts() {
                     onJoinSession={() => setShowJoinModal(true)}
                     onCreatePlan={() => setShowCreator(true)}
                     onOpenPlateLoader={() => setShowPlateLoader(true)}
-                    totalKg={((user?.big4?.bench || 0) + (user?.big4?.squat || 0) + (user?.big4?.deadlift || 0) + (user?.big4?.ohp || 0)) || 380}
+                    totalKg={totalKg}
                     isPro={user?.is_pro || false}
                 />
 
@@ -321,80 +346,97 @@ export default function Workouts() {
                         </span>
                     </div>
 
-                    {/* 4-Day Microcycle Indicator Pills */}
+                    {/* 4-Day Interactive Microcycle Split Selector */}
                     <div className="grid grid-cols-4 gap-2 mb-3.5">
-                        {[1, 2, 3, 4].map(dayNum => {
+                        {BLUEPRINT_SPLIT_DAYS.map(split => {
+                            const dayNum = split.day;
                             const isCompleted = dayNum < blueprintProg.currentDay;
                             const isCurrent = dayNum === blueprintProg.currentDay;
                             return (
-                                <div
+                                <button
                                     key={dayNum}
-                                    className={`py-2 px-1 rounded-xl text-center border transition-all ${
-                                        isCompleted
-                                            ? 'bg-lime/15 border-lime/40 text-lime font-bold'
-                                            : isCurrent
-                                                ? 'bg-white/10 border-lime text-white ring-1 ring-lime/40 font-bold'
-                                                : 'bg-black/40 border-white/5 text-gray-500 font-medium'
+                                    type="button"
+                                    onClick={() => {
+                                        setBlueprintProg(prev => {
+                                            const updated = { ...prev, currentDay: dayNum };
+                                            safeStorage.setItem(`ironmatch_blueprint_prog_${user?.id || 'guest'}`, JSON.stringify(updated));
+                                            return updated;
+                                        });
+                                    }}
+                                    className={`py-2 px-1 rounded-xl text-center border transition-all active:scale-95 ${
+                                        isCurrent
+                                            ? 'bg-white/10 border-lime text-white ring-1 ring-lime/40 font-bold'
+                                            : isCompleted
+                                                ? 'bg-lime/15 border-lime/40 text-lime font-bold'
+                                                : 'bg-black/40 border-white/5 text-gray-400 hover:border-white/20 font-medium'
                                     }`}
                                 >
                                     <div className="text-[9px] font-bold uppercase">Day {dayNum}</div>
-                                    <div className="text-[10px] font-black mt-0.5">
-                                        {isCompleted ? '✓ Done' : isCurrent ? 'Next' : 'Rest'}
+                                    <div className="text-[10px] font-black mt-0.5 truncate px-0.5">
+                                        {split.shortLabel.split(' ')[1] || split.shortLabel}
                                     </div>
-                                </div>
+                                </button>
                             );
                         })}
                     </div>
 
-                    <button
-                        onClick={() => {
-                            if (active8WeekPlan) {
-                                setActiveWorkout(active8WeekPlan);
-                            } else {
+                    <div className="space-y-2">
+                        <button
+                            onClick={() => launchBlueprintDay(blueprintProg.currentDay || 1)}
+                            className="w-full py-3.5 px-4 rounded-2xl bg-lime text-black font-black text-xs uppercase tracking-wider flex items-center justify-between shadow-[0_0_20px_rgba(50,255,50,0.25)] hover:bg-lime/90 active:scale-[0.99] transition"
+                        >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-7 h-7 rounded-lg bg-black flex items-center justify-center text-lime shrink-0">
+                                    <Play size={13} fill="currentColor" />
+                                </div>
+                                <span className="truncate">
+                                    Start W{blueprintProg.currentWeek} • Day {blueprintProg.currentDay} ({activeDaySplit.shortLabel.split(' ')[1] || activeDaySplit.shortLabel})
+                                </span>
+                            </div>
+                            <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded-full font-mono text-black font-black shrink-0">
+                                LAUNCH ⚡
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() =>
                                 setActiveWorkout({
-                                    id: `blueprint-w${blueprintProg.currentWeek}-d${blueprintProg.currentDay}`,
-                                    name: `Week ${blueprintProg.currentWeek} • Day ${blueprintProg.currentDay}: Tendon & Compound Split`,
+                                    id: `freestyle-${Date.now()}`,
+                                    name: 'Freestyle Gym Session',
                                     author_id: user?.id || '',
                                     target: 'Full Body',
-                                    exercises: [
-                                        { id: 'b1', name: 'Spanish Squat Isometric Hold', sets: 2, reps: 45, weight: 0, notes: '45s hold tendon analgesia' },
-                                        { id: 'b2', name: 'Barbell Back Squat', sets: 4, reps: 6, weight: Math.round(((user?.big4?.squat || 100) * 0.75) / 2.5) * 2.5 },
-                                        { id: 'b3', name: 'Barbell Bench Press', sets: 4, reps: 6, weight: Math.round(((user?.big4?.bench || 80) * 0.75) / 2.5) * 2.5 },
-                                        { id: 'b4', name: 'Poliquin Step Down', sets: 3, reps: 12, weight: 0 },
-                                        { id: 'b5', name: 'Zottman Curl', sets: 3, reps: 10, weight: 12.5 }
-                                    ],
+                                    exercises: [],
                                     shared: false,
                                     created_at: new Date().toISOString()
-                                });
+                                })
                             }
-                        }}
-                        className="w-full py-3.5 px-4 rounded-2xl bg-lime text-black font-black text-xs uppercase tracking-wider flex items-center justify-between shadow-[0_0_20px_rgba(50,255,50,0.25)] hover:bg-lime/90 active:scale-[0.99] transition"
-                    >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-lg bg-black flex items-center justify-center text-lime shrink-0">
-                                <Play size={13} fill="currentColor" />
-                            </div>
-                            <span className="truncate">
-                                Start Week {blueprintProg.currentWeek} • Day {blueprintProg.currentDay}
-                            </span>
-                        </div>
-                        <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded-full font-mono text-black font-black shrink-0">
-                            LAUNCH ⚡
-                        </span>
-                    </button>
+                            className="w-full py-2.5 px-4 rounded-xl bg-black/60 hover:bg-white/[0.04] border border-white/10 hover:border-lime/40 text-gray-300 hover:text-white font-bold text-xs flex items-center justify-center gap-2 transition active:scale-[0.99]"
+                        >
+                            <Plus size={14} className="text-lime" /> Start Empty Freestyle Workout
+                        </button>
+                    </div>
                 </div>
 
                 {/* Dual AI Brain Action Buttons */}
                 <div className="grid grid-cols-2 gap-3 mb-5">
                     <button
-                        onClick={() => setShowAI(true)}
+                        onClick={() => {
+                            if (!hasProAccess) {
+                                setShowProModal(true);
+                                return;
+                            }
+                            setShowAI(true);
+                        }}
                         className="p-3 bg-[#0D0D0D] border border-white/10 hover:border-lime/40 rounded-2xl text-left flex items-center gap-2.5 hover:bg-white/[0.02] transition-all active:scale-[0.98] shadow-sm"
                     >
                         <div className="p-2 bg-lime text-black rounded-xl font-black shrink-0 shadow-sm">
                             <Sparkles size={16} />
                         </div>
-                        <div className="min-w-0">
-                            <p className="text-[10px] font-black uppercase text-lime tracking-wider">AI Coach</p>
+                        <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-black uppercase text-lime tracking-wider flex items-center gap-1">
+                                AI Coach {!hasProAccess && <Crown size={10} className="text-amber-400" />}
+                            </p>
                             <p className="text-xs font-bold text-white truncate">Generate Split</p>
                         </div>
                     </button>
@@ -446,7 +488,16 @@ export default function Workouts() {
                     )}
                 </div>
 
-                <WorkoutTabNavigation activeTab={tab} onTabChange={setTab} />
+                <WorkoutTabNavigation
+                    activeTab={tab}
+                    onTabChange={(nextTab) => {
+                        if (nextTab === 'insights' && !hasProAccess) {
+                            setShowProModal(true);
+                            return;
+                        }
+                        setTab(nextTab);
+                    }}
+                />
             </div>
 
             {/* Modals & Overlays */}
@@ -600,6 +651,11 @@ export default function Workouts() {
                     )}
                 </AnimatePresence>
             </div>
+
+            <IronPassModal
+                isOpen={showProModal}
+                onClose={() => setShowProModal(false)}
+            />
 
             <AnimatePresence>
                 {isShopOpen && (

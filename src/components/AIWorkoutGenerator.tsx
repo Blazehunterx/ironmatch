@@ -5,6 +5,7 @@ import { WorkoutPlan } from '../types/database';
 import { useAuth } from '../context/AuthContext';
 import { weeklyMuscleSets, MUSCLES, Muscle } from '../lib/muscles';
 import { generate8WeekTendonBlueprint, PlanDoctrine, WeakLinkArea } from '../lib/blueprintGenerator';
+import { safeStorage } from '../lib/safeStorage';
 
 interface AIWorkoutGeneratorProps {
     onGenerate: (plan: WorkoutPlan) => void;
@@ -52,12 +53,20 @@ export default function AIWorkoutGenerator({ onGenerate, onClose, logs = [] }: A
 
     const handleGenerate = () => {
         const weakLinks: WeakLinkArea[] = scars as WeakLinkArea[];
+        try {
+            safeStorage.setItem(
+                `ironmatch_blueprint_config_${user?.id || 'guest'}`,
+                JSON.stringify({ doctrine, weakLinks, realm, daysPerWeek: days })
+            );
+        } catch {}
         const plan = generate8WeekTendonBlueprint({
             user,
             doctrine,
             weakLinks,
+            realm,
             daysPerWeek: days,
-            weekNumber: 1
+            weekNumber: 1,
+            dayNumber: 1
         });
         onGenerate(plan);
     };

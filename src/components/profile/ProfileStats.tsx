@@ -19,7 +19,9 @@ const ProfileStats: React.FC<ProfileStatsProps> = ({ user, onEditLifts }) => {
     const bodyweight = user.weight_kg 
         ? (unit === 'lbs' ? Math.round(user.weight_kg * 2.20462) : user.weight_kg) 
         : 0;
-    const strengthRatio = bodyweight > 0 && total > 0 ? (total / bodyweight).toFixed(1) : null;
+    // Relative SBD (Squat + Bench + Deadlift) bodyweight coefficient
+    const sbdTotal = (big4.squat || 0) + (big4.bench || 0) + (big4.deadlift || 0);
+    const strengthRatio = bodyweight > 0 && sbdTotal > 0 ? (sbdTotal / bodyweight).toFixed(1) : null;
 
     const lifts = [
         { name: 'Bench Press', key: 'bench', val: big4.bench, icon: Dumbbell, color: 'text-lime border-lime/30 bg-lime/5' },
@@ -45,7 +47,7 @@ const ProfileStats: React.FC<ProfileStatsProps> = ({ user, onEditLifts }) => {
                     </p>
                     {strengthRatio && (
                         <p className="text-[9px] text-lime/90 font-black tracking-wide mt-0.5">
-                            {strengthRatio}× BW
+                            {strengthRatio}× SBD
                         </p>
                     )}
                 </div>

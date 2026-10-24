@@ -6,7 +6,8 @@ import {
     Duel, GymWarEntry
 } from '../lib/gamification';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { User, GymMilestone } from '../types/database';
+import { safeStorage } from '../lib/safeStorage';
+import { User, GymMilestone, WorkoutLog } from '../types/database';
 import { getSavedGhostDuels } from '../lib/ghostDuels';
 
 // Modular Components
@@ -38,6 +39,7 @@ export default function Arena() {
     const [allProfiles, setAllProfiles] = useState<User[]>([]);
     const [duels, setDuels] = useState<Duel[]>([]);
     const [milestones, setMilestones] = useState<GymMilestone[]>([]);
+    const [userLogs, setUserLogs] = useState<WorkoutLog[]>([]);
     const { gyms: allGyms } = useGyms();
 
     const hasRank = user?.big4 && (user.big4.bench + user.big4.squat + user.big4.deadlift + user.big4.ohp) > 0;
@@ -118,34 +120,102 @@ export default function Arena() {
         if (data) setMilestones(data);
     }, [user]);
 
+    const fetchUserLogs = useCallback(async () => {
+        if (!user?.id) return;
+        let localLogs: WorkoutLog[] = [];
+        try {
+            const raw = safeStorage.getItem(`ironmatch_workout_logs_${user.id}`);
+            if (raw) localLogs = JSON.parse(raw);
+        } catch {}
+
+        if (!isSupabaseConfigured) {
+            setUserLogs(localLogs);
+            return;
+        }
+
+        try {
+            const { data } = await supabase
+                .from('workout_logs')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(30);
+            const merged = [...localLogs, ...(data || [])];
+            const seen = new Set<string>();
+            setUserLogs(merged.filter(l => {
+                const k = l.id || `${l.started_at}-${l.plan_id}`;
+                if (seen.has(k)) return false;
+                seen.add(k);
+                return true;
+            }));
+        } catch {
+            setUserLogs(localLogs);
+        }
+    }, [user]);
+
     useEffect(() => {
         fetchProfiles();
         fetchDuels();
         fetchMilestones();
+        fetchUserLogs();
 
         const params = new URLSearchParams(window.location.search);
         if (params.get('duelId')) {
             setActiveTab('duels');
         }
-    }, [fetchProfiles, fetchDuels, fetchMilestones]);
+    }, [fetchProfiles, fetchDuels, fetchMilestones, fetchUserLogs]);
 
-    // Construct mock gym wars
+    // Construct & sort Gym Wars descending by totalWorkouts before assigning ranks
     const lifterNames = ['Marcus V.', 'Elena R.', 'Dmitri K.', 'Sarah T.', 'Thor B.', 'Kenji S.', 'Lucas M.'];
-    const gymWars: GymWarEntry[] = allGyms.map((g, idx) => ({
-        gymId: g.id,
-        gymName: g.name,
-        location: g.location || 'Nearby',
-        totalWorkouts: (g.member_count || 1) * 28 + (idx * 5),
-        totalXP: (g.member_count || 1) * 14200,
-        memberCount: Math.max(1, g.member_count || 1),
-        streak: 7 + (idx % 5),
-        rank: idx + 1,
-        king: { name: lifterNames[idx % lifterNames.length], id: `u-${idx}` }
-    }));
+    const gymWars: GymWarEntry[] = allGyms
+        .map((g, idx) => ({
+            gymId: g.id,
+            gymName: g.name,
+            location: g.location || 'Nearby',
+            totalWorkouts: (g.member_count || 1) * 28 + (idx * 5),
+            totalXP: (g.member_count || 1) * 14200,
+            memberCount: Math.max(1, g.member_count || 1),
+            streak: 7 + (idx % 5),
+            rank: 0,
+            king: { name: lifterNames[idx % lifterNames.length], id: `u-${idx}` }
+        }))
+        .sort((a, b) => b.totalWorkouts - a.totalWorkouts)
+        .map((entry, sortedIdx) => ({
+            ...entry,
+            rank: sortedIdx + 1
+        }));
 
     const weeklyQuests = getActiveWeeklyQuests();
     const questProgress: Record<string, number> = {};
+    const totalSessionsLogged = Math.max(userLogs.length, user?.reliability_streak ? Math.min(user.reliability_streak, 5) : 0);
+    const distinctExercisesCount = new Set(
+        userLogs.flatMap(l => (l.exercises || []).map(e => e.name?.toLowerCase().trim()).filter(Boolean))
+    ).size;
+
+    for (const q of weeklyQuests) {
+        if (q.category === 'variety') {
+            questProgress[q.id] = Math.min(q.target, Math.max(distinctExercisesCount, totalSessionsLogged));
+        } else if (q.category === 'pr') {
+            questProgress[q.id] = hasRank ? Math.min(q.target, 1) : 0;
+        } else if (q.category === 'endurance') {
+            questProgress[q.id] = Math.min(q.target, user?.reliability_streak || totalSessionsLogged);
+        } else {
+            questProgress[q.id] = Math.min(q.target, totalSessionsLogged);
+        }
+    }
+
     const unlockedHidden = new Set<string>();
+    if (gymWars[0]?.gymId && user?.home_gym === gymWars[0].gymId) {
+        unlockedHidden.add('hq1');
+    }
+    if (user?.big4) {
+        const sbdRaw = (user.big4.bench || 0) + (user.big4.squat || 0) + (user.big4.deadlift || 0);
+        const sbdLbs = (user.unit_preference || 'kg') === 'kg' ? sbdRaw * 2.20462 : sbdRaw;
+        if (sbdLbs >= 1000) unlockedHidden.add('hq7');
+
+        const dlKg = (user.unit_preference || 'kg') === 'lbs' ? (user.big4.deadlift || 0) / 2.20462 : (user.big4.deadlift || 0);
+        if (dlKg >= (user.weight_kg || 75) * 2) unlockedHidden.add('hq8');
+    }
 
     return (
         <div className="pb-24 max-w-md mx-auto">
@@ -241,7 +311,7 @@ export default function Arena() {
                                         Squad Ranked (2 to 4 Lifters)
                                     </h4>
                                     <p className="text-[10px] text-gray-400">
-                                        Compete with your gym bro in the Netherlands or locally.
+                                        Team up with your training partners locally or worldwide.
                                     </p>
                                 </div>
                             </div>
@@ -258,7 +328,7 @@ export default function Arena() {
                     <NationalWhiteboard
                         userGymId={user?.home_gym}
                         userGymName={user?.home_gym_name || 'Your Gym'}
-                        userCountry={user?.country || 'NL'}
+                        userCountry={user?.country || 'Global'}
                     />
 
                     {/* Family & Clan Circle */}

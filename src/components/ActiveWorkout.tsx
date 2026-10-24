@@ -27,6 +27,23 @@ interface ActiveWorkoutProps {
     onCancel: () => void;
 }
 
+const getStrictBig4Key = (rawName: string): 'bench' | 'squat' | 'deadlift' | 'ohp' | null => {
+    const name = rawName.toLowerCase().trim();
+    if (name.includes('bench') && !/incline|dumbbell|db|machine|smith|close-grip|jm/.test(name)) {
+        return 'bench';
+    }
+    if (name.includes('squat') && !/spanish|split|bulgarian|hack|goblet|front|dumbbell|db|smith|sissy/.test(name)) {
+        return 'squat';
+    }
+    if (name.includes('deadlift') && !/romanian|rdl|stiff|dumbbell|db|single/.test(name)) {
+        return 'deadlift';
+    }
+    if ((name.includes('overhead press') || name.includes('ohp') || name.includes('military press')) && !/dumbbell|db|seated|machine|smith/.test(name)) {
+        return 'ohp';
+    }
+    return null;
+};
+
 export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: ActiveWorkoutProps) {
     // Preserve base weights for dynamic difficulty scaling
     const [baseExercises] = useState<WorkoutExercise[]>(
@@ -221,15 +238,9 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
             return e;
         }));
 
-        // PR Detection
+        // Strict Big 4 Barbell PR Detection
         if (isMarkingComplete && user?.big4) {
-            const name = exercise.name.toLowerCase();
-            let prKey: 'bench' | 'squat' | 'deadlift' | 'ohp' | null = null;
-
-            if (name.includes('bench')) prKey = 'bench';
-            else if (name.includes('squat')) prKey = 'squat';
-            else if (name.includes('deadlift')) prKey = 'deadlift';
-            else if (name.includes('overhead press') || name.includes('ohp')) prKey = 'ohp';
+            const prKey = getStrictBig4Key(exercise.name);
 
             if (prKey) {
                 let maxWeight = exercise.weight || 0;
@@ -248,7 +259,7 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
 
                     updateUser({
                         big4: { ...user.big4, [prKey]: newWeight },
-                        xp: (user.xp || 0) + 500
+                        xp: (user.xp || 0) + 250
                     });
                 }
             }
@@ -265,6 +276,24 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
 
     const handleUpdateExercise = (updated: WorkoutExercise) => {
         setExercises(prev => prev.map(e => e.id === updated.id ? updated : e));
+    };
+
+    const handleAddExercise = (newEx: { name: string; sets: number; reps: number; weight: number; modality?: any; notes?: string }) => {
+        const added: WorkoutExercise = {
+            id: `ex-custom-${Date.now()}-${exercises.length + 1}`,
+            name: newEx.name,
+            sets: newEx.sets,
+            reps: newEx.reps,
+            weight: newEx.weight,
+            modality: newEx.modality || getModalityForExercise(newEx.name),
+            notes: newEx.notes,
+            completed: false
+        };
+        setExercises(prev => {
+            const next = [...prev, added];
+            setCurrentIdx(next.length - 1);
+            return next;
+        });
     };
 
     const completeAll = exercises.some(e => e.completed);
@@ -297,12 +326,7 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
         let bonusPRXP = 0;
 
         exercises.forEach(ex => {
-            const name = ex.name.toLowerCase();
-            let prKey: 'bench' | 'squat' | 'deadlift' | 'ohp' | null = null;
-            if (name.includes('bench')) prKey = 'bench';
-            else if (name.includes('squat')) prKey = 'squat';
-            else if (name.includes('deadlift')) prKey = 'deadlift';
-            else if (name.includes('overhead press') || name.includes('ohp') || name.includes('military')) prKey = 'ohp';
+            const prKey = getStrictBig4Key(ex.name);
 
             if (prKey) {
                 let maxLift = 0;
@@ -318,8 +342,8 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
 
                 if (maxLift > (updatedBig4[prKey] || 0)) {
                     updatedBig4[prKey] = maxLift;
-                    bonusPRXP += 250;
                     if (!detectedPRs.some(p => p.exercise === ex.name)) {
+                        bonusPRXP += 250;
                         detectedPRs.push({ exercise: ex.name, newWeight: maxLift });
                     }
                 }
@@ -329,6 +353,14 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
         if (detectedPRs.length > prs.length) {
             setPrs(detectedPRs);
         }
+
+        // Persist completed log locally for immediate offline & Arena quest tracking
+        try {
+            const storageKey = `ironmatch_workout_logs_${user?.id || userId || 'guest'}`;
+            const rawExisting = safeStorage.getItem(storageKey);
+            const existingLogs = rawExisting ? JSON.parse(rawExisting) : [];
+            safeStorage.setItem(storageKey, JSON.stringify([log, ...existingLogs]));
+        } catch {}
 
         // Base XP (+100 XP) + PR bonus
         let xpGained = 100 + bonusPRXP;
@@ -434,27 +466,29 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
 
     if (finished) {
         return (
-            <ActiveWorkoutSummary
-                planName={plan.name}
-                exercises={exercises}
-                elapsed={elapsed}
-                prs={prs}
-                onDone={() => onComplete(lastCompletedLog || {
-                    id: `wl-${Date.now()}`,
-                    plan_id: plan.id,
-                    user_id: userId,
-                    exercises,
-                    started_at: startTime,
-                    completed_at: new Date().toISOString(),
-                    duration_min: Math.max(1, Math.round(elapsed / 60))
-                })}
-                onPostToFeed={handlePostToFeed}
-            />
+            <div className="fixed inset-0 z-[100] bg-oled overflow-y-auto pb-12">
+                <ActiveWorkoutSummary
+                    planName={plan.name}
+                    exercises={exercises}
+                    elapsed={elapsed}
+                    prs={prs}
+                    onDone={() => onComplete(lastCompletedLog || {
+                        id: `wl-${Date.now()}`,
+                        plan_id: plan.id,
+                        user_id: userId,
+                        exercises,
+                        started_at: startTime,
+                        completed_at: new Date().toISOString(),
+                        duration_min: Math.max(1, Math.round(elapsed / 60))
+                    })}
+                    onPostToFeed={handlePostToFeed}
+                />
+            </div>
         );
     }
 
     return (
-        <div className="flex flex-col min-h-screen bg-oled pb-24">
+        <div className="fixed inset-0 z-[100] flex flex-col bg-oled overflow-y-auto pb-16">
             <ActiveWorkoutHeader
                 planName={plan.name}
                 elapsed={elapsed}
@@ -475,6 +509,7 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
                 setCurrentIdx={setCurrentIdx}
                 toggleComplete={toggleComplete}
                 onUpdateExercise={handleUpdateExercise}
+                onAddExercise={handleAddExercise}
                 onOpenSwap={setSwapModalExercise}
                 onOpenPlateCalc={(weight) => {
                     setPlateCalcWeight(weight);

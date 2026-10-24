@@ -12,10 +12,12 @@ interface NationalWhiteboardProps {
 export default function NationalWhiteboard({
     userGymId,
     userGymName = 'Your Gym',
-    userCountry = 'NL'
+    userCountry = 'US'
 }: NationalWhiteboardProps) {
-    const [scope, setScope] = useState<'global' | 'national' | 'facility'>('national');
-    const [selectedCountry, setSelectedCountry] = useState<string>(userCountry);
+    const [scope, setScope] = useState<'global' | 'national' | 'facility'>('global');
+    const [selectedCountry, setSelectedCountry] = useState<string>(
+        ['NL', 'US', 'GB', 'ID', 'DE'].includes(userCountry) ? userCountry : 'US'
+    );
 
     const squads = useMemo(() => {
         return getRankedSquads(scope, selectedCountry, userGymId);

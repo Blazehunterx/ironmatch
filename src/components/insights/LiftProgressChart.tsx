@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, Calendar, Target, Loader2, ChevronDown, Trophy, History, Zap, Sparkles, Flame } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { safeStorage } from '../../lib/safeStorage';
 import { useAuth } from '../../context/AuthContext';
 
 interface LiftRecord {
@@ -15,114 +16,114 @@ interface LiftRecord {
 
 const CHART_THEMES: Record<string, any> = {
     default: {
-        primary: '#3B82F6',
-        secondary: '#60A5FA',
-        glow: 'rgba(59, 130, 246, 0.4)',
-        bg: 'bg-oled',
-        areaGradient: ['rgba(59, 130, 246, 0.4)', 'rgba(59, 130, 246, 0)'],
+        primary: '#32FF32',
+        secondary: '#10B981',
+        glow: 'rgba(50, 255, 50, 0.4)',
+        bg: 'bg-[#0D0D0D]',
+        areaGradient: ['rgba(50, 255, 50, 0.35)', 'rgba(50, 255, 50, 0)'],
         filter: '',
-        icon: <Target className="text-blue-400 w-5 h-5" />,
+        icon: <Target className="text-lime w-5 h-5" />,
         markerUrl: null,
     },
     one_piece: {
-        primary: '#EAB308', // Gold
-        secondary: '#0EA5E9', // Ocean Blue
-        glow: 'rgba(234, 179, 8, 0.6)',
-        bg: 'bg-gradient-to-b from-blue-900/40 to-oled',
-        areaGradient: ['rgba(14, 165, 233, 0.4)', 'rgba(2, 6, 23, 0)'],
+        primary: '#EAB308',
+        secondary: '#0EA5E9',
+        glow: 'rgba(234, 179, 8, 0.5)',
+        bg: 'bg-[#0D0D0D]',
+        areaGradient: ['rgba(14, 165, 233, 0.35)', 'rgba(2, 6, 23, 0)'],
         filter: 'url(#hakiGlow)',
-        icon: <Zap className="text-yellow-400 w-5 h-5 shadow-[0_0_10px_rgba(234,179,8,0.5)]" />,
-        markerUrl: '/assets/markers/luffy.png',
+        icon: <Zap className="text-yellow-400 w-5 h-5" />,
+        markerUrl: null,
     },
     dbz: {
-        primary: '#FACC15', // Electric Yellow
-        secondary: '#F97316', // Aura Orange
-        glow: 'rgba(250, 204, 21, 0.8)',
-        bg: 'bg-oled',
+        primary: '#FACC15',
+        secondary: '#F97316',
+        glow: 'rgba(250, 204, 21, 0.6)',
+        bg: 'bg-[#0D0D0D]',
         areaGradient: ['rgba(250, 204, 21, 0.3)', 'rgba(250, 204, 21, 0)'],
         filter: 'url(#superSaiyanFilter)',
-        icon: <Flame className="text-yellow-400 w-5 h-5 animate-pulse" />,
-        markerUrl: '/assets/markers/goku.png',
+        icon: <Flame className="text-yellow-400 w-5 h-5" />,
+        markerUrl: null,
     },
     naruto: {
-        primary: '#DC2626', // Sharingan Red
-        secondary: '#000000', // Uchiha Black
+        primary: '#DC2626',
+        secondary: '#F97316',
         glow: 'rgba(220, 38, 38, 0.5)',
-        bg: 'bg-gradient-to-br from-red-950/20 via-oled to-oled',
+        bg: 'bg-[#0D0D0D]',
         areaGradient: ['rgba(220, 38, 38, 0.3)', 'rgba(0, 0, 0, 0)'],
         filter: 'url(#sharinganBlur)',
         icon: <Sparkles className="text-red-500 w-5 h-5" />,
-        markerUrl: '/assets/markers/naruto.png',
+        markerUrl: null,
     },
     aot: {
-        primary: '#94A3B8', // Steel
-        secondary: '#15803D', // Forest Green
+        primary: '#94A3B8',
+        secondary: '#15803D',
         glow: 'rgba(148, 163, 184, 0.4)',
-        bg: 'bg-gradient-to-tr from-green-950/30 to-oled',
+        bg: 'bg-[#0D0D0D]',
         areaGradient: ['rgba(21, 128, 61, 0.3)', 'rgba(0, 0, 0, 0)'],
         filter: 'url(#titanHardening)',
         icon: <Zap className="text-slate-400 w-5 h-5" />,
-        markerUrl: '/assets/markers/titan.png',
+        markerUrl: null,
     },
     bleach: {
-        primary: '#FFFFFF', // Spiritual White
-        secondary: '#000000', // Shinigami Black
+        primary: '#FFFFFF',
+        secondary: '#94A3B8',
         glow: 'rgba(255, 255, 255, 0.4)',
-        bg: 'bg-gradient-to-b from-gray-900 via-oled to-oled',
+        bg: 'bg-[#0D0D0D]',
         areaGradient: ['rgba(255, 255, 255, 0.2)', 'rgba(0, 0, 0, 0)'],
         filter: 'url(#hakiGlow)',
         icon: <Zap className="text-white w-5 h-5" />,
-        markerUrl: '/assets/markers/ichigo.png',
+        markerUrl: null,
     },
     demon_slayer: {
-        primary: '#0EA5E9', // Water Blue
-        secondary: '#94A3B8', // Nichirin Steel
-        glow: 'rgba(14, 165, 233, 0.6)',
-        bg: 'bg-gradient-to-r from-blue-950/40 to-oled',
+        primary: '#0EA5E9',
+        secondary: '#94A3B8',
+        glow: 'rgba(14, 165, 233, 0.5)',
+        bg: 'bg-[#0D0D0D]',
         areaGradient: ['rgba(14, 165, 233, 0.3)', 'rgba(0, 0, 0, 0)'],
         filter: 'url(#hakiGlow)',
         icon: <Sparkles className="text-blue-400 w-5 h-5" />,
-        markerUrl: '/assets/markers/tanjiro.png',
+        markerUrl: null,
     },
     jjk: {
-        primary: '#A855F7', // Void Purple
-        secondary: '#3B82F6', // Cursed Blue
-        glow: 'rgba(168, 85, 247, 0.6)',
-        bg: 'bg-gradient-to-br from-purple-950/30 via-oled to-oled',
+        primary: '#A855F7',
+        secondary: '#3B82F6',
+        glow: 'rgba(168, 85, 247, 0.5)',
+        bg: 'bg-[#0D0D0D]',
         areaGradient: ['rgba(168, 85, 247, 0.3)', 'rgba(0, 0, 0, 0)'],
         filter: 'url(#superSaiyanFilter)',
         icon: <Zap className="text-purple-400 w-5 h-5" />,
-        markerUrl: '/assets/markers/gojo.png',
+        markerUrl: null,
     },
     mha: {
-        primary: '#10B981', // Hero Green
-        secondary: '#EAB308', // One For All Yellow
-        glow: 'rgba(16, 185, 129, 0.6)',
-        bg: 'bg-gradient-to-tr from-green-950/30 to-oled',
+        primary: '#10B981',
+        secondary: '#EAB308',
+        glow: 'rgba(16, 185, 129, 0.5)',
+        bg: 'bg-[#0D0D0D]',
         areaGradient: ['rgba(16, 185, 129, 0.3)', 'rgba(0, 0, 0, 0)'],
         filter: 'url(#superSaiyanFilter)',
         icon: <Flame className="text-green-400 w-5 h-5" />,
-        markerUrl: '/assets/markers/deku.png',
+        markerUrl: null,
     },
     hxh: {
-        primary: '#22C55E', // Nen Green
-        secondary: '#3B82F6', // Hunter Blue
+        primary: '#22C55E',
+        secondary: '#3B82F6',
         glow: 'rgba(34, 197, 94, 0.5)',
-        bg: 'bg-gradient-to-bl from-green-950/20 via-oled to-oled',
+        bg: 'bg-[#0D0D0D]',
         areaGradient: ['rgba(34, 197, 94, 0.2)', 'rgba(0, 0, 0, 0)'],
         filter: 'url(#hakiGlow)',
         icon: <Target className="text-green-500 w-5 h-5" />,
-        markerUrl: '/assets/markers/gon.png',
+        markerUrl: null,
     },
     solo_leveling: {
-        primary: '#7C3AED', // Monarch Purple
-        secondary: '#000000', // Shadow Black
-        glow: 'rgba(124, 58, 237, 0.7)',
-        bg: 'bg-gradient-to-b from-purple-950/50 to-oled',
+        primary: '#7C3AED',
+        secondary: '#3B82F6',
+        glow: 'rgba(124, 58, 237, 0.6)',
+        bg: 'bg-[#0D0D0D]',
         areaGradient: ['rgba(124, 58, 237, 0.4)', 'rgba(0, 0, 0, 0)'],
         filter: 'url(#superSaiyanFilter)',
-        icon: <Zap className="text-purple-600 w-5 h-5 animate-pulse" />,
-        markerUrl: '/assets/markers/jinwoo.png',
+        icon: <Zap className="text-purple-400 w-5 h-5" />,
+        markerUrl: null,
     }
 };
 
@@ -144,15 +145,98 @@ export default function LiftProgressChart({ userId }: { userId: string }) {
             if (!userId) return;
             setLoading(true);
             try {
+                const records: LiftRecord[] = [];
+
                 const { data } = await supabase
                     .from('lift_history')
                     .select('*')
                     .eq('user_id', userId)
                     .order('created_at', { ascending: true });
 
-                if (data) {
-                    setHistory(data);
-                    const uniqueExercises = Array.from(new Set(data.map(d => d.exercise_name)));
+                if (data && data.length > 0) {
+                    records.push(...data);
+                }
+
+                // Also synthesize records from workout_logs (Supabase + local storage)
+                let workoutLogs: any[] = [];
+                try {
+                    const localRaw = safeStorage.getItem(`ironmatch_workout_logs_${userId}`);
+                    if (localRaw) workoutLogs.push(...JSON.parse(localRaw));
+                } catch {}
+
+                try {
+                    const { data: wlData } = await supabase
+                        .from('workout_logs')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .order('created_at', { ascending: true });
+                    if (wlData) workoutLogs.push(...wlData);
+                } catch {}
+
+                for (const log of workoutLogs) {
+                    const createdAt = log.completed_at || log.started_at || log.created_at || new Date().toISOString();
+                    for (const ex of (log.exercises || [])) {
+                        if (!ex.name) continue;
+                        let bestW = ex.weight || 0;
+                        let bestR = ex.reps || 5;
+                        if (Array.isArray(ex.setDetails) && ex.setDetails.length > 0) {
+                            for (const s of ex.setDetails) {
+                                if ((s.weight || 0) > bestW) {
+                                    bestW = s.weight || 0;
+                                    bestR = s.reps || bestR;
+                                }
+                            }
+                        }
+                        if (bestW > 0) {
+                            const e1rm = Math.round(bestW * (1 + Math.min(bestR, 15) / 30) * 10) / 10;
+                            records.push({
+                                id: `${log.id}-${ex.name}`,
+                                exercise_name: ex.name,
+                                weight: bestW,
+                                reps: bestR,
+                                estimated_1rm: e1rm,
+                                created_at: createdAt
+                            });
+                        }
+                    }
+                }
+
+                // If user has Big 4 baseline on profile and no logs yet, seed baseline points
+                if (records.length === 0 && user?.big4) {
+                    const now = Date.now();
+                    const big4Entries: [string, number][] = [
+                        ['Barbell Bench Press', user.big4.bench || 0],
+                        ['Barbell Back Squat', user.big4.squat || 0],
+                        ['Conventional Barbell Deadlift', user.big4.deadlift || 0],
+                        ['Standing Barbell Overhead Press', user.big4.ohp || 0],
+                    ];
+                    for (const [name, val] of big4Entries) {
+                        if (val > 0) {
+                            records.push(
+                                {
+                                    id: `seed-1-${name}`,
+                                    exercise_name: name,
+                                    weight: Math.round(val * 0.92),
+                                    reps: 5,
+                                    estimated_1rm: Math.round(val * 0.95),
+                                    created_at: new Date(now - 14 * 86400000).toISOString()
+                                },
+                                {
+                                    id: `seed-2-${name}`,
+                                    exercise_name: name,
+                                    weight: val,
+                                    reps: 1,
+                                    estimated_1rm: val,
+                                    created_at: new Date(now).toISOString()
+                                }
+                            );
+                        }
+                    }
+                }
+
+                if (records.length > 0) {
+                    setHistory(records);
+                    const uniqueExercises = Array.from(new Set(records.map(d => d.exercise_name)));
                     setExercises(uniqueExercises);
                     if (uniqueExercises.length > 0 && !selectedExercise) {
                         setSelectedExercise(uniqueExercises[0]);
@@ -163,7 +247,7 @@ export default function LiftProgressChart({ userId }: { userId: string }) {
             }
         }
         fetchHistory();
-    }, [userId]);
+    }, [userId, user?.big4]);
 
     const chartData = useMemo(() => {
         return history.filter(d => d.exercise_name === selectedExercise);
@@ -291,7 +375,7 @@ export default function LiftProgressChart({ userId }: { userId: string }) {
                             <Trophy size={16} style={{ color: activeTheme.primary }} />
                             <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: activeTheme.primary }}>All-Time PR</p>
                         </div>
-                        <h4 className="text-2xl font-black text-white">{stats.allTimeBest.toFixed(1)} <span className="text-xs font-medium text-gray-500">lbs</span></h4>
+                        <h4 className="text-2xl font-black text-white">{stats.allTimeBest.toFixed(1)} <span className="text-xs font-medium text-gray-500">{user?.unit_preference || 'kg'}</span></h4>
                     </div>
                     <div className="border rounded-[2rem] p-5 transition-all" style={{ background: `linear-gradient(135deg, ${activeTheme.secondary}15, transparent)`, borderColor: `${activeTheme.secondary}20` }}>
                         <div className="flex items-center gap-2 mb-3">
