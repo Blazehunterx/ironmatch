@@ -46,8 +46,60 @@ const Big4Step: React.FC<Big4StepProps> = ({
                     )}
                 </div>
                 <p className="text-xs text-gray-400 mb-3">
-                    Choose your calibration style. New to lifting? Tap your muscles to fill in what you can lift.
+                    Choose your calibration style, or tap a 1-click starting preset below if you don't know your 1-Rep Max.
                 </p>
+
+                {/* 1-TAP BEGINNER / INTERMEDIATE / ADVANCED PRESETS */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                    <button
+                        type="button"
+                        onClick={() =>
+                            onSetLifts(
+                                unitPref === 'lbs'
+                                    ? { bench: 65, squat: 85, deadlift: 115, ohp: 45 }
+                                    : { bench: 30, squat: 40, deadlift: 50, ohp: 20 }
+                            )
+                        }
+                        className="py-2 px-2 rounded-xl bg-gray-950 border border-lime/30 hover:border-lime text-left transition active:scale-95"
+                    >
+                        <div className="text-[9px] font-black uppercase text-lime">Beginner</div>
+                        <div className="text-[10px] font-bold text-white truncate">
+                            {unitPref === 'lbs' ? '45lb Bar Start' : '20kg Bar Start'}
+                        </div>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() =>
+                            onSetLifts(
+                                unitPref === 'lbs'
+                                    ? { bench: 155, squat: 205, deadlift: 255, ohp: 105 }
+                                    : { bench: 70, squat: 95, deadlift: 115, ohp: 47.5 }
+                            )
+                        }
+                        className="py-2 px-2 rounded-xl bg-gray-950 border border-white/10 hover:border-lime/50 text-left transition active:scale-95"
+                    >
+                        <div className="text-[9px] font-black uppercase text-gray-400">Intermediate</div>
+                        <div className="text-[10px] font-bold text-white truncate">
+                            {unitPref === 'lbs' ? '155 / 205 / 255' : '70 / 95 / 115kg'}
+                        </div>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() =>
+                            onSetLifts(
+                                unitPref === 'lbs'
+                                    ? { bench: 225, squat: 315, deadlift: 405, ohp: 135 }
+                                    : { bench: 100, squat: 140, deadlift: 180, ohp: 60 }
+                            )
+                        }
+                        className="py-2 px-2 rounded-xl bg-gray-950 border border-white/10 hover:border-lime/50 text-left transition active:scale-95"
+                    >
+                        <div className="text-[9px] font-black uppercase text-amber-400">Advanced</div>
+                        <div className="text-[10px] font-bold text-white truncate">
+                            {unitPref === 'lbs' ? '2/3/4 Plate Club' : '100/140/180kg'}
+                        </div>
+                    </button>
+                </div>
 
                 {/* TWO-TRACK SEGMENTED SELECTOR */}
                 <div className="p-1 rounded-2xl bg-gray-950 border border-gray-800 grid grid-cols-2 gap-1 mb-4">

@@ -136,6 +136,8 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
         }
     }, [plan.id]);
 
+    const [prevHistoryMap, setPrevHistoryMap] = useState<Record<string, { weight: number; reps: number; rpe?: number }>>({});
+
     // Fetch previous exercise performance history from workout_logs
     useEffect(() => {
         const fetchHistory = async () => {
@@ -170,6 +172,8 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
                         }
                     }
                 }
+
+                setPrevHistoryMap(historyMap);
 
                 // Attach previous performance & modality
                 setExercises(prev => prev.map(e => {
@@ -279,18 +283,38 @@ export default function ActiveWorkout({ plan, userId, onComplete, onCancel }: Ac
     };
 
     const handleAddExercise = (newEx: { name: string; sets: number; reps: number; weight: number; modality?: any; notes?: string }) => {
+        const modality = newEx.modality || getModalityForExercise(newEx.name);
+        let smartWeight = newEx.weight;
+        const prev = prevHistoryMap[newEx.name.toLowerCase().trim()];
+        const prKey = getStrictBig4Key(newEx.name);
+        const isLbs = user?.unit_preference === 'lbs';
+
+        if (modality === 'bodyweight') {
+            smartWeight = 0;
+        } else if (prev && prev.weight > 0) {
+            smartWeight = prev.weight;
+        } else if (prKey && user?.big4?.[prKey] && user.big4[prKey] > 0) {
+            const step = isLbs ? 5 : 2.5;
+            smartWeight = Math.max(step, Math.round((user.big4[prKey] * 0.75) / step) * step);
+        } else if (modality === 'dumbbell' || modality === 'cable') {
+            smartWeight = isLbs ? 25 : 12.5;
+        } else {
+            smartWeight = isLbs ? 95 : 40;
+        }
+
         const added: WorkoutExercise = {
             id: `ex-custom-${Date.now()}-${exercises.length + 1}`,
             name: newEx.name,
             sets: newEx.sets,
             reps: newEx.reps,
-            weight: newEx.weight,
-            modality: newEx.modality || getModalityForExercise(newEx.name),
+            weight: smartWeight,
+            modality,
             notes: newEx.notes,
+            previousPerformance: prev,
             completed: false
         };
-        setExercises(prev => {
-            const next = [...prev, added];
+        setExercises(prevList => {
+            const next = [...prevList, added];
             setCurrentIdx(next.length - 1);
             return next;
         });

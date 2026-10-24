@@ -58,6 +58,8 @@ export default function Workouts() {
     const [showProModal, setShowProModal] = useState(false);
     const [activeGroupSession, setActiveGroupSession] = useState<GroupSession | null>(null);
     const hasProAccess = !!(user?.is_pro || user?.is_admin);
+    const freeAiKey = `ironmatch_free_ai_used_${user?.id || 'guest'}`;
+    const hasFreeAiTrial = !safeStorage.getItem(freeAiKey);
 
     const [plans, setPlans] = useState<WorkoutPlan[]>([]);
     const [communityPlans, setCommunityPlans] = useState<any[]>([]);
@@ -422,7 +424,7 @@ export default function Workouts() {
                 <div className="grid grid-cols-2 gap-3 mb-5">
                     <button
                         onClick={() => {
-                            if (!hasProAccess) {
+                            if (!hasProAccess && !hasFreeAiTrial) {
                                 setShowProModal(true);
                                 return;
                             }
@@ -435,7 +437,7 @@ export default function Workouts() {
                         </div>
                         <div className="min-w-0 flex-1">
                             <p className="text-[10px] font-black uppercase text-lime tracking-wider flex items-center gap-1">
-                                AI Coach {!hasProAccess && <Crown size={10} className="text-amber-400" />}
+                                AI Coach {!hasProAccess && (hasFreeAiTrial ? <span className="text-[8px] bg-lime/20 text-lime px-1 rounded">1 Free</span> : <Crown size={10} className="text-amber-400" />)}
                             </p>
                             <p className="text-xs font-bold text-white truncate">Generate Split</p>
                         </div>
@@ -526,6 +528,7 @@ export default function Workouts() {
                                 <AIWorkoutGenerator
                                     logs={logs}
                                     onGenerate={(plan) => {
+                                        safeStorage.setItem(freeAiKey, 'true');
                                         setPlans(prev => [plan, ...prev]);
                                         setShowAI(false);
                                         setTab('plans');
@@ -589,7 +592,7 @@ export default function Workouts() {
                                     Done
                                 </button>
                             </div>
-                            <BarbellVisualizer />
+                            <BarbellVisualizer initialUnit={user?.unit_preference || 'kg'} />
                         </motion.div>
                     </>
                 )}

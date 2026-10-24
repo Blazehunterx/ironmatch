@@ -6,7 +6,6 @@ import { useGyms } from '../context/GymContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Goal, BodyPart, FitnessLevel, FitnessDiscipline, User } from '../types/database';
 import { getRankFromLifts } from '../lib/gamification';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { safeStorage } from '../lib/safeStorage';
 import { joinSquadByCode } from '../lib/squads';
 import { generate8WeekTendonBlueprint } from '../lib/blueprintGenerator';
@@ -80,8 +79,9 @@ export default function Onboarding() {
 
     const finish = async () => {
         const hg = allGyms.find(g => g.id === homeGym);
+        const seedName = encodeURIComponent(user?.name || 'Iron Athlete');
         const data = {
-            profile_image_url: profileImage || 'https://i.pravatar.cc/300',
+            profile_image_url: profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${seedName}`,
             home_gym: homeGym || undefined,
             home_gym_name: hg?.name || undefined,
             weight_kg: weightKg || undefined,
@@ -101,23 +101,6 @@ export default function Onboarding() {
             newUserProfile = { ...user, ...data } as User;
         } else {
             await signup(data);
-        }
-
-        if (isSupabaseConfigured) {
-            try {
-                const { data: owner } = await supabase.from('profiles').select('id').eq('email', 'marvin.2000.sluis@gmail.com').single();
-                const recipientId = user?.id || newUserProfile?.id;
-                if (owner?.id && recipientId) {
-                    await supabase.from('messages').insert({
-                        sender_id: owner.id,
-                        receiver_id: recipientId,
-                        content: `Welcome to IronMatch, ${data.goals.includes('Workout Buddy') ? 'partner' : 'lifter'}! 💪 I'm Marvin, the creator. Glad to have you here. Let's get these gains!`,
-                        is_read: false
-                    });
-                }
-            } catch (err) {
-                console.warn('Could not send owner welcome message:', err);
-            }
         }
 
         // Auto-synthesize custom 8-Week Tendon & Strength Masterplan
@@ -157,7 +140,7 @@ export default function Onboarding() {
             }
         }
 
-        navigate('/');
+        navigate('/workouts');
     };
 
     const rank = getRankFromLifts(lifts, unitPref);
@@ -228,7 +211,7 @@ export default function Onboarding() {
                 </AnimatePresence>
             </div>
 
-            <div className="px-6 pb-8 pt-3">
+            <div className="px-6 pb-8 pt-3 space-y-2">
                 <motion.button
                     whileTap={{ scale: 0.97 }}
                     onClick={step === TOTAL_STEPS - 1 ? finish : goNext}
@@ -244,6 +227,15 @@ export default function Onboarding() {
                         </>
                     )}
                 </motion.button>
+                {step < TOTAL_STEPS - 1 && (
+                    <button
+                        type="button"
+                        onClick={finish}
+                        className="w-full py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-gray-300 hover:text-lime text-xs font-bold transition flex items-center justify-center gap-1.5"
+                    >
+                        <Zap size={13} className="text-lime" /> Fast-Track: Skip Setup & Start Training Now
+                    </button>
+                )}
             </div>
         </div>
     );

@@ -267,30 +267,30 @@ export const INITIAL_WHITEBOARD_RECORDS: WhiteboardRecord[] = [
 export const INITIAL_BEACONS: SpotBeacon[] = [
     {
         id: 'bc-1',
-        user_id: 'user-bram',
-        user_name: 'Bram van Dijk',
-        avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        gym_id: 'vondelgym-ams',
-        gym_name: 'Vondelgym Amsterdam',
+        user_id: 'user-colt',
+        user_name: 'Colt Walker',
+        avatar_url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150',
+        gym_id: 'golds-venice',
+        gym_name: "Gold's Gym Venice",
         exercise: 'Barbell Bench Press',
         current_weight: 140,
         unit: 'kg',
         status: 'need_spot',
-        squad_tag: 'NL-TITAN',
+        squad_tag: 'VENICE',
         created_at: new Date(Date.now() - 12 * 60 * 1000).toISOString()
     },
     {
         id: 'bc-2',
-        user_id: 'user-sven',
-        user_name: 'Sven Bakker',
-        avatar_url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150',
-        gym_id: 'david-lloyd-rdam',
-        gym_name: 'David Lloyd Rotterdam',
+        user_id: 'user-callum',
+        user_name: 'Callum Wright',
+        avatar_url: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150',
+        gym_id: 'puregym-ldn',
+        gym_name: 'PureGym Piccadilly',
         exercise: 'Barbell Back Squat',
-        current_weight: 200,
+        current_weight: 180,
         unit: 'kg',
         status: 'working_in',
-        squad_tag: 'RDAM-2',
+        squad_tag: 'LDN-RIP',
         created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString()
     }
 ];

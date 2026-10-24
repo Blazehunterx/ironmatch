@@ -103,11 +103,20 @@ export function generate8WeekTendonBlueprint(options: BlueprintOptions = {}): Wo
     const activeDay = Math.min(Math.max(dayNumber, 1), 4);
     const splitInfo = BLUEPRINT_SPLIT_DAYS[activeDay - 1];
     const planId = `blueprint-8w-w${weekNumber}-d${activeDay}-${Date.now()}`;
-    const bw = user?.weight_kg || 75;
-    const bench1RM = user?.big4?.bench || (bw * 1.0);
-    const squat1RM = user?.big4?.squat || (bw * 1.3);
-    const deadlift1RM = user?.big4?.deadlift || (bw * 1.6);
-    const ohp1RM = user?.big4?.ohp || (bw * 0.6);
+    const isLbs = user?.unit_preference === 'lbs';
+    const rawBwKg = user?.weight_kg || 75;
+    const bw = isLbs ? Math.round(rawBwKg * 2.20462) : rawBwKg;
+
+    const hasCalibratedBig4 = Boolean(
+        user?.big4 &&
+        ((user.big4.bench || 0) + (user.big4.squat || 0) + (user.big4.deadlift || 0) + (user.big4.ohp || 0)) > 0
+    );
+    const isBeginner = user?.fitness_level === 'Beginner' || !hasCalibratedBig4;
+
+    const bench1RM = user?.big4?.bench || (isBeginner ? (isLbs ? 65 : 30) : Math.round(bw * 1.0));
+    const squat1RM = user?.big4?.squat || (isBeginner ? (isLbs ? 85 : 40) : Math.round(bw * 1.3));
+    const deadlift1RM = user?.big4?.deadlift || (isBeginner ? (isLbs ? 115 : 50) : Math.round(bw * 1.6));
+    const ohp1RM = user?.big4?.ohp || (isBeginner ? (isLbs ? 45 : 20) : Math.round(bw * 0.6));
 
     const hasKnee = weakLinks.includes('knee') || doctrine === 'longevity_rehab';
     const hasShoulder = weakLinks.includes('shoulder') || doctrine === 'longevity_rehab';
@@ -131,7 +140,8 @@ export function generate8WeekTendonBlueprint(options: BlueprintOptions = {}): Wo
     const addEx = (id: string, sets: number, reps: number, calcWeight: number, notes?: string) => {
         const found = findExercise(id) || EXERCISE_DATABASE.find(e => e.id === id);
         if (!found) return;
-        const inc = found.defaultIncrement || 2.5;
+        const baseInc = found.defaultIncrement ?? 2.5;
+        const inc = baseInc === 0 ? 0 : isLbs ? (baseInc >= 2.5 ? 5 : 2.5) : baseInc;
         const finalWeight = inc > 0 ? Math.max(0, Math.round(calcWeight / inc) * inc) : 0;
         exercises.push({
             id: `${planId}-${exercises.length + 1}`,
@@ -156,12 +166,14 @@ export function generate8WeekTendonBlueprint(options: BlueprintOptions = {}): Wo
 
     if (activeDay === 1) {
         // DAY 1: UPPER PUSH & SHOULDER TENDON ARMOR
+        const extRotLoad = Math.min(isLbs ? 15 : 7.5, Math.max(isLbs ? 5 : 2.5, ohp1RM * 0.08));
+        const luRaiseLoad = Math.min(isLbs ? 20 : 10, Math.max(isLbs ? 5 : 2.5, ohp1RM * 0.08));
         if (hasShoulder || realm === 'home') {
             addEx('serratus-wall-slide', 2, 12, 0, '⚡ LAYER 1 TENDON PRIMER: Scapular protraction eliminates subacromial pinch');
         } else {
-            addEx('cable-external-rotation', 2, 15, ohp1RM * 0.15, '⚡ LAYER 1 TENDON PRIMER: Anchors infraspinatus before heavy pressing');
+            addEx('cable-external-rotation', 2, 15, extRotLoad, '⚡ LAYER 1 TENDON PRIMER: Anchors infraspinatus before heavy pressing');
         }
-        addEx('lu-raise', 3, 15, ohp1RM * 0.12, '⚡ LAYER 1 ARMOR: Full overhead ROM targets lateral delts and upward scapular rotation');
+        addEx('lu-raise', 3, 15, luRaiseLoad, '⚡ LAYER 1 ARMOR: Full overhead ROM targets lateral delts and upward scapular rotation');
 
         if (hasShoulder || realm === 'cable') {
             addEx('incline-dumbbell-press', 4, 8, bench1RM * 0.35, `⚡ LAYER 2 MAIN ANCHOR: Neutral grip · Spares anterior capsule · ${curWeekInfo.compoundTargetIntensity}`);

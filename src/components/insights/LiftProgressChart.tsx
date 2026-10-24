@@ -143,34 +143,14 @@ export default function LiftProgressChart({ userId }: { userId: string }) {
     useEffect(() => {
         async function fetchHistory() {
             if (!userId) return;
-            setLoading(true);
-            try {
-                const records: LiftRecord[] = [];
 
-                const { data } = await supabase
-                    .from('lift_history')
-                    .select('*')
-                    .eq('user_id', userId)
-                    .order('created_at', { ascending: true });
+            const buildRecords = (remoteLiftHistory: LiftRecord[] = [], remoteWorkoutLogs: any[] = []): LiftRecord[] => {
+                const records: LiftRecord[] = [...remoteLiftHistory];
 
-                if (data && data.length > 0) {
-                    records.push(...data);
-                }
-
-                // Also synthesize records from workout_logs (Supabase + local storage)
-                let workoutLogs: any[] = [];
+                let workoutLogs: any[] = [...remoteWorkoutLogs];
                 try {
                     const localRaw = safeStorage.getItem(`ironmatch_workout_logs_${userId}`);
                     if (localRaw) workoutLogs.push(...JSON.parse(localRaw));
-                } catch {}
-
-                try {
-                    const { data: wlData } = await supabase
-                        .from('workout_logs')
-                        .select('*')
-                        .eq('user_id', userId)
-                        .order('created_at', { ascending: true });
-                    if (wlData) workoutLogs.push(...wlData);
                 } catch {}
 
                 for (const log of workoutLogs) {
@@ -233,16 +213,47 @@ export default function LiftProgressChart({ userId }: { userId: string }) {
                         }
                     }
                 }
+                return records;
+            };
 
-                if (records.length > 0) {
-                    setHistory(records);
-                    const uniqueExercises = Array.from(new Set(records.map(d => d.exercise_name)));
+            // Render local & baseline records immediately without blocking on network
+            const initialRecords = buildRecords();
+            if (initialRecords.length > 0) {
+                setHistory(initialRecords);
+                const uniqueExercises = Array.from(new Set(initialRecords.map(d => d.exercise_name)));
+                setExercises(uniqueExercises);
+                if (uniqueExercises.length > 0 && !selectedExercise) {
+                    setSelectedExercise(uniqueExercises[0]);
+                }
+                setLoading(false);
+            } else {
+                setLoading(true);
+            }
+
+            try {
+                const [lhRes, wlRes] = await Promise.all([
+                    supabase
+                        .from('lift_history')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .order('created_at', { ascending: true }),
+                    supabase
+                        .from('workout_logs')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .order('created_at', { ascending: true })
+                ]);
+
+                const mergedRecords = buildRecords(lhRes.data || [], wlRes.data || []);
+                if (mergedRecords.length > 0) {
+                    setHistory(mergedRecords);
+                    const uniqueExercises = Array.from(new Set(mergedRecords.map(d => d.exercise_name)));
                     setExercises(uniqueExercises);
                     if (uniqueExercises.length > 0 && !selectedExercise) {
                         setSelectedExercise(uniqueExercises[0]);
                     }
                 }
-            } finally {
+            } catch {} finally {
                 setLoading(false);
             }
         }

@@ -13,10 +13,10 @@ interface PlacedPlate {
   key: string;
 }
 
-export function BarbellVisualizer({ initialKg = 60 }: { initialKg?: number }) {
-  const [unit, setUnit] = useState<Unit>("kg");
+export function BarbellVisualizer({ initialKg = 60, initialUnit = "kg" }: { initialKg?: number; initialUnit?: Unit }) {
+  const [unit, setUnit] = useState<Unit>(initialUnit);
   const [bar, setBar] = useState<BarType>("men");
-  const [total, setTotal] = useState(initialKg);
+  const [total, setTotal] = useState(initialUnit === "lbs" && initialKg === 60 ? 135 : initialKg);
   const barW = BAR_WEIGHT[bar][unit];
   const { plates, remainder } = useMemo(() => platesPerSide(total, barW, unit), [total, barW, unit]);
   const steps = unit === "kg" ? [-5, -1, 1, 5] : [-10, -2.5, 2.5, 10];
@@ -39,12 +39,19 @@ export function BarbellVisualizer({ initialKg = 60 }: { initialKg?: number }) {
 
   const knurl = Array.from({ length: 34 }, (_, i) => 150 + i * 6);
 
-  const barOptions: [BarType, string][] = [
-    ["ez", "EZ 10kg"],
-    ["women", "15kg"],
-    ["men", "Olympic 20kg"],
-    ["ssb", "SSB 25kg"]
-  ];
+  const barOptions: [BarType, string][] = unit === "lbs"
+    ? [
+        ["ez", "EZ 25lb"],
+        ["women", "35lb"],
+        ["men", "Olympic 45lb"],
+        ["ssb", "SSB 55lb"]
+      ]
+    : [
+        ["ez", "EZ 10kg"],
+        ["women", "15kg"],
+        ["men", "Olympic 20kg"],
+        ["ssb", "SSB 25kg"]
+      ];
 
   return (
     <section className="oled-panel w-full max-w-full overflow-hidden rounded-2xl border border-white/10 p-4">

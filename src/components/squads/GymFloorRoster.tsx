@@ -236,8 +236,11 @@ export default function GymFloorRoster({
                 ) : (
                     <div className="space-y-2">
                         {filteredLifters.map((u) => {
-                            const totalKg = u.big4 ? (u.big4.bench + u.big4.squat + u.big4.deadlift + u.big4.ohp) : 380;
-                            const bwMultiple = u.weight_kg ? (totalKg / u.weight_kg).toFixed(1) : '5.0';
+                            const rawSbd = u.big4 ? ((u.big4.bench || 0) + (u.big4.squat || 0) + (u.big4.deadlift || 0)) : 320;
+                            const isStoredLbs = u.unit_preference === 'lbs' || rawSbd > 850;
+                            const totalKg = isStoredLbs ? Math.round(rawSbd / 2.20462) : rawSbd;
+                            const bwKg = u.weight_kg && u.weight_kg > 35 ? u.weight_kg : 80;
+                            const bwMultiple = Math.min(9.9, totalKg / bwKg).toFixed(1);
                             const rank = rankFor(totalKg);
                             const hasBeenInvited = invitedUsers.includes(u.id);
 
